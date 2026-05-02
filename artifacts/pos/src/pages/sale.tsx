@@ -52,6 +52,7 @@ const SaleScreen = () => {
   const [cashReceived, setCashReceived] = useState("");
   const [activeLocationId, setActiveLocationId] = useState<string>("");
   const [customerSearch, setCustomerSearch] = useState("");
+  const [heldBillsOpen, setHeldBillsOpen] = useState(false);
 
   const { 
     items, addItem, removeItem, updateQty, clearCart, loadHeldBill,
@@ -156,8 +157,8 @@ const SaleScreen = () => {
   const handleHoldBill = () => {
     if (items.length === 0) return;
     holdBill(
-      { 
-        data: { 
+      {
+        data: {
           locationId: activeLocationId,
           customerId: customer?.id,
           items: items.map(i => ({
@@ -167,8 +168,10 @@ const SaleScreen = () => {
             variantLabel: i.variantLabel,
             qty: i.qty,
             unitPrice: i.unitPrice,
-          })) 
-        } 
+          })),
+          // Include coupon so Resume can rehydrate the discount too.
+          coupon: coupon ?? undefined,
+        } as any,
       },
       {
         onSuccess: () => {
@@ -189,7 +192,13 @@ const SaleScreen = () => {
       qty: i.qty ?? 1,
       unitPrice: i.unitPrice ?? 0,
     }));
-    loadHeldBill({ items: billItems, customer: bill.customer ?? null });
+    // Restore items + customer + coupon, then close the held-bills sheet.
+    loadHeldBill({
+      items: billItems,
+      customer: bill.customer ?? null,
+      coupon: bill.coupon ?? null,
+    });
+    setHeldBillsOpen(false);
     toast({ title: "Bill resumed", description: `Loaded ${billItems.length} items into the cart` });
   };
 
@@ -292,9 +301,9 @@ const SaleScreen = () => {
             <Badge variant="outline" className="text-primary border-primary">{items.length}</Badge>
           </div>
           <div className="flex gap-2">
-            <Sheet>
+            <Sheet open={heldBillsOpen} onOpenChange={setHeldBillsOpen}>
               <SheetTrigger asChild>
-                <Button variant="outline" size="icon" className="border-zinc-800">
+                <Button variant="outline" size="icon" className="border-zinc-800" data-testid="held-bills-trigger">
                   <History className="h-5 w-5" />
                 </Button>
               </SheetTrigger>

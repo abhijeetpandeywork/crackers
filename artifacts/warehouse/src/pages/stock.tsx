@@ -33,7 +33,12 @@ export default function StockLevels() {
     if (!token) return;
     fetch("/api/v1/locations", { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
-      .then(res => setLocations(res?.data ?? []))
+      .then(res => {
+        const list = res?.data ?? [];
+        setLocations(list);
+        // Default to the first real location when one isn't already selected.
+        if (list.length > 0) setLocationId((prev) => (prev === "all" ? list[0].id : prev));
+      })
       .catch(() => {});
   }, []);
 

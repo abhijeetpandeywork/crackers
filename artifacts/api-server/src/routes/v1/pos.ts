@@ -157,8 +157,17 @@ router.post("/pos/return", authenticate, async (req: AuthRequest, res) => {
 });
 
 router.post("/pos/hold", authenticate, async (req: AuthRequest, res) => {
-  const { locationId, customerId, items, label } = req.body;
-  await db.insert(heldBillsTable).values({ id: crypto.randomUUID(), locationId, customerId, label, items, createdBy: req.user?.id });
+  const { locationId, customerId, items, label, coupon } = req.body as {
+    locationId: string;
+    customerId?: string;
+    items: unknown[];
+    label?: string;
+    coupon?: unknown;
+  };
+  // Wrap items + coupon together so the resume flow can rehydrate the cart fully.
+  // Stays backward-compatible because the GET below also accepts raw arrays.
+  const payload = coupon ? { lines: items, coupon } : items;
+  await db.insert(heldBillsTable).values({ id: crypto.randomUUID(), locationId, customerId, label, items: payload as any, createdBy: req.user?.id });
   res.json({ success: true, message: "Bill held" });
 });
 
@@ -166,7 +175,24 @@ router.get("/pos/held", authenticate, async (req, res) => {
   const { locationId } = req.query as Record<string, string>;
   const conditions = locationId ? [eq(heldBillsTable.locationId, locationId)] : [];
   const rows = await db.select().from(heldBillsTable).where(conditions.length > 0 ? and(...conditions) : undefined).limit(50);
-  res.json({ success: true, data: rows.map((r) => ({ holdId: r.id, label: r.label, itemCount: (r.items as any[]).length, createdAt: r.createdAt?.toISOString() })) });
+  res.json({
+    success: true,
+    data: rows.map((r) => {
+      const stored = r.items as unknown;
+      const lines = Array.isArray(stored) ? stored : ((stored as { lines?: unknown[] })?.lines ?? []);
+      const coupon = Array.isArray(stored) ? null : ((stored as { coupon?: unknown })?.coupon ?? null);
+      return {
+        id: r.id,
+        holdId: r.id,
+        label: r.label,
+        items: lines,
+        customerId: r.customerId,
+        coupon,
+        itemCount: Array.isArray(lines) ? lines.length : 0,
+        createdAt: r.createdAt?.toISOString(),
+      };
+    }),
+  });
 });
 
 router.post("/pos/shift-close", authenticate, async (req, res) => {

@@ -56,14 +56,23 @@ export default function ReceiveStock() {
     }
   });
 
-  // Mock locations fetch
+  // Real locations fetch with default-select on first load
   useEffect(() => {
     const token = localStorage.getItem("wh_token");
+    if (!token) return;
     fetch("/api/v1/locations", {
       headers: { Authorization: `Bearer ${token}` }
     })
     .then(res => res.json())
-    .then(data => setLocations(data.data || []))
+    .then(data => {
+      const list = data?.data ?? [];
+      setLocations(list);
+      if (list.length > 0) {
+        // Prefer the first warehouse for receive flows; fallback to first location.
+        const wh = list.find((l: any) => l.type === "warehouse") ?? list[0];
+        setLocationId((prev) => prev || wh.id);
+      }
+    })
     .catch(() => {});
   }, []);
 

@@ -200,6 +200,12 @@ const SECTIONS: Array<{ name: string; run: () => Promise<Check[]> }> = [
         detail: `count=${Array.isArray(locArr) ? locArr.length : 0}`,
       });
 
+      const usersNoAuth = await http("/api/v1/users");
+      out.push({
+        name: "GET /users without token returns 401 (admin-only)",
+        passed: usersNoAuth.status === 401,
+        detail: `status=${usersNoAuth.status}`,
+      });
       const users = await http("/api/v1/users", { headers });
       out.push({ name: "GET /users returns 200 (admin)", passed: users.status === 200, detail: `status=${users.status}` });
 
@@ -214,6 +220,13 @@ const SECTIONS: Array<{ name: string; run: () => Promise<Check[]> }> = [
 
       const pricing = await http("/api/v1/settings/pricing", { headers });
       out.push({ name: "GET /settings/pricing returns 200", passed: pricing.status === 200, detail: `status=${pricing.status}` });
+      const pricingData = (pricing.body as { data?: Record<string, unknown> })?.data ?? {};
+      const taxRate = pricingData["taxRate"];
+      out.push({
+        name: "Pricing settings include GST taxRate (>0)",
+        passed: typeof taxRate === "number" && taxRate > 0,
+        detail: `taxRate=${String(taxRate)}`,
+      });
 
       // End-to-end transfer flow: create → dispatch → receive
       if (Array.isArray(locArr) && locArr.length >= 2) {
@@ -257,6 +270,65 @@ const SECTIONS: Array<{ name: string; run: () => Promise<Check[]> }> = [
               }),
             });
             out.push({ name: "PUT /transfers/:id/receive returns 200", passed: recv.status === 200, detail: `status=${recv.status}` });
+          }
+
+          // End-to-end PO flow: create → receive → assert RECEIVED status + IN ledger row
+          const suppliers = await http("/api/v1/suppliers?limit=1", { headers });
+          const supArr = (suppliers.body as { data?: Array<{ id: string }> })?.data ?? [];
+          const supplierId = supArr[0]?.id;
+          if (supplierId) {
+            const poCreated = await http("/api/v1/purchase-orders", {
+              method: "POST",
+              headers: { ...headers, "Content-Type": "application/json" },
+              body: JSON.stringify({
+                supplierId,
+                warehouseId: fromId,
+                items: [{ productId: prod.id, variantId, orderedQty: 2, unitPrice: 100 }],
+                expectedDate: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
+                notes: "verifier PO round-trip",
+              }),
+            });
+            const poBody = poCreated.body as { data?: { id?: string } };
+            const poId = poBody?.data?.id;
+            out.push({
+              name: "POST /purchase-orders creates a draft PO",
+              passed: poCreated.status === 201 && !!poId,
+              detail: `status=${poCreated.status}`,
+            });
+            if (poId) {
+              const poRecv = await http(`/api/v1/purchase-orders/${poId}/receive`, {
+                method: "PUT",
+                headers: { ...headers, "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  items: [{ productId: prod.id, variantId, receivedQty: 2 }],
+                }),
+              });
+              out.push({
+                name: "PUT /purchase-orders/:id/receive returns 200",
+                passed: poRecv.status === 200,
+                detail: `status=${poRecv.status}`,
+              });
+              const poAfter = await http(`/api/v1/purchase-orders/${poId}`, { headers });
+              const poRow = (poAfter.body as { data?: { status?: string } })?.data;
+              out.push({
+                name: "PO status is 'received' after receiving",
+                passed: poRow?.status === "received",
+                detail: `status=${poRow?.status}`,
+              });
+              const ledger = await http(
+                `/api/v1/stock/ledger?productId=${prod.id}&variantId=${encodeURIComponent(variantId)}&limit=20`,
+                { headers },
+              );
+              const ledgerRows = (ledger.body as { data?: Array<{ refType?: string; refId?: string; type?: string }> })?.data ?? [];
+              const inwardForPo = ledgerRows.some(
+                (r) => r.refType === "PO" && r.refId === poId && r.type === "IN",
+              );
+              out.push({
+                name: "Stock ledger has IN row for received PO",
+                passed: inwardForPo,
+                detail: inwardForPo ? "ok" : `no matching ledger row (rows=${ledgerRows.length})`,
+              });
+            }
           }
         }
       }
