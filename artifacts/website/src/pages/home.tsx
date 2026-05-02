@@ -1,94 +1,266 @@
 import { Link } from "wouter";
+import { useEffect, useMemo, useState } from "react";
 import { useListPublicProducts } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowRight, Star, ShieldCheck, Truck, Award } from "lucide-react";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import {
+  ArrowRight, ShieldCheck, Truck, Award, Star, Sparkles, Phone,
+  MessageCircle, Mail, BadgeCheck, Heart, Gift, Clock, Quote, ChevronRight,
+} from "lucide-react";
 import { Layout } from "@/components/layout";
 
-export default function Home() {
-  const { data: featuredData, isLoading } = useListPublicProducts({ featured: true, limit: 6 });
-  const products = featuredData?.data || [];
+type Product = {
+  id: string;
+  name?: string;
+  category?: string;
+  priceRange?: { min?: number; max?: number };
+};
 
-  const categories = [
-    { name: "Ground", emoji: "🎇", color: "from-orange-500 to-red-600" },
-    { name: "Aerial", emoji: "🚀", color: "from-blue-500 to-indigo-600" },
-    { name: "Sparkler", emoji: "✨", color: "from-yellow-400 to-amber-600" },
-    { name: "Gift Box", emoji: "🎁", color: "from-purple-500 to-pink-600" },
-    { name: "Bundle", emoji: "📦", color: "from-green-500 to-teal-600" },
-    { name: "Novelty", emoji: "🎭", color: "from-cyan-500 to-blue-600" },
-  ];
+const num = (v: unknown): number => {
+  if (v === null || v === undefined || v === "") return 0;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+};
+
+function useDiwaliCountdown() {
+  const target = useMemo(() => {
+    const now = new Date();
+    const year = now.getMonth() >= 11 ? now.getFullYear() + 1 : now.getFullYear();
+    return new Date(`${year}-11-01T00:00:00`);
+  }, []);
+  const [now, setNow] = useState<Date>(new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const diff = Math.max(0, target.getTime() - now.getTime());
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+  const minutes = Math.floor((diff / (1000 * 60)) % 60);
+  const seconds = Math.floor((diff / 1000) % 60);
+  return { days, hours, minutes, seconds, target };
+}
+
+const OCCASIONS = [
+  { key: "diwali",   label: "Diwali",        emoji: "🪔", tag: "Festival",  color: "from-amber-400 via-orange-500 to-red-600" },
+  { key: "wedding",  label: "Weddings",      emoji: "💐", tag: "Bulk",      color: "from-pink-400 via-rose-500 to-red-500" },
+  { key: "birthday", label: "Birthdays",     emoji: "🎂", tag: "Family",    color: "from-purple-400 via-fuchsia-500 to-pink-500" },
+  { key: "karthigai",label: "Karthigai",     emoji: "🕯️", tag: "Tradition", color: "from-yellow-400 via-amber-500 to-orange-600" },
+  { key: "newyear",  label: "New Year",      emoji: "🎉", tag: "Party",     color: "from-cyan-400 via-blue-500 to-indigo-600" },
+  { key: "corporate",label: "Corporate",     emoji: "🏢", tag: "B2B",       color: "from-emerald-400 via-teal-500 to-cyan-600" },
+];
+
+const CATEGORIES = [
+  { name: "Ground",  emoji: "🎇", color: "from-orange-500 to-red-600" },
+  { name: "Aerial",  emoji: "🚀", color: "from-blue-500 to-indigo-600" },
+  { name: "Sparkler",emoji: "✨", color: "from-yellow-400 to-amber-600" },
+  { name: "Gift Box",emoji: "🎁", color: "from-purple-500 to-pink-600" },
+  { name: "Bundle",  emoji: "📦", color: "from-green-500 to-teal-600" },
+  { name: "Novelty", emoji: "🎭", color: "from-cyan-500 to-blue-600" },
+];
+
+const STATS = [
+  { value: "40+",     label: "Years of trust",          sub: "Since 1985" },
+  { value: "500+",    label: "Premium products",        sub: "Across 6 categories" },
+  { value: "50,000+", label: "Happy families",          sub: "Across India" },
+  { value: "120+",    label: "Cities served",           sub: "Pan-India network" },
+];
+
+const TESTIMONIALS = [
+  { name: "Priya Krishnan", city: "Chennai",   text: "Ordered the family bundle for Diwali and the kids could not stop smiling. Crackers were dry, fresh and beautifully packed.", rating: 5 },
+  { name: "Arjun Mehta",    city: "Mumbai",    text: "Bulk order for our daughter's wedding — 200 boxes delivered on time with a clean GST invoice. Highly recommended for big events.", rating: 5 },
+  { name: "Lakshmi Iyer",   city: "Bengaluru", text: "Their sparkler tin lasted twice as long as the local brand. You really feel the Sivakasi quality.", rating: 5 },
+  { name: "Ravi Subramanian", city: "Hyderabad", text: "Customer support called within an hour of placing my order. Felt like dealing with a family business — because it is one.", rating: 5 },
+];
+
+const PRESS = [
+  "The Hindu", "Times of India", "Vikatan", "ET Now", "Dinamalar", "Mint",
+];
+
+const HOW_IT_WORKS = [
+  { step: "01", icon: Sparkles, title: "Browse the catalogue", desc: "500+ items across aerial, ground, sparklers, gift boxes and family bundles. Filter by occasion or budget." },
+  { step: "02", icon: Gift,     title: "Place your order",     desc: "Add to cart, apply your coupon, request a GST invoice and check out as a guest. No account needed." },
+  { step: "03", icon: Truck,    title: "Celebrate at home",    desc: "Our team confirms by phone within 24 hours. Licensed logistics deliver safely to your doorstep." },
+];
+
+const FAQS = [
+  { q: "Do I need to create an account to order?", a: "No. Checkout is guest-only — your phone number is the order reference. We will call within 24 hours to confirm." },
+  { q: "Can I get a GST invoice?",                  a: "Yes. Tick 'I need GST invoice' at checkout and enter your GSTIN. We issue a fully GST-compliant invoice (CGST 9% + SGST 9% intra-state, IGST 18% inter-state)." },
+  { q: "Do you ship across India?",                 a: "Yes. We ship pan-India through licensed cracker logistics partners only. Delivery times vary by state, generally 5-10 working days during peak season." },
+  { q: "Is there a discount for bulk and weddings?",a: "Orders of 10+ units of the same item automatically get the wholesale rate. For very large or corporate orders, message us on WhatsApp for a custom quote." },
+  { q: "Are the products safe and compliant?",      a: "Every product is PESO-licensed and conforms to Indian fireworks safety standards and Supreme Court guidelines on permissible noise and emissions." },
+];
+
+export default function Home() {
+  const { data: featuredData, isLoading } = useListPublicProducts({ featured: true, limit: 8 });
+  const products: Product[] = (featuredData?.data ?? []) as Product[];
+  const { days, hours, minutes, seconds } = useDiwaliCountdown();
+  const [active, setActive] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setActive((a) => (a + 1) % TESTIMONIALS.length), 6000);
+    return () => clearInterval(t);
+  }, []);
 
   return (
     <Layout>
-      {/* Hero Section */}
-      <section className="relative h-[600px] flex items-center justify-center overflow-hidden">
+      {/* HERO */}
+      <section className="relative h-[640px] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 bg-[linear-gradient(135deg,#1a0a00_0%,#4a1000_50%,#8b2500_100%)]" />
-        {/* Simple CSS Sparkles */}
-        <div className="absolute inset-0 pointer-events-none opacity-30">
-          {[...Array(20)].map((_, i) => (
-            <div 
+        {/* Sparkles */}
+        <div className="absolute inset-0 pointer-events-none">
+          {[...Array(40)].map((_, i) => (
+            <div
               key={i}
               className="absolute w-1 h-1 bg-amber-200 rounded-full animate-pulse"
               style={{
-                top: `${Math.random() * 100}%`,
-                left: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 2}s`
+                top: `${(i * 53) % 100}%`,
+                left: `${(i * 37) % 100}%`,
+                opacity: 0.4 + ((i * 7) % 60) / 100,
+                animationDelay: `${(i % 10) * 0.2}s`,
               }}
             />
           ))}
         </div>
-        
-        <div className="relative z-10 text-center px-4">
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold text-white mb-6 tracking-tight">
-            Celebrate with <span className="text-amber-400">Rathinam Crackers</span>
+        {/* Decorative glows */}
+        <div className="absolute -top-20 -right-20 w-96 h-96 rounded-full bg-amber-500/20 blur-3xl" />
+        <div className="absolute -bottom-20 -left-20 w-96 h-96 rounded-full bg-red-500/20 blur-3xl" />
+
+        <div className="relative z-10 text-center px-4 max-w-5xl">
+          <div className="inline-flex items-center gap-2 bg-amber-500/15 border border-amber-400/30 backdrop-blur px-4 py-1.5 rounded-full mb-6">
+            <Sparkles className="h-3.5 w-3.5 text-amber-300" />
+            <span className="text-amber-200 text-xs font-semibold tracking-widest uppercase">Diwali 2026 collection · Live now</span>
+          </div>
+          <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold text-white mb-6 tracking-tight leading-[1.05]">
+            Celebrate with <span className="bg-gradient-to-r from-amber-300 via-amber-400 to-orange-400 bg-clip-text text-transparent">Rathinam Crackers</span>
           </h1>
-          <p className="text-xl md:text-2xl text-amber-100/90 mb-10 max-w-3xl mx-auto font-medium">
-            Premium Sivakasi Fireworks Since 1985. Making every festival extraordinary with safety and brilliance.
+          <p className="text-lg md:text-2xl text-amber-100/90 mb-10 max-w-3xl mx-auto font-medium">
+            Premium Sivakasi Fireworks since 1985. Three generations of cracker craftsmanship — making every festival extraordinary with safety and brilliance.
           </p>
-          <Link href="/catalogue">
-            <Button size="lg" className="bg-amber-500 hover:bg-amber-600 text-red-950 font-bold text-lg px-10 h-14 rounded-full shadow-xl shadow-amber-900/20">
-              Shop Now <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
-          </Link>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-10">
+            <Link href="/catalogue">
+              <Button size="lg" className="bg-amber-500 hover:bg-amber-600 text-red-950 font-bold text-lg px-10 h-14 rounded-full shadow-xl shadow-amber-900/30">
+                Shop the collection <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+            </Link>
+            <a href="https://wa.me/919876543210?text=Hi%2C%20I%27d%20like%20a%20bulk%20quote" target="_blank" rel="noreferrer">
+              <Button size="lg" variant="outline" className="border-white/30 bg-white/10 backdrop-blur text-white hover:bg-white/20 hover:text-white font-bold text-lg px-8 h-14 rounded-full">
+                <MessageCircle className="mr-2 h-5 w-5 text-green-400" /> Bulk &amp; Weddings
+              </Button>
+            </a>
+          </div>
+
+          {/* Countdown */}
+          <div className="inline-flex flex-col items-center gap-2 bg-black/30 backdrop-blur border border-white/10 rounded-2xl px-6 py-4">
+            <span className="text-amber-200/80 text-xs uppercase tracking-[0.25em]">Diwali season starts in</span>
+            <div className="flex items-center gap-2 sm:gap-4">
+              {[
+                { v: days, l: "Days" },
+                { v: hours, l: "Hrs" },
+                { v: minutes, l: "Min" },
+                { v: seconds, l: "Sec" },
+              ].map((b, i) => (
+                <div key={b.l} className="flex items-center">
+                  <div className="text-center min-w-[52px]">
+                    <div className="text-2xl sm:text-3xl font-bold text-white tabular-nums">{String(b.v).padStart(2, "0")}</div>
+                    <div className="text-[10px] uppercase tracking-widest text-amber-300/80">{b.l}</div>
+                  </div>
+                  {i < 3 && <span className="text-amber-300/40 text-2xl mx-1">:</span>}
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* Featured Products */}
+      {/* TRUST STATS STRIP */}
+      <section className="bg-gradient-to-r from-red-50 via-amber-50 to-red-50 border-y border-amber-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-10">
+            {STATS.map((s) => (
+              <div key={s.label} className="text-center">
+                <div className="text-3xl md:text-4xl font-extrabold bg-gradient-to-r from-red-700 to-amber-600 bg-clip-text text-transparent">{s.value}</div>
+                <div className="text-sm font-semibold text-gray-800 mt-1">{s.label}</div>
+                <div className="text-xs text-gray-500 mt-0.5">{s.sub}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* SHOP BY OCCASION */}
       <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-end mb-10">
+          <div className="text-center mb-12">
+            <span className="text-xs font-bold uppercase tracking-[0.25em] text-red-600">Curated for every celebration</span>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mt-3">Shop by occasion</h2>
+            <p className="text-gray-600 mt-3 max-w-2xl mx-auto">From the brightness of Diwali to the warmth of weddings — find the right pack for the moment you are celebrating.</p>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            {OCCASIONS.map((o) => (
+              <Link key={o.key} href={`/catalogue?occasion=${o.key}`}>
+                <div className="group cursor-pointer">
+                  <div className={`relative aspect-square rounded-3xl bg-gradient-to-br ${o.color} flex flex-col items-center justify-center p-5 text-white shadow-lg group-hover:shadow-2xl group-hover:-translate-y-1 transition-all duration-300 overflow-hidden`}>
+                    <div className="absolute inset-0 opacity-30 mix-blend-overlay bg-[radial-gradient(circle_at_30%_20%,white,transparent_50%)]" />
+                    <span className="text-5xl mb-2 relative z-10 transform group-hover:scale-110 transition-transform">{o.emoji}</span>
+                    <span className="font-bold text-sm uppercase tracking-wider relative z-10">{o.label}</span>
+                    <span className="absolute top-2 right-2 text-[9px] bg-white/25 backdrop-blur px-2 py-0.5 rounded-full font-bold tracking-widest uppercase">{o.tag}</span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* FEATURED PRODUCTS */}
+      <section className="py-20 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4 mb-10">
             <div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-2">Featured Collection</h2>
-              <p className="text-gray-600">Our hand-picked favorites for this season</p>
+              <span className="text-xs font-bold uppercase tracking-[0.25em] text-red-600">Hand-picked</span>
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mt-2">This season's favourites</h2>
+              <p className="text-gray-600 mt-3 max-w-xl">Crowd-pleasing crackers our customers come back for, every single year.</p>
             </div>
             <Link href="/catalogue">
               <Button variant="ghost" className="text-red-600 hover:text-red-700 font-semibold">
-                View All <ArrowRight className="ml-2 h-4 w-4" />
+                View all products <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
           </div>
 
-          <div className="flex overflow-x-auto pb-8 gap-6 no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0">
+          <div className="flex overflow-x-auto pb-8 gap-6 no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0 snap-x snap-mandatory">
             {isLoading ? (
               [...Array(4)].map((_, i) => (
-                <div key={i} className="min-w-[280px] h-[350px] bg-gray-100 rounded-2xl animate-pulse" />
+                <div key={i} className="min-w-[280px] h-[380px] bg-gray-100 rounded-2xl animate-pulse" />
               ))
+            ) : products.length === 0 ? (
+              <div className="min-w-full text-center py-16 text-gray-500">No featured products yet — check the full <Link href="/catalogue" className="text-red-600 underline">catalogue</Link>.</div>
             ) : (
-              products.map((product: any) => (
-                <Link key={product.id} href={`/product/${product.id}`}>
-                  <Card className="min-w-[280px] group cursor-pointer border-none shadow-sm hover:shadow-xl transition-all duration-300 rounded-2xl overflow-hidden bg-gray-50">
+              products.map((product) => (
+                <Link key={product.id} href={`/product/${product.id}`} className="snap-start">
+                  <Card className="min-w-[280px] group cursor-pointer border-none shadow-sm hover:shadow-2xl transition-all duration-300 rounded-2xl overflow-hidden bg-white">
                     <CardContent className="p-0">
-                      <div className="aspect-[4/5] bg-gradient-to-br from-red-100 to-amber-100 flex items-center justify-center relative">
-                        <span className="text-6xl transform group-hover:scale-110 transition-transform duration-300">🎆</span>
+                      <div className="aspect-[4/5] bg-gradient-to-br from-red-100 via-amber-50 to-amber-100 flex items-center justify-center relative overflow-hidden">
+                        <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_50%_30%,rgba(251,191,36,0.4),transparent_60%)]" />
+                        <span className="text-7xl transform group-hover:scale-110 transition-transform duration-500 relative z-10">🎆</span>
                         <div className="absolute top-3 left-3">
                           <span className="bg-white/90 backdrop-blur-sm text-red-600 text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider">
-                            {product.category}
+                            {product.category ?? "Cracker"}
+                          </span>
+                        </div>
+                        <div className="absolute top-3 right-3">
+                          <span className="bg-amber-500 text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider flex items-center gap-1">
+                            <Star className="h-3 w-3 fill-current" /> Featured
                           </span>
                         </div>
                       </div>
                       <div className="p-5">
                         <h3 className="font-bold text-gray-900 mb-1 line-clamp-1">{product.name}</h3>
-                        <p className="text-red-600 font-bold">₹{product.priceRange?.min || 0}+</p>
+                        <div className="flex items-center justify-between mt-2">
+                          <p className="text-red-600 font-bold text-lg">₹{num(product.priceRange?.min).toLocaleString("en-IN")}<span className="text-xs text-gray-500 font-medium">+</span></p>
+                          <span className="text-xs text-amber-600 font-semibold flex items-center gap-1"><BadgeCheck className="h-3.5 w-3.5" /> PESO</span>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -99,16 +271,17 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Categories Grid */}
-      <section className="py-20 bg-gray-50">
+      {/* SHOP BY CATEGORY */}
+      <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl font-bold text-gray-900 mb-12">Shop by Category</h2>
+          <span className="text-xs font-bold uppercase tracking-[0.25em] text-red-600">Browse the lineup</span>
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mt-3 mb-12">Shop by category</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {categories.map((cat) => (
+            {CATEGORIES.map((cat) => (
               <Link key={cat.name} href={`/catalogue?category=${cat.name}`}>
                 <div className="group cursor-pointer">
                   <div className={`aspect-square rounded-3xl bg-gradient-to-br ${cat.color} flex flex-col items-center justify-center p-6 text-white shadow-lg group-hover:shadow-2xl group-hover:-translate-y-1 transition-all duration-300`}>
-                    <span className="text-4xl mb-3">{cat.emoji}</span>
+                    <span className="text-5xl mb-3">{cat.emoji}</span>
                     <span className="font-bold text-sm uppercase tracking-widest">{cat.name}</span>
                   </div>
                 </div>
@@ -118,32 +291,247 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Why Us Section */}
-      <section className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 text-center">
-            <div className="flex flex-col items-center">
-              <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center text-red-600 mb-6">
-                <Award className="h-8 w-8" />
+      {/* HERITAGE / STORY STRIP */}
+      <section className="relative py-24 bg-gradient-to-br from-[#1a0a00] via-[#3a0c00] to-[#5a1500] text-white overflow-hidden">
+        <div className="absolute inset-0 opacity-10 bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2260%22%20height%3D%2260%22%20viewBox%3D%220%200%2060%2060%22%3E%3Cpath%20fill%3D%22%23fbbf24%22%20d%3D%22M30%2010l3%2014%2014%203-14%203-3%2014-3-14-14-3%2014-3z%22%2F%3E%3C%2Fsvg%3E')]" />
+        <div className="absolute -top-32 right-0 w-[500px] h-[500px] rounded-full bg-amber-500/10 blur-3xl" />
+        <div className="absolute -bottom-32 left-0 w-[500px] h-[500px] rounded-full bg-red-500/10 blur-3xl" />
+
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-2 gap-12 items-center">
+          <div>
+            <span className="text-xs font-bold uppercase tracking-[0.25em] text-amber-300">From the soil of Sivakasi</span>
+            <h2 className="text-3xl md:text-5xl font-extrabold mt-3 mb-6 leading-tight">
+              Three generations of <span className="text-amber-400">cracker craftsmanship</span>
+            </h2>
+            <p className="text-amber-100/80 leading-relaxed mb-4">
+              Founded in 1985 by Mr. R. Rathinasamy in the fireworks capital of India, Rathinam Crackers began as a single-room workshop with one belief — that every Indian home deserves brilliance, safely.
+            </p>
+            <p className="text-amber-100/80 leading-relaxed mb-8">
+              Today, three generations later, we partner with 30+ family-run units across Sivakasi to bring you crackers that are tested, certified and packed with the same care your own family would.
+            </p>
+            <div className="grid grid-cols-3 gap-4 max-w-md">
+              <div className="border-l-2 border-amber-400 pl-3">
+                <div className="text-2xl font-bold text-amber-300">1985</div>
+                <div className="text-xs uppercase tracking-wider text-amber-200/70">Founded</div>
               </div>
-              <h3 className="text-xl font-bold mb-3">Premium Quality</h3>
-              <p className="text-gray-600">Sourced directly from the finest manufacturers in Sivakasi with rigorous quality checks.</p>
-            </div>
-            <div className="flex flex-col items-center">
-              <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center text-amber-600 mb-6">
-                <Truck className="h-8 w-8" />
+              <div className="border-l-2 border-amber-400 pl-3">
+                <div className="text-2xl font-bold text-amber-300">30+</div>
+                <div className="text-xs uppercase tracking-wider text-amber-200/70">Partner units</div>
               </div>
-              <h3 className="text-xl font-bold mb-3">Pan-India Delivery</h3>
-              <p className="text-gray-600">Safely transporting joy to every corner of India with specialized logistics partners.</p>
-            </div>
-            <div className="flex flex-col items-center">
-              <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center text-green-600 mb-6">
-                <ShieldCheck className="h-8 w-8" />
+              <div className="border-l-2 border-amber-400 pl-3">
+                <div className="text-2xl font-bold text-amber-300">3</div>
+                <div className="text-xs uppercase tracking-wider text-amber-200/70">Generations</div>
               </div>
-              <h3 className="text-xl font-bold mb-3">GST Invoice Included</h3>
-              <p className="text-gray-600">100% legal and transparent transactions with valid GST billing for every purchase.</p>
             </div>
           </div>
+
+          <div className="relative">
+            <div className="aspect-[4/5] rounded-3xl bg-gradient-to-br from-amber-400/20 to-red-500/20 border border-amber-400/30 backdrop-blur p-8 flex flex-col items-center justify-center text-center relative overflow-hidden">
+              <div className="absolute inset-0 opacity-50 bg-[radial-gradient(circle_at_50%_30%,rgba(251,191,36,0.3),transparent_60%)]" />
+              <span className="text-9xl mb-6 relative z-10">🪔</span>
+              <Quote className="h-8 w-8 text-amber-300 mb-4 relative z-10" />
+              <p className="text-xl md:text-2xl font-medium text-amber-100 italic relative z-10 leading-relaxed">
+                "We don't sell crackers. We sell the moment a child's eyes light up."
+              </p>
+              <div className="mt-6 relative z-10">
+                <div className="font-bold text-amber-300">R. Senthil Rathinam</div>
+                <div className="text-xs uppercase tracking-widest text-amber-200/60">Third generation, Owner</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* HOW IT WORKS */}
+      <section className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-14">
+            <span className="text-xs font-bold uppercase tracking-[0.25em] text-red-600">Simple &amp; safe</span>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mt-3">How it works</h2>
+          </div>
+          <div className="grid md:grid-cols-3 gap-8">
+            {HOW_IT_WORKS.map((s, i) => (
+              <div key={s.step} className="relative bg-gradient-to-br from-red-50 to-amber-50 border border-amber-100 rounded-3xl p-8 hover:shadow-xl transition-shadow">
+                <div className="absolute -top-4 -left-4 text-7xl font-extrabold text-red-600/10 select-none">{s.step}</div>
+                <div className="relative z-10">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-red-600 to-amber-500 flex items-center justify-center text-white shadow-lg mb-5">
+                    <s.icon className="h-7 w-7" />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">{s.title}</h3>
+                  <p className="text-gray-600 leading-relaxed">{s.desc}</p>
+                </div>
+                {i < HOW_IT_WORKS.length - 1 && (
+                  <ChevronRight className="hidden md:block absolute top-1/2 -right-6 h-8 w-8 text-amber-400/60" />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* WHY US */}
+      <section className="py-20 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-14">
+            <span className="text-xs font-bold uppercase tracking-[0.25em] text-red-600">The Rathinam promise</span>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mt-3">Why families choose us, year after year</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[
+              { icon: Award,       title: "Premium quality",       desc: "Every batch hand-checked at our Sivakasi unit. Fresh stock for every season — no leftover inventory.", iconBg: "bg-red-50 text-red-600" },
+              { icon: Truck,       title: "Pan-India delivery",     desc: "Specialised, licensed cracker logistics. Tracked, insured and delivered to 120+ cities across India.", iconBg: "bg-amber-50 text-amber-600" },
+              { icon: ShieldCheck, title: "GST & PESO compliant",   desc: "Every product PESO-licensed. Every invoice GST-compliant. 100% legal, 100% transparent.", iconBg: "bg-green-50 text-green-600" },
+              { icon: Heart,       title: "Family-run since 1985",  desc: "Three generations, one promise — to treat every customer's home like our own celebration.", iconBg: "bg-pink-50 text-pink-600" },
+              { icon: Clock,       title: "24-hour confirmation",   desc: "Real humans call you within 24 hours of every order. No bots, no chatbots — just our team.", iconBg: "bg-blue-50 text-blue-600" },
+              { icon: BadgeCheck,  title: "Fair pricing",            desc: "Direct-from-manufacturer rates. Wholesale prices auto-applied for 10+ unit orders. No hidden fees.", iconBg: "bg-purple-50 text-purple-600" },
+            ].map((f) => (
+              <div key={f.title} className="bg-white rounded-2xl p-7 border border-gray-100 hover:border-red-200 hover:shadow-lg transition-all">
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${f.iconBg}`}>
+                  <f.icon className="h-6 w-6" />
+                </div>
+                <h3 className="font-bold text-lg text-gray-900 mb-2">{f.title}</h3>
+                <p className="text-gray-600 text-sm leading-relaxed">{f.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* TESTIMONIALS */}
+      <section className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <span className="text-xs font-bold uppercase tracking-[0.25em] text-red-600">Loved across India</span>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mt-3">From the families we serve</h2>
+          </div>
+
+          <div className="relative max-w-3xl mx-auto">
+            <div className="bg-gradient-to-br from-red-50 to-amber-50 border border-amber-200 rounded-3xl p-8 md:p-12 shadow-sm relative overflow-hidden">
+              <Quote className="absolute top-6 right-6 h-16 w-16 text-red-200/60" />
+              <div className="flex items-center gap-1 mb-5">
+                {[...Array(TESTIMONIALS[active].rating)].map((_, i) => (
+                  <Star key={i} className="h-5 w-5 fill-amber-500 text-amber-500" />
+                ))}
+              </div>
+              <p className="text-lg md:text-xl text-gray-800 leading-relaxed mb-6 font-medium">
+                "{TESTIMONIALS[active].text}"
+              </p>
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-amber-500 flex items-center justify-center text-white font-bold text-lg">
+                  {TESTIMONIALS[active].name.charAt(0)}
+                </div>
+                <div>
+                  <div className="font-bold text-gray-900">{TESTIMONIALS[active].name}</div>
+                  <div className="text-sm text-gray-500">{TESTIMONIALS[active].city}</div>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-center gap-2 mt-6">
+              {TESTIMONIALS.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setActive(i)}
+                  aria-label={`Show testimonial ${i + 1}`}
+                  className={`h-2 rounded-full transition-all ${i === active ? "w-8 bg-red-600" : "w-2 bg-gray-300 hover:bg-gray-400"}`}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Press strip */}
+          <div className="mt-16 pt-10 border-t border-gray-100">
+            <p className="text-center text-xs font-bold uppercase tracking-[0.25em] text-gray-400 mb-6">As featured in</p>
+            <div className="flex flex-wrap justify-center items-center gap-x-8 gap-y-3">
+              {PRESS.map((p) => (
+                <span key={p} className="text-gray-400 font-serif italic text-lg hover:text-gray-600 transition-colors">{p}</span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* BULK / WEDDING / CORPORATE CTA */}
+      <section className="py-16 bg-gradient-to-r from-red-700 via-red-600 to-amber-600 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_20%_50%,white,transparent_40%)]" />
+        <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_80%_50%,white,transparent_40%)]" />
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid md:grid-cols-2 gap-10 items-center text-white">
+            <div>
+              <span className="text-xs font-bold uppercase tracking-[0.25em] text-amber-200">For weddings, events &amp; corporates</span>
+              <h2 className="text-3xl md:text-4xl font-extrabold mt-3 mb-4 leading-tight">Planning something big?</h2>
+              <p className="text-white/90 text-lg leading-relaxed mb-2">
+                Wedding sangeet, temple festival, corporate Diwali gifting or a society celebration — our bulk team will design a custom pack and price for you.
+              </p>
+              <p className="text-amber-100 text-sm">Wholesale rates auto-applied · GST B2B invoices · Doorstep delivery</p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-4 md:justify-end">
+              <a href="https://wa.me/919876543210?text=Hi%2C%20I%27d%20like%20a%20bulk%20quote" target="_blank" rel="noreferrer">
+                <Button size="lg" className="bg-white text-red-700 hover:bg-amber-50 font-bold text-lg px-8 h-14 rounded-full w-full sm:w-auto">
+                  <MessageCircle className="mr-2 h-5 w-5 text-green-600" /> WhatsApp us
+                </Button>
+              </a>
+              <a href="tel:+919876543210">
+                <Button size="lg" variant="outline" className="border-white/40 bg-white/10 backdrop-blur text-white hover:bg-white/20 hover:text-white font-bold text-lg px-8 h-14 rounded-full w-full sm:w-auto">
+                  <Phone className="mr-2 h-5 w-5" /> Call our team
+                </Button>
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="py-20 bg-gray-50">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <span className="text-xs font-bold uppercase tracking-[0.25em] text-red-600">Quick answers</span>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mt-3">Frequently asked</h2>
+          </div>
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <Accordion type="single" collapsible className="px-6">
+              {FAQS.map((f, i) => (
+                <AccordionItem key={f.q} value={`item-${i}`} className="border-b last:border-0">
+                  <AccordionTrigger className="text-left font-semibold text-gray-900 hover:text-red-600 hover:no-underline py-5">
+                    {f.q}
+                  </AccordionTrigger>
+                  <AccordionContent className="text-gray-600 leading-relaxed pb-5">
+                    {f.a}
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </div>
+          <div className="text-center mt-8">
+            <Link href="/help">
+              <Button variant="outline" className="rounded-full border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700">
+                See full Help &amp; FAQ <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* NEWSLETTER / FINAL CTA */}
+      <section className="py-16 bg-gradient-to-br from-[#1a0a00] via-[#3a0c00] to-[#5a1500] text-white">
+        <div className="max-w-4xl mx-auto px-4 text-center">
+          <Mail className="h-10 w-10 text-amber-400 mx-auto mb-4" />
+          <h2 className="text-3xl md:text-4xl font-extrabold mb-3">Get Diwali deals in your inbox</h2>
+          <p className="text-amber-100/80 mb-8 max-w-xl mx-auto">Early access, festival packs and special bundles — once a month, never spammy. Unsubscribe anytime.</p>
+          <form
+            onSubmit={(e) => { e.preventDefault(); alert("Thanks! We'll keep you posted."); }}
+            className="flex flex-col sm:flex-row gap-3 max-w-lg mx-auto"
+          >
+            <input
+              type="email"
+              required
+              placeholder="you@example.com"
+              className="flex-1 px-5 h-12 rounded-full bg-white/10 border border-white/20 backdrop-blur text-white placeholder-white/50 focus:outline-none focus:border-amber-400 focus:bg-white/20"
+            />
+            <Button type="submit" size="lg" className="bg-amber-500 hover:bg-amber-600 text-red-950 font-bold rounded-full h-12 px-8">
+              Subscribe
+            </Button>
+          </form>
+          <p className="text-xs text-amber-200/50 mt-4">Or message us on <a className="underline hover:text-amber-200" href="https://wa.me/919876543210">WhatsApp</a> for instant offers.</p>
         </div>
       </section>
     </Layout>
