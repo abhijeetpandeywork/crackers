@@ -1,52 +1,80 @@
 import { useState } from "react";
 import { useGetGstReport } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { 
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Building, FileText, IndianRupee, Download } from "lucide-react";
+import { Download } from "lucide-react";
 import { generateReportPdf, savePdf } from "@workspace/pdf";
+
+const num = (v: unknown): number => {
+  if (v === null || v === undefined || v === "") return 0;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+};
+
+type GstInvoiceRow = {
+  invoiceNo?: string;
+  customerName?: string;
+  customerGstin?: string;
+  subtotal?: number | string;
+  cgst?: number | string;
+  sgst?: number | string;
+  igst?: number | string;
+  total?: number | string;
+  createdAt?: string;
+};
 
 export default function GstReport() {
   const [month, setMonth] = useState(() => (new Date().getMonth() + 1).toString());
   const [year, setYear] = useState(() => new Date().getFullYear().toString());
 
   const period = `${year}-${month.padStart(2, '0')}`;
-  const { data, isLoading } = useGetGstReport({ period });
+  const { data, isLoading } = useGetGstReport({ month: parseInt(month), year: parseInt(year) });
 
-  const report = data?.data as any;
-  const summaryDisplay = report?.summary ?? {};
-  const hsnRowsDisplay: any[] = report?.hsnTable ?? report?.b2b ?? report?.b2c ?? [];
+  const report = data?.data as { b2b?: GstInvoiceRow[]; b2c?: GstInvoiceRow[]; summary?: { totalTax?: number; invoiceCount?: number } } | undefined;
+  const b2b: GstInvoiceRow[] = report?.b2b ?? [];
+  const b2c: GstInvoiceRow[] = report?.b2c ?? [];
+  const allRows: GstInvoiceRow[] = [...b2b, ...b2c];
+
+  const totalTax = num(report?.summary?.totalTax);
+  const invoiceCount = num(report?.summary?.invoiceCount);
+  const totalTaxable = allRows.reduce((s, r) => s + num(r.subtotal), 0);
+  const totalCgst = allRows.reduce((s, r) => s + num(r.cgst), 0);
+  const totalSgst = allRows.reduce((s, r) => s + num(r.sgst), 0);
+  const totalIgst = allRows.reduce((s, r) => s + num(r.igst), 0);
 
   const handleExportPdf = () => {
-    const r = report as any;
-    const s = r?.summary ?? {};
-    // GST route may expose either a typed hsnTable or generic b2b/b2c rows.
-    const hsnRows: any[] = r?.hsnTable ?? r?.b2b ?? r?.b2c ?? [];
     const doc = generateReportPdf({
       title: "GST Report",
       subtitle: `Filing period: ${period}`,
       period,
       summary: [
-        { label: "Taxable Value", value: `Rs. ${(Number(s.totalTaxable) || 0).toLocaleString("en-IN")}` },
-        { label: "CGST (9%)", value: `Rs. ${(Number(s.totalCgst) || 0).toLocaleString("en-IN")}` },
-        { label: "SGST (9%)", value: `Rs. ${(Number(s.totalSgst) || 0).toLocaleString("en-IN")}` },
-        { label: "Total GST", value: `Rs. ${(Number(s.totalGst) || 0).toLocaleString("en-IN")}` },
+        { label: "Invoice Count", value: invoiceCount.toString() },
+        { label: "Taxable Value", value: `Rs. ${totalTaxable.toLocaleString("en-IN")}` },
+        { label: "CGST", value: `Rs. ${totalCgst.toLocaleString("en-IN")}` },
+        { label: "SGST", value: `Rs. ${totalSgst.toLocaleString("en-IN")}` },
+        { label: "IGST", value: `Rs. ${totalIgst.toLocaleString("en-IN")}` },
+        { label: "Total GST", value: `Rs. ${totalTax.toLocaleString("en-IN")}` },
+        { label: "B2B Count", value: b2b.length.toString() },
+        { label: "B2C Count", value: b2c.length.toString() },
       ],
-      columns: ["HSN Code", "Description", "Qty", "Taxable Value (Rs.)", "GST Rate (%)", "Tax Amount (Rs.)"],
-      rows: hsnRows.map((row: any) => [
-        row.hsnCode ?? "-",
-        row.description ?? "-",
-        Number(row.totalQty) || 0,
-        Number(row.taxableValue) || 0,
-        Number(row.gstRate) || 0,
-        Number(row.taxAmount) || 0,
+      columns: ["Invoice No", "Customer", "GSTIN", "Type", "Taxable (Rs.)", "CGST", "SGST", "IGST", "Total (Rs.)"],
+      rows: allRows.map((r) => [
+        r.invoiceNo ?? "-",
+        r.customerName ?? "-",
+        r.customerGstin ?? "-",
+        r.customerGstin ? "B2B" : "B2C",
+        num(r.subtotal),
+        num(r.cgst),
+        num(r.sgst),
+        num(r.igst),
+        num(r.total),
       ]),
-      footerNote: `GSTIN-bound HSN summary for ${period}`,
+      footerNote: `GST summary for ${period}`,
     });
     savePdf(doc, `gst-report-${period}`);
   };
@@ -88,26 +116,28 @@ export default function GstReport() {
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-bold uppercase text-muted-foreground">Invoices</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-xl font-bold">{invoiceCount}</div>
+            <p className="text-xs text-muted-foreground">{b2b.length} B2B / {b2c.length} B2C</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
             <CardTitle className="text-xs font-bold uppercase text-muted-foreground">Taxable Value</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-xl font-bold">₹{(Number(summaryDisplay.totalTaxable) || 0).toLocaleString('en-IN')}</div>
+            <div className="text-xl font-bold">₹{totalTaxable.toLocaleString('en-IN')}</div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-bold uppercase text-muted-foreground">CGST (9%)</CardTitle>
+            <CardTitle className="text-xs font-bold uppercase text-muted-foreground">CGST + SGST</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-xl font-bold">₹{(Number(summaryDisplay.totalCgst) || 0).toLocaleString('en-IN')}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-bold uppercase text-muted-foreground">SGST (9%)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl font-bold">₹{(Number(summaryDisplay.totalSgst) || 0).toLocaleString('en-IN')}</div>
+            <div className="text-xl font-bold">₹{(totalCgst + totalSgst).toLocaleString('en-IN')}</div>
+            <p className="text-xs text-muted-foreground">IGST ₹{totalIgst.toLocaleString('en-IN')}</p>
           </CardContent>
         </Card>
         <Card className="bg-primary/5">
@@ -115,44 +145,50 @@ export default function GstReport() {
             <CardTitle className="text-xs font-bold uppercase text-primary">Total GST</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-primary">₹{(Number(summaryDisplay.totalGst) || 0).toLocaleString('en-IN')}</div>
+            <div className="text-2xl font-bold text-primary">₹{totalTax.toLocaleString('en-IN')}</div>
           </CardContent>
         </Card>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>HSN-wise Tax Breakdown</CardTitle>
+          <CardTitle>Invoice-wise GST Breakdown</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="border rounded-md">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>HSN Code</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead className="text-right">Qty</TableHead>
-                  <TableHead className="text-right">Taxable Value</TableHead>
-                  <TableHead className="text-right">GST Rate</TableHead>
-                  <TableHead className="text-right">Tax Amount</TableHead>
+                  <TableHead>Invoice No</TableHead>
+                  <TableHead>Customer</TableHead>
+                  <TableHead>GSTIN</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead className="text-right">Taxable</TableHead>
+                  <TableHead className="text-right">CGST</TableHead>
+                  <TableHead className="text-right">SGST</TableHead>
+                  <TableHead className="text-right">IGST</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
                   Array.from({ length: 3 }).map((_, i) => (
-                    <TableRow key={i}><TableCell colSpan={6}><Skeleton className="h-4 w-full" /></TableCell></TableRow>
+                    <TableRow key={i}><TableCell colSpan={9}><Skeleton className="h-4 w-full" /></TableCell></TableRow>
                   ))
-                ) : hsnRowsDisplay.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No data for selected period.</TableCell></TableRow>
+                ) : allRows.length === 0 ? (
+                  <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">No invoices for selected period.</TableCell></TableRow>
                 ) : (
-                  hsnRowsDisplay.map((item: any, i: number) => (
+                  allRows.map((r, i) => (
                     <TableRow key={i}>
-                      <TableCell className="font-mono">{item.hsnCode}</TableCell>
-                      <TableCell>{item.description}</TableCell>
-                      <TableCell className="text-right">{item.totalQty}</TableCell>
-                      <TableCell className="text-right">₹{item.taxableValue?.toLocaleString('en-IN')}</TableCell>
-                      <TableCell className="text-right">{item.gstRate}%</TableCell>
-                      <TableCell className="text-right font-medium">₹{item.taxAmount?.toLocaleString('en-IN')}</TableCell>
+                      <TableCell className="font-mono">{r.invoiceNo ?? "-"}</TableCell>
+                      <TableCell>{r.customerName ?? "-"}</TableCell>
+                      <TableCell className="font-mono text-xs">{r.customerGstin ?? "-"}</TableCell>
+                      <TableCell>{r.customerGstin ? "B2B" : "B2C"}</TableCell>
+                      <TableCell className="text-right">₹{num(r.subtotal).toLocaleString('en-IN')}</TableCell>
+                      <TableCell className="text-right">₹{num(r.cgst).toLocaleString('en-IN')}</TableCell>
+                      <TableCell className="text-right">₹{num(r.sgst).toLocaleString('en-IN')}</TableCell>
+                      <TableCell className="text-right">₹{num(r.igst).toLocaleString('en-IN')}</TableCell>
+                      <TableCell className="text-right font-medium">₹{num(r.total).toLocaleString('en-IN')}</TableCell>
                     </TableRow>
                   ))
                 )}
