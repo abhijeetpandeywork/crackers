@@ -10,7 +10,8 @@ import {
   LogOut,
   Warehouse,
   Menu,
-  ChevronLeft
+  ChevronLeft,
+  HelpCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
@@ -27,6 +28,7 @@ const navItems = [
   { icon: Settings2, label: "Stock Adjust", href: "/adjust" },
   { icon: ArrowLeftRight, label: "Transfers", href: "/transfers" },
   { icon: History, label: "Stock Ledger", href: "/ledger" },
+  { icon: HelpCircle, label: "Help & Guide", href: "/help" },
 ];
 
 export function Sidebar({ className }: SidebarProps) {
@@ -59,15 +61,13 @@ export function Sidebar({ className }: SidebarProps) {
         {navItems.map((item) => {
           const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href));
           return (
-            <Link key={item.href} href={item.href}>
-              <a className={cn(
-                "flex items-center px-4 py-3 transition-colors hover:bg-white/10",
-                isActive ? "bg-white/10 text-teal-400 border-r-4 border-teal-400" : "text-gray-300",
-                isCollapsed && "justify-center"
-              )}>
-                <item.icon className={cn("h-5 w-5", !isCollapsed && "mr-3")} />
-                {!isCollapsed && <span>{item.label}</span>}
-              </a>
+            <Link key={item.href} href={item.href} className={cn(
+              "flex items-center px-4 py-3 transition-colors hover:bg-white/10",
+              isActive ? "bg-white/10 text-teal-400 border-r-4 border-teal-400" : "text-gray-300",
+              isCollapsed && "justify-center"
+            )}>
+              <item.icon className={cn("h-5 w-5", !isCollapsed && "mr-3")} />
+              {!isCollapsed && <span>{item.label}</span>}
             </Link>
           );
         })}

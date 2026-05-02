@@ -7,6 +7,7 @@ import { setAuthTokenGetter } from "@workspace/api-client-react";
 import PinLogin from "@/pages/pin-login";
 import SaleScreen from "@/pages/sale";
 import ReceiptScreen from "@/pages/receipt";
+import PosHelp from "@/pages/help";
 import NotFound from "@/pages/not-found";
 
 setAuthTokenGetter(() => localStorage.getItem("pos_token"));
@@ -19,6 +20,7 @@ function Router() {
       <Route path="/" component={PinLogin} />
       <Route path="/sale" component={SaleScreen} />
       <Route path="/receipt" component={ReceiptScreen} />
+      <Route path="/help" component={PosHelp} />
       <Route component={NotFound} />
     </Switch>
   );

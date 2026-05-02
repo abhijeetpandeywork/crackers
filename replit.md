@@ -12,13 +12,13 @@ A full-stack, contract-first business management platform for a firecracker comp
 
 ### Applications
 
-| App | Path | Port | Description |
-|-----|------|------|-------------|
-| ERP Admin Panel | `/` | 18996 | Full business operations console |
-| POS Interface | `/pos/` | 24730 | Touch-screen cashier terminal |
-| Warehouse Dashboard | `/warehouse/` | 24594 | Stock operations for WH managers |
-| E-commerce Website | `/website/` | 19161 | Public customer-facing shop |
-| API Server | `/api/` | 8080 | Express REST API |
+| App | Path | Description |
+|-----|------|-------------|
+| ERP Admin Panel | `/` | Full business operations console (25+ pages) |
+| POS Interface | `/pos/` | Touch-screen cashier terminal (dark theme) |
+| Warehouse Dashboard | `/warehouse/` | Stock operations for WH managers |
+| E-commerce Website | `/website/` | Public customer-facing shop (festive Indian theme) |
+| API Server | `/api/` | Express REST API |
 
 ### Default Login Credentials
 - **ERP Admin**: username `admin` / password `admin123` / PIN `1234`
@@ -29,28 +29,69 @@ A full-stack, contract-first business management platform for a firecracker comp
 ## Key Features
 
 ### Pricing Engine (5-tier)
+Implemented in `artifacts/api-server/src/lib/pricing.ts`. Each variant has 5 prices:
 - **purchase** – cost price for procurement
-- **wholesaleBulk** – triggered when qty ≥ threshold (default 10) per line item
-- **retailOnline** – e-commerce price
-- **retailEst** – estimate/invoice price
+- **wholesaleBulk** – auto-applied when qty ≥ threshold (default 10) per line item
+- **retailOnline** – e-commerce price (used by `/website/`)
+- **retailEst** – estimate/invoice price (manual sales)
 - **agent** – agent/distributor price
-- Implemented in `artifacts/api-server/src/lib/pricing.ts`
+
+The `GET /products/:id/price?qty=&channel=&variantId=` endpoint returns:
+`{ unitPrice, tier, resolutionReason, bulkRateApplied }` so the UI can explain *why* a price was chosen.
 
 ### Stock System
-- Immutable stock ledger (`stockLedger` table) — every movement creates a ledger entry
-- Stock levels computed from ledger entries per product/variant/location
-- Supports: receive, adjust, transfer between locations
+- Immutable stock ledger (`stockLedger` table) — every movement creates a permanent ledger entry; rows are NEVER deleted or updated
+- Movement types: `IN`, `OUT`, `MOVE`, `ADJUST`, `DAMAGE`, `RESERVE`, `UNRESERVE`
+- Stock levels = sum of ledger rows per (product, variant, location)
+- Operations: receive, adjust (requires reason), transfer between locations (RESERVE→IN+UNRESERVE)
+- `POST /stock/adjust` validates required fields server-side and returns 400 (not 500) for missing data
 
 ### Other Features
-- GST invoicing (CGST 9% + SGST 9% or IGST 18%)
-- Coupon engine (% or flat discount)
+- GST invoicing (CGST 9% + SGST 9% intra-state OR IGST 18% inter-state)
+- Coupon engine (% or flat discount, min order, expiry, max uses) with server-side validation
 - Loyalty points (earn/redeem)
-- Agent commission tiers
-- Customer credit ledger
+- Agent commission tiers + promo codes
+- Customer credit ledger + statements + record payment
 - Excel brochure upload → estimate creation
 - Barcode support (HSN-based)
-- Reports: sales, outstanding, GST, commission, daybook
-- POS: hold bills, shift close, PIN login
+- Reports: sales-by-channel, outstanding, GST (HSN-wise), commission, daybook
+- POS: hold bills, shift close, PIN login, idempotent sale creation
+
+## Verifier Module
+
+The system ships with a **30+ check verifier** that exercises the full API surface end-to-end against the running stack.
+
+| Surface | Location | How to run |
+|---|---|---|
+| **CLI**   | `scripts/src/verifier.ts` | `pnpm --filter @workspace/scripts run verify` |
+| **In-app** | `artifacts/erp/src/pages/verifier.tsx` | Login as admin → Sidebar → **Resources → System Verifier** → "Run All Checks" |
+
+Both surfaces run the same 8 sections, **34 checks total** (counts produced at runtime):
+1. **Infrastructure & Health** — `/api/healthz` + 4 frontend reachability probes (6 checks)
+2. **Authentication & RBAC** — 401 without token, wrong password rejected, admin login, `/auth/me` (4 checks)
+3. **Pricing Engine** — 5-tier resolution + qty>=10 wholesale trigger + `resolutionReason` + `bulkRateApplied` (4 checks)
+4. **Stock System (immutable ledger)** — levels, ledger, adjust validation, **plus PUT/PATCH/DELETE on `/stock/ledger/:id` must all be rejected** (6 checks). This actively asserts the audit trail cannot be tampered with.
+5. **Customers / Suppliers / Agents** (3 checks)
+6. **Estimates / Invoices / Coupons** — list endpoints + bad-coupon validate (4 checks)
+7. **POS / Warehouse / Reports** — pos products, transfers, POs, sales report (4 checks)
+8. **Public / Website APIs** — public products, **no purchase rate leakage**, public coupons (3 checks)
+
+CLI exits non-zero on any failure so it can gate CI/CD. Latest local run: **34/34 GREEN**.
+
+The in-app version shows a live progress bar, per-section pass/fail rollups, and individual detail messages so non-technical staff can run a daily smoke test.
+
+## In-app Help & Guide System
+
+Every panel ships with its own contextual Help section so users never need an external manual.
+
+| Panel | Route | Notes |
+|---|---|---|
+| ERP    | `/help`, `/help/:topic` | 10 deep topic articles (login, products, pricing, stock, estimates→invoice, customers, POs, transfers, coupons, reports) + FAQ + credentials reference. Linked from sidebar **Resources → Help & Guide**. |
+| POS    | `/help` | Dark-themed 7-step cashier walk-through (PIN, search, cart, coupon, payment, hold-bill, shift close). Linked from a Help icon in the sale screen header. |
+| Warehouse | `/help` | 4 sections (Receive, Transfers, Adjust, Ledger) + low-stock alerting rules. Linked from sidebar nav. |
+| Website   | `/help` | Festive-themed customer FAQ (How to order, Delivery, GST invoice, Safety & compliance, Returns, Contact). Linked from navbar. |
+
+**Documentation rule:** any time the core spec changes (new pricing tier, new stock movement type, new role, new API surface) the corresponding Help topic and the verifier MUST be updated in the same PR.
 
 ## File Structure
 
@@ -58,33 +99,40 @@ A full-stack, contract-first business management platform for a firecracker comp
 artifacts/
   api-server/       # Express backend
     src/
-      routes/v1/    # 20+ route files
+      routes/v1/    # 20+ route files (auth, products, stock, estimates, invoices, ...)
       lib/          # pricing, auth, logger
       middleware/   # authenticate.ts
       scripts/      # seed.ts
-  erp/              # ERP Admin React app
+  erp/              # ERP Admin React app (25+ pages)
     src/
-      pages/        # 25+ pages
-      components/   # layout, ui
+      pages/
+        help/       # index.tsx (hub) + topic.tsx (article view)
+        verifier.tsx
+        ...         # estimates, invoices, customers, suppliers, agents,
+                    # purchase-orders, transfers, coupons, reports, users,
+                    # locations, settings
+      components/   # layout (sidebar with Resources section), ui
       lib/          # auth.tsx
   pos/              # POS React app (dark touch theme)
     src/
-      pages/        # pin-login, sale, receipt
+      pages/        # pin-login, sale (with Help icon), receipt, help
       context/      # cart.tsx
   warehouse/        # Warehouse React app
     src/
-      pages/        # login, dashboard, stock, receive, adjust, transfers, ledger
-      components/   # layout/
+      pages/        # login, dashboard, stock, receive, adjust, transfers, ledger, help
+      components/   # layout/ (sidebar with Help & Guide)
   website/          # Public e-commerce React app
     src/
-      pages/        # home, catalogue, product, cart, checkout
+      pages/        # home, catalogue, product, cart, checkout, help
       context/      # cart.tsx
-      components/   # navbar, footer
+      components/   # navbar (Help link), footer
 lib/
   db/               # Drizzle ORM schema (19 tables)
-  api-spec/         # OpenAPI 3.1 spec (4570 lines)
+  api-spec/         # OpenAPI 3.1 spec
   api-zod/          # Generated Zod schemas
   api-client-react/ # Generated React Query hooks
+scripts/
+  src/verifier.ts   # 31-check end-to-end verifier (CLI)
 ```
 
 ## Database Schema (19 tables)
@@ -92,8 +140,17 @@ users, locations, products, priceLists, customers, suppliers, agents, stockLedge
 
 ## Development Commands
 ```bash
-# Run all services (via Replit workflows)
-pnpm --filter @workspace/api-server run seed    # Seed demo data
-pnpm --filter @workspace/api-spec run codegen   # Regenerate API client from OpenAPI spec
-pnpm run typecheck                              # Full type check
+# Run all services (via Replit workflows — never `pnpm dev` at root)
+pnpm --filter @workspace/api-server run seed     # Seed demo data
+pnpm --filter @workspace/api-spec run codegen    # Regenerate API client from OpenAPI spec
+pnpm --filter @workspace/scripts run verify      # Run 31-check end-to-end verifier
+pnpm run typecheck                               # Full type check
 ```
+
+## Recent Changes (May 2026)
+
+- Added **System Verifier** (CLI + in-app, 8 sections / 34 checks) covering auth, pricing, stock immutability, sales, public APIs. Latest run 34/34 GREEN.
+- Added **immutable-ledger guard verification**: PUT/PATCH/DELETE on `/stock/ledger/:id` are all asserted to be rejected, so the audit trail is provably tamper-resistant.
+- Added **in-app Help & Guide** to every panel (ERP, POS, Warehouse, Website) with contextual topics and FAQ.
+- Hardened `POST /api/v1/stock/adjust` to validate required fields server-side and return 400 (not 500).
+- Fixed nested `<a>` hydration warnings in warehouse sidebar and website help (wouter `Link` no longer wraps an extra `<a>`).

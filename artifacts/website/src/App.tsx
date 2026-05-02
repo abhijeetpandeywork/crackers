@@ -8,6 +8,7 @@ import Catalogue from "@/pages/catalogue/index";
 import ProductDetail from "@/pages/product/[id]";
 import Cart from "@/pages/cart";
 import Checkout from "@/pages/checkout";
+import WebsiteHelp from "@/pages/help";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -20,6 +21,7 @@ function Router() {
       <Route path="/product/:id" component={ProductDetail} />
       <Route path="/cart" component={Cart} />
       <Route path="/checkout" component={Checkout} />
+      <Route path="/help" component={WebsiteHelp} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { useCart } from "@/context/cart";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Menu, X } from "lucide-react";
+import { ShoppingCart, Menu, X, HelpCircle } from "lucide-react";
 import { useState } from "react";
 
 export function Navbar() {
@@ -12,6 +12,7 @@ export function Navbar() {
   const navLinks = [
     { href: "/", label: "Home" },
     { href: "/catalogue", label: "Catalogue" },
+    { href: "/help", label: "Help" },
   ];
 
   return (

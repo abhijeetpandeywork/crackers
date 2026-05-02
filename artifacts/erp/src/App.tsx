@@ -37,6 +37,9 @@ import GstReport from "@/pages/reports/gst";
 import UsersList from "@/pages/users/index";
 import LocationsList from "@/pages/locations/index";
 import Settings from "@/pages/settings/index";
+import HelpIndex from "@/pages/help/index";
+import HelpTopic from "@/pages/help/topic";
+import Verifier from "@/pages/verifier";
 
 const queryClient = new QueryClient();
 
@@ -145,6 +148,15 @@ function Router() {
       </Route>
       <Route path="/settings">
         {(params) => <ProtectedRoute component={Settings} {...params} />}
+      </Route>
+      <Route path="/help">
+        {(params) => <ProtectedRoute component={HelpIndex} {...params} />}
+      </Route>
+      <Route path="/help/:topic">
+        {(params) => <ProtectedRoute component={HelpTopic} {...params} />}
+      </Route>
+      <Route path="/verifier">
+        {(params) => <ProtectedRoute component={Verifier} {...params} />}
       </Route>
       <Route component={NotFound} />
     </Switch>

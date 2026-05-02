@@ -14,6 +14,7 @@ import StockAdjust from "@/pages/adjust";
 import Transfers from "@/pages/transfers";
 import NewTransfer from "@/pages/transfers-new";
 import StockLedger from "@/pages/ledger";
+import WarehouseHelp from "@/pages/help";
 import NotFound from "@/pages/not-found";
 
 // Setup API client auth
@@ -33,6 +34,7 @@ function Router() {
         <Route path="/transfers" component={Transfers} />
         <Route path="/transfers/new" component={NewTransfer} />
         <Route path="/ledger" component={StockLedger} />
+        <Route path="/help" component={WarehouseHelp} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

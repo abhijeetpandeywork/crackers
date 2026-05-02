@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { 
   useGetPosProducts, 
   useHoldBill, 
@@ -25,7 +25,8 @@ import {
   LogOut, 
   CheckCircle2,
   ChevronRight,
-  User
+  User,
+  HelpCircle
 } from "lucide-react";
 import { 
   Sheet, 
@@ -275,6 +276,11 @@ const SaleScreen = () => {
             <Button variant="outline" size="icon" className="border-zinc-800 text-red-500" onClick={clearCart}>
               <Trash2 className="h-5 w-5" />
             </Button>
+            <Link href="/help">
+              <Button variant="outline" size="icon" className="border-zinc-800 text-blue-400" data-testid="pos-help-link">
+                <HelpCircle className="h-5 w-5" />
+              </Button>
+            </Link>
           </div>
         </div>
 

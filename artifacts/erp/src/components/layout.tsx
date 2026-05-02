@@ -2,7 +2,8 @@ import { useAuth } from "@/lib/auth";
 import { Link, useLocation } from "wouter";
 import { 
   BarChart3, Box, Package, Users, UsersRound, Truck, 
-  ShoppingCart, Tags, FileText, FileBarChart, Settings, LogOut 
+  ShoppingCart, Tags, FileText, FileBarChart, Settings, LogOut,
+  HelpCircle, ShieldCheck
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -32,6 +33,11 @@ const settingsItems = [
   { label: "Users", href: "/users" },
   { label: "Locations", href: "/locations" },
   { label: "General Settings", href: "/settings" },
+];
+
+const helpItems = [
+  { label: "Help & Guide", href: "/help", icon: HelpCircle },
+  { label: "System Verifier", href: "/verifier", icon: ShieldCheck },
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -98,6 +104,26 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 )}
               >
                 <Settings className="h-4 w-4" />
+                {item.label}
+              </Link>
+            ))}
+
+            <div className="pt-4 pb-1 px-3 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">
+              Resources
+            </div>
+            {helpItems.map((item) => (
+              <Link 
+                key={item.href} 
+                href={item.href}
+                data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors",
+                  location === item.href || (item.href === "/help" && location.startsWith("/help"))
+                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                )}
+              >
+                <item.icon className="h-4 w-4" />
                 {item.label}
               </Link>
             ))}

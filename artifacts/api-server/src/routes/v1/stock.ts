@@ -128,15 +128,31 @@ router.post("/stock/receive", authenticate, async (req: AuthRequest, res) => {
 });
 
 router.post("/stock/adjust", authenticate, async (req: AuthRequest, res) => {
-  const { productId, variantId, locationId, qty, reason } = req.body as {
-    productId: string; variantId: string; locationId: string; qty: number; reason: string;
+  const body = (req.body ?? {}) as {
+    productId?: string; variantId?: string; locationId?: string; qty?: number; reason?: string;
   };
+  const { productId, variantId, locationId, qty, reason } = body;
+
+  const missing: string[] = [];
+  if (!productId) missing.push("productId");
+  if (!variantId) missing.push("variantId");
+  if (!locationId) missing.push("locationId");
+  if (qty === undefined || qty === null || Number.isNaN(Number(qty))) missing.push("qty");
+  if (!reason || String(reason).trim().length === 0) missing.push("reason");
+  if (missing.length > 0) {
+    return res.status(400).json({
+      success: false,
+      error: "ValidationError",
+      message: `Missing or invalid fields: ${missing.join(", ")}. 'reason' is required for every stock adjustment (audit trail).`,
+      missing,
+    });
+  }
 
   await appendLedger({
-    productId, variantId, locationId,
+    productId: productId!, variantId: variantId!, locationId: locationId!,
     type: "ADJUST",
-    qty,
-    notes: reason,
+    qty: Number(qty),
+    notes: reason!,
     refType: "MANUAL",
     createdBy: req.user?.id,
   });
