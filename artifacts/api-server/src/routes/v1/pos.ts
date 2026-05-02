@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, invoicesTable, productsTable, stockLevelsTable, heldBillsTable, posShiftsTable, settingsTable, customersTable, loyaltyLedgerTable } from "@workspace/db";
+import { db, invoicesTable, productsTable, stockLevelsTable, heldBillsTable, posShiftsTable, settingsTable, customersTable, loyaltyLedgerTable, type HeldBillItemsPayload } from "@workspace/db";
 import { eq, and, sql, inArray } from "drizzle-orm";
 import { authenticate } from "../../middleware/authenticate.js";
 import { nextInvoiceNo } from "../../lib/counter.js";
