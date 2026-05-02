@@ -19,12 +19,18 @@ export const posShiftsTable = pgTable("pos_shifts", {
   notes: text("notes"),
 });
 
+// Stored shape: either the raw line items array (legacy) or a wrapper
+// that bundles items with a coupon snapshot so Resume can rehydrate both.
+export type HeldBillItemsPayload =
+  | unknown[]
+  | { lines: unknown[]; coupon: unknown };
+
 export const heldBillsTable = pgTable("held_bills", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   locationId: text("location_id").notNull(),
   customerId: text("customer_id"),
   label: text("label"),
-  items: jsonb("items").notNull().default([]),
+  items: jsonb("items").$type<HeldBillItemsPayload>().notNull().default([]),
   createdBy: text("created_by"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

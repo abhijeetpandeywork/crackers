@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, invoicesTable, productsTable, stockLevelsTable, heldBillsTable, posShiftsTable, settingsTable, customersTable, loyaltyLedgerTable } from "@workspace/db";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, inArray } from "drizzle-orm";
 import { authenticate } from "../../middleware/authenticate.js";
 import { nextInvoiceNo } from "../../lib/counter.js";
 import { resolvePrice } from "../../lib/pricing.js";
@@ -166,29 +166,52 @@ router.post("/pos/hold", authenticate, async (req: AuthRequest, res) => {
   };
   // Wrap items + coupon together so the resume flow can rehydrate the cart fully.
   // Stays backward-compatible because the GET below also accepts raw arrays.
-  const payload = coupon ? { lines: items, coupon } : items;
-  await db.insert(heldBillsTable).values({ id: crypto.randomUUID(), locationId, customerId, label, items: payload as any, createdBy: req.user?.id });
+  const payload: HeldBillItemsPayload = coupon ? { lines: items, coupon } : items;
+  await db.insert(heldBillsTable).values({
+    id: crypto.randomUUID(),
+    locationId,
+    customerId,
+    label,
+    items: payload,
+    createdBy: req.user?.id,
+  });
   res.json({ success: true, message: "Bill held" });
 });
 
 router.get("/pos/held", authenticate, async (req, res) => {
   const { locationId } = req.query as Record<string, string>;
   const conditions = locationId ? [eq(heldBillsTable.locationId, locationId)] : [];
-  const rows = await db.select().from(heldBillsTable).where(conditions.length > 0 ? and(...conditions) : undefined).limit(50);
+  const rows = await db
+    .select()
+    .from(heldBillsTable)
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .limit(50);
+
+  // Resolve customer objects in one round-trip so Resume can restore the
+  // full customer (not just the id) without an extra fetch on the client.
+  const customerIds = Array.from(
+    new Set(rows.map((r) => r.customerId).filter((id): id is string => !!id)),
+  );
+  const customerRows = customerIds.length
+    ? await db.select().from(customersTable).where(inArray(customersTable.id, customerIds))
+    : [];
+  const customerById = new Map(customerRows.map((c) => [c.id, c]));
+
   res.json({
     success: true,
     data: rows.map((r) => {
-      const stored = r.items as unknown;
-      const lines = Array.isArray(stored) ? stored : ((stored as { lines?: unknown[] })?.lines ?? []);
-      const coupon = Array.isArray(stored) ? null : ((stored as { coupon?: unknown })?.coupon ?? null);
+      const stored = r.items;
+      const lines: unknown[] = Array.isArray(stored) ? stored : (stored.lines ?? []);
+      const coupon: unknown = Array.isArray(stored) ? null : (stored.coupon ?? null);
       return {
         id: r.id,
         holdId: r.id,
         label: r.label,
         items: lines,
         customerId: r.customerId,
+        customer: r.customerId ? customerById.get(r.customerId) ?? null : null,
         coupon,
-        itemCount: Array.isArray(lines) ? lines.length : 0,
+        itemCount: lines.length,
         createdAt: r.createdAt?.toISOString(),
       };
     }),

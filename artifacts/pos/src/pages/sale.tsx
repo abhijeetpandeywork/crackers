@@ -171,7 +171,7 @@ const SaleScreen = () => {
           })),
           // Include coupon so Resume can rehydrate the discount too.
           coupon: coupon ?? undefined,
-        } as any,
+        },
       },
       {
         onSuccess: () => {
@@ -183,10 +183,23 @@ const SaleScreen = () => {
     );
   };
 
-  const handleResumeBill = (bill: any) => {
-    const billItems = (bill.items ?? []).map((i: any) => ({
-      productId: i.productId,
-      variantId: i.variantId,
+  type ResumableHeldBill = {
+    items?: Array<{
+      productId?: string;
+      variantId?: string;
+      productName?: string;
+      variantLabel?: string;
+      qty?: number;
+      unitPrice?: number;
+    }>;
+    customer?: unknown;
+    coupon?: CouponData | null;
+  };
+
+  const handleResumeBill = (bill: ResumableHeldBill) => {
+    const billItems = (bill.items ?? []).map((i) => ({
+      productId: i.productId ?? "",
+      variantId: i.variantId ?? "",
       productName: i.productName ?? "Item",
       variantLabel: i.variantLabel ?? "",
       qty: i.qty ?? 1,

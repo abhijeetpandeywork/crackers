@@ -1767,32 +1767,43 @@ export const GetTransferParams = zod.object({
 });
 
 export const GetTransferResponse = zod.object({
-  id: zod.string().optional(),
-  transferNo: zod.string().optional(),
-  fromLocationId: zod.string().optional(),
-  fromLocationName: zod.string().optional(),
-  toLocationId: zod.string().optional(),
-  toLocationName: zod.string().optional(),
-  status: zod
-    .enum(["draft", "pending_approval", "in_transit", "received", "cancelled"])
+  success: zod.boolean().optional(),
+  data: zod
+    .object({
+      id: zod.string().optional(),
+      transferNo: zod.string().optional(),
+      fromLocationId: zod.string().optional(),
+      fromLocationName: zod.string().optional(),
+      toLocationId: zod.string().optional(),
+      toLocationName: zod.string().optional(),
+      status: zod
+        .enum([
+          "draft",
+          "pending_approval",
+          "in_transit",
+          "received",
+          "cancelled",
+        ])
+        .optional(),
+      items: zod
+        .array(
+          zod.object({
+            productId: zod.string().optional(),
+            productName: zod.string().optional(),
+            variantId: zod.string().optional(),
+            qty: zod.number().optional(),
+            receivedQty: zod.number().optional(),
+            batchNo: zod.string().optional(),
+          }),
+        )
+        .optional(),
+      vehicleNo: zod.string().optional(),
+      notes: zod.string().optional(),
+      dispatchedAt: zod.string().optional(),
+      receivedAt: zod.string().optional(),
+      createdAt: zod.string().optional(),
+    })
     .optional(),
-  items: zod
-    .array(
-      zod.object({
-        productId: zod.string().optional(),
-        productName: zod.string().optional(),
-        variantId: zod.string().optional(),
-        qty: zod.number().optional(),
-        receivedQty: zod.number().optional(),
-        batchNo: zod.string().optional(),
-      }),
-    )
-    .optional(),
-  vehicleNo: zod.string().optional(),
-  notes: zod.string().optional(),
-  dispatchedAt: zod.string().optional(),
-  receivedAt: zod.string().optional(),
-  createdAt: zod.string().optional(),
 });
 
 /**
@@ -1808,32 +1819,8 @@ export const DispatchTransferBody = zod.object({
 });
 
 export const DispatchTransferResponse = zod.object({
-  id: zod.string().optional(),
-  transferNo: zod.string().optional(),
-  fromLocationId: zod.string().optional(),
-  fromLocationName: zod.string().optional(),
-  toLocationId: zod.string().optional(),
-  toLocationName: zod.string().optional(),
-  status: zod
-    .enum(["draft", "pending_approval", "in_transit", "received", "cancelled"])
-    .optional(),
-  items: zod
-    .array(
-      zod.object({
-        productId: zod.string().optional(),
-        productName: zod.string().optional(),
-        variantId: zod.string().optional(),
-        qty: zod.number().optional(),
-        receivedQty: zod.number().optional(),
-        batchNo: zod.string().optional(),
-      }),
-    )
-    .optional(),
-  vehicleNo: zod.string().optional(),
-  notes: zod.string().optional(),
-  dispatchedAt: zod.string().optional(),
-  receivedAt: zod.string().optional(),
-  createdAt: zod.string().optional(),
+  success: zod.boolean(),
+  message: zod.string(),
 });
 
 /**
@@ -1854,32 +1841,8 @@ export const ReceiveTransferBody = zod.object({
 });
 
 export const ReceiveTransferResponse = zod.object({
-  id: zod.string().optional(),
-  transferNo: zod.string().optional(),
-  fromLocationId: zod.string().optional(),
-  fromLocationName: zod.string().optional(),
-  toLocationId: zod.string().optional(),
-  toLocationName: zod.string().optional(),
-  status: zod
-    .enum(["draft", "pending_approval", "in_transit", "received", "cancelled"])
-    .optional(),
-  items: zod
-    .array(
-      zod.object({
-        productId: zod.string().optional(),
-        productName: zod.string().optional(),
-        variantId: zod.string().optional(),
-        qty: zod.number().optional(),
-        receivedQty: zod.number().optional(),
-        batchNo: zod.string().optional(),
-      }),
-    )
-    .optional(),
-  vehicleNo: zod.string().optional(),
-  notes: zod.string().optional(),
-  dispatchedAt: zod.string().optional(),
-  receivedAt: zod.string().optional(),
-  createdAt: zod.string().optional(),
+  success: zod.boolean(),
+  message: zod.string(),
 });
 
 /**
@@ -2208,6 +2171,12 @@ export const HoldBillBody = zod.object({
   customerId: zod.string().optional(),
   items: zod.array(zod.object({}).passthrough()),
   label: zod.string().optional(),
+  coupon: zod
+    .record(zod.string(), zod.unknown())
+    .nullish()
+    .describe(
+      "Optional coupon snapshot (code\/type\/value) so resume can rehydrate the discount.",
+    ),
 });
 
 export const HoldBillResponse = zod.object({
@@ -2227,10 +2196,35 @@ export const ListHeldBillsResponse = zod.object({
   data: zod
     .array(
       zod.object({
+        id: zod.string().optional(),
         holdId: zod.string().optional(),
         label: zod.string().optional(),
         itemCount: zod.number().optional(),
         createdAt: zod.string().optional(),
+        customerId: zod.string().nullish(),
+        customer: zod
+          .object({
+            id: zod.string().optional(),
+            name: zod.string().optional(),
+            phone: zod.string().optional(),
+            email: zod.string().optional(),
+            address: zod.string().optional(),
+            city: zod.string().optional(),
+            state: zod.string().optional(),
+            gstin: zod.string().optional(),
+            customerType: zod
+              .enum(["RETAIL", "WHOLESALE", "AGENT_CUSTOMER", "VIP", "WALK_IN"])
+              .optional(),
+            agentId: zod.string().optional(),
+            creditLimit: zod.number().optional(),
+            outstandingBalance: zod.number().optional(),
+            loyaltyPoints: zod.number().optional(),
+            status: zod.string().optional(),
+            createdAt: zod.string().optional(),
+          })
+          .nullish(),
+        items: zod.array(zod.object({}).passthrough()).optional(),
+        coupon: zod.record(zod.string(), zod.unknown()).nullish(),
       }),
     )
     .optional(),

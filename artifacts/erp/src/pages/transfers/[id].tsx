@@ -3,6 +3,9 @@ import {
   useGetTransfer,
   useDispatchTransfer,
   useReceiveTransfer,
+  type Transfer,
+  type TransferItem,
+  type ReceiveTransferBody,
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,8 +30,8 @@ export default function TransferDetail() {
   const dispatchM = useDispatchTransfer();
   const receiveM = useReceiveTransfer();
 
-  const t = (data as any)?.data;
-  const items = (t?.items ?? []) as Array<any>;
+  const t: Transfer | undefined = data?.data;
+  const items: TransferItem[] = t?.items ?? [];
 
   const statusBadge = (status: string) => {
     const label = (status ?? "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -54,16 +57,14 @@ export default function TransferDetail() {
 
   const handleReceive = async () => {
     try {
-      await receiveM.mutateAsync({
-        transferId: id,
-        data: {
-          items: items.map((i) => ({
-            productId: i.productId,
-            variantId: i.variantId,
-            receivedQty: i.qty,
-          })),
-        } as any,
-      });
+      const body: ReceiveTransferBody = {
+        items: items.map((i) => ({
+          productId: i.productId ?? "",
+          variantId: i.variantId ?? "",
+          receivedQty: i.qty ?? 0,
+        })),
+      };
+      await receiveM.mutateAsync({ transferId: id, data: body });
       toast({ title: "Transfer received" });
       refetch();
     } catch {

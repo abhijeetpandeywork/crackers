@@ -1480,7 +1480,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Transfer"
+                $ref: "#/components/schemas/TransferResponse"
 
   /v1/transfers/{id}/dispatch:
     put:
@@ -1507,7 +1507,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Transfer"
+                $ref: "#/components/schemas/SuccessMessage"
 
   /v1/transfers/{id}/receive:
     put:
@@ -1534,7 +1534,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Transfer"
+                $ref: "#/components/schemas/SuccessMessage"
 
   # ============================================================
   # COUPONS
@@ -3671,6 +3671,14 @@ components:
         meta:
           $ref: "#/components/schemas/PaginationMeta"
 
+    TransferResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: "#/components/schemas/Transfer"
+
     CreateTransferBody:
       type: object
       required: [fromLocationId, toLocationId, items]
@@ -3948,6 +3956,11 @@ components:
             type: object
         label:
           type: string
+        coupon:
+          type: object
+          additionalProperties: true
+          nullable: true
+          description: Optional coupon snapshot (code/type/value) so resume can rehydrate the discount.
 
     HeldBillsResponse:
       type: object
@@ -3959,6 +3972,8 @@ components:
           items:
             type: object
             properties:
+              id:
+                type: string
               holdId:
                 type: string
               label:
@@ -3967,6 +3982,20 @@ components:
                 type: integer
               createdAt:
                 type: string
+              customerId:
+                type: string
+                nullable: true
+              customer:
+                $ref: "#/components/schemas/Customer"
+                nullable: true
+              items:
+                type: array
+                items:
+                  type: object
+              coupon:
+                type: object
+                additionalProperties: true
+                nullable: true
 
     PosProductsResponse:
       type: object

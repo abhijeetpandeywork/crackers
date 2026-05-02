@@ -135,6 +135,7 @@ import type {
   TopProductsResponse,
   Transfer,
   TransferListResponse,
+  TransferResponse,
   UpdateAgentBody,
   UpdateCompanySettingsBody,
   UpdateCouponBody,
@@ -5097,8 +5098,8 @@ export const getGetTransferUrl = (id: string) => {
 export const getTransfer = async (
   id: string,
   options?: RequestInit,
-): Promise<Transfer> => {
-  return customFetch<Transfer>(getGetTransferUrl(id), {
+): Promise<TransferResponse> => {
+  return customFetch<TransferResponse>(getGetTransferUrl(id), {
     ...options,
     method: "GET",
   });
@@ -5185,8 +5186,8 @@ export const dispatchTransfer = async (
   id: string,
   dispatchTransferBody: DispatchTransferBody,
   options?: RequestInit,
-): Promise<Transfer> => {
-  return customFetch<Transfer>(getDispatchTransferUrl(id), {
+): Promise<SuccessMessage> => {
+  return customFetch<SuccessMessage>(getDispatchTransferUrl(id), {
     ...options,
     method: "PUT",
     headers: { "Content-Type": "application/json", ...options?.headers },
@@ -5272,8 +5273,8 @@ export const receiveTransfer = async (
   id: string,
   receiveTransferBody: ReceiveTransferBody,
   options?: RequestInit,
-): Promise<Transfer> => {
-  return customFetch<Transfer>(getReceiveTransferUrl(id), {
+): Promise<SuccessMessage> => {
+  return customFetch<SuccessMessage>(getReceiveTransferUrl(id), {
     ...options,
     method: "PUT",
     headers: { "Content-Type": "application/json", ...options?.headers },

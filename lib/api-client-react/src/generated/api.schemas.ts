@@ -811,6 +811,11 @@ export interface TransferListResponse {
   meta?: PaginationMeta;
 }
 
+export interface TransferResponse {
+  success?: boolean;
+  data?: Transfer;
+}
+
 export type CreateTransferBodyItemsItem = {
   productId: string;
   variantId: string;
@@ -981,18 +986,34 @@ export interface PosReturnResponse {
 
 export type HoldBillBodyItemsItem = { [key: string]: unknown };
 
+/**
+ * Optional coupon snapshot (code/type/value) so resume can rehydrate the discount.
+ */
+export type HoldBillBodyCoupon = { [key: string]: unknown } | null;
+
 export interface HoldBillBody {
   locationId: string;
   customerId?: string;
   items: HoldBillBodyItemsItem[];
   label?: string;
+  /** Optional coupon snapshot (code/type/value) so resume can rehydrate the discount. */
+  coupon?: HoldBillBodyCoupon;
 }
 
+export type HeldBillsResponseDataItemItemsItem = { [key: string]: unknown };
+
+export type HeldBillsResponseDataItemCoupon = { [key: string]: unknown } | null;
+
 export type HeldBillsResponseDataItem = {
+  id?: string;
   holdId?: string;
   label?: string;
   itemCount?: number;
   createdAt?: string;
+  customerId?: string | null;
+  customer?: Customer | null;
+  items?: HeldBillsResponseDataItemItemsItem[];
+  coupon?: HeldBillsResponseDataItemCoupon;
 };
 
 export interface HeldBillsResponse {
