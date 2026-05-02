@@ -1,0 +1,96 @@
+import { Router } from "express";
+import { db, couponsTable, couponUsagesTable } from "@workspace/db";
+import { eq, and, sql } from "drizzle-orm";
+import { authenticate } from "../../middleware/authenticate.js";
+
+const router = Router();
+
+router.get("/coupons", authenticate, async (req, res) => {
+  const { status, page = "1", limit = "20" } = req.query as Record<string, string>;
+  const pg = Math.max(1, parseInt(page));
+  const lim = Math.min(100, parseInt(limit));
+  const offset = (pg - 1) * lim;
+  const conditions = [];
+  if (status) conditions.push(eq(couponsTable.status, status as any));
+  const where = conditions.length > 0 ? and(...conditions) : undefined;
+  const [rows, countRows] = await Promise.all([
+    db.select().from(couponsTable).where(where).limit(lim).offset(offset),
+    db.select({ count: sql<number>`count(*)` }).from(couponsTable).where(where),
+  ]);
+  const total = Number(countRows[0]?.count ?? 0);
+  res.json({ success: true, data: rows, meta: { page: pg, limit: lim, total, pages: Math.ceil(total / lim) } });
+});
+
+router.get("/coupons/public", async (req, res) => {
+  const conditions = [eq(couponsTable.status, "active")];
+  if (req.query["autoApply"] === "true") conditions.push(eq(couponsTable.autoApply, true));
+  const rows = await db.select().from(couponsTable).where(and(...conditions)).limit(50);
+  res.json({ success: true, data: rows, meta: { page: 1, limit: 50, total: rows.length, pages: 1 } });
+});
+
+router.post("/coupons/validate", async (req, res) => {
+  const { code, cartTotal, customerId, channel } = req.body as {
+    code: string; cartTotal: number; customerId?: string; channel?: string;
+  };
+  const rows = await db.select().from(couponsTable).where(eq(couponsTable.code, code.toUpperCase())).limit(1);
+  const coupon = rows[0];
+  if (!coupon) {
+    res.json({ success: true, data: { valid: false, discountAmount: 0, discountDescription: "", couponId: null, error: "Coupon not found" } });
+    return;
+  }
+  if (coupon.status !== "active") {
+    res.json({ success: true, data: { valid: false, discountAmount: 0, discountDescription: "", couponId: null, error: "Coupon is not active" } });
+    return;
+  }
+  const now = new Date().toISOString().slice(0, 10);
+  if (now < coupon.validFrom || now > coupon.validUntil) {
+    res.json({ success: true, data: { valid: false, discountAmount: 0, discountDescription: "", couponId: null, error: "Coupon expired or not yet valid" } });
+    return;
+  }
+  if (coupon.usageLimit && coupon.usedCount >= coupon.usageLimit) {
+    res.json({ success: true, data: { valid: false, discountAmount: 0, discountDescription: "", couponId: null, error: "Coupon usage limit reached" } });
+    return;
+  }
+  if (coupon.minOrderValue && cartTotal < Number(coupon.minOrderValue)) {
+    res.json({ success: true, data: { valid: false, discountAmount: 0, discountDescription: "", couponId: null, error: `Minimum order value: ₹${coupon.minOrderValue}` } });
+    return;
+  }
+
+  let discountAmount = 0;
+  if (coupon.type === "percent") {
+    discountAmount = (cartTotal * Number(coupon.discountValue)) / 100;
+    if (coupon.maxDiscountCap) discountAmount = Math.min(discountAmount, Number(coupon.maxDiscountCap));
+  } else if (coupon.type === "flat") {
+    discountAmount = Number(coupon.discountValue);
+  }
+
+  res.json({
+    success: true,
+    data: {
+      valid: true,
+      discountAmount,
+      discountDescription: `${coupon.type === "percent" ? coupon.discountValue + "% off" : "₹" + coupon.discountValue + " off"} — ${coupon.description ?? ""}`,
+      couponId: coupon.id,
+      error: null,
+    },
+  });
+});
+
+router.post("/coupons", authenticate, async (req, res) => {
+  const [coupon] = await db.insert(couponsTable).values({ ...req.body, id: crypto.randomUUID(), code: req.body.code.toUpperCase() }).returning();
+  res.status(201).json({ success: true, data: coupon });
+});
+
+router.get("/coupons/:id", authenticate, async (req, res) => {
+  const rows = await db.select().from(couponsTable).where(eq(couponsTable.id, req.params["id"]!)).limit(1);
+  if (!rows[0]) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Coupon not found" } }); return; }
+  res.json({ success: true, data: rows[0] });
+});
+
+router.put("/coupons/:id", authenticate, async (req, res) => {
+  const [coupon] = await db.update(couponsTable).set(req.body).where(eq(couponsTable.id, req.params["id"]!)).returning();
+  if (!coupon) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Coupon not found" } }); return; }
+  res.json({ success: true, data: coupon });
+});
+
+export default router;

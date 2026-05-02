@@ -1,22 +1,63 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
-  version: 0.1.0
-  description: API specification
+  version: 1.0.0
+  description: Ratinam Crackers Business Management API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication
+  - name: products
+    description: Product management
+  - name: pricing
+    description: Pricing and price lists
+  - name: stock
+    description: Inventory and stock management
+  - name: customers
+    description: Customer management
+  - name: suppliers
+    description: Supplier management
+  - name: agents
+    description: Agent management
+  - name: estimates
+    description: Estimates and quotations
+  - name: invoices
+    description: Invoices and billing
+  - name: pos
+    description: Point of sale
+  - name: transfers
+    description: Stock transfers
+  - name: purchase-orders
+    description: Purchase orders
+  - name: coupons
+    description: Coupons and promotions
+  - name: returns
+    description: Returns and damage
+  - name: reports
+    description: Reports and analytics
+  - name: notifications
+    description: Notification management
+  - name: settings
+    description: System settings
+  - name: users
+    description: User management
+  - name: locations
+    description: Location management
+  - name: brochure
+    description: Order brochure
+  - name: dashboard
+    description: Dashboard data
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,7 +65,2328 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ============================================================
+  # AUTH
+  # ============================================================
+  /v1/auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login with username and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginBody"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /v1/auth/pin-login:
+    post:
+      operationId: pinLogin
+      tags: [auth]
+      summary: Login with PIN (POS)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PinLoginBody"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+
+  /v1/auth/refresh:
+    post:
+      operationId: refreshToken
+      tags: [auth]
+      summary: Refresh access token
+      responses:
+        "200":
+          description: New access token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RefreshResponse"
+
+  /v1/auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessMessage"
+
+  /v1/auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+
+  # ============================================================
+  # DASHBOARD
+  # ============================================================
+  /v1/dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get dashboard summary widgets
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  /v1/dashboard/sales-by-channel:
+    get:
+      operationId: getSalesByChannel
+      tags: [dashboard]
+      summary: Get sales grouped by channel (chart data)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Sales by channel
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SalesByChannelResponse"
+
+  /v1/dashboard/top-products:
+    get:
+      operationId: getTopProducts
+      tags: [dashboard]
+      summary: Get top selling products
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 5
+      responses:
+        "200":
+          description: Top products
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TopProductsResponse"
+
+  /v1/dashboard/agent-performance:
+    get:
+      operationId: getAgentPerformance
+      tags: [dashboard]
+      summary: Get agent performance this month
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Agent performance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentPerformanceResponse"
+
+  # ============================================================
+  # PRODUCTS
+  # ============================================================
+  /v1/products:
+    get:
+      operationId: listProducts
+      tags: [products]
+      summary: List all products
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: onlineDisplay
+          in: query
+          schema:
+            type: boolean
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Paginated product list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductListResponse"
+    post:
+      operationId: createProduct
+      tags: [products]
+      summary: Create a new product
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductBody"
+      responses:
+        "201":
+          description: Product created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+
+  /v1/products/public:
+    get:
+      operationId: listPublicProducts
+      tags: [products]
+      summary: List public products (website)
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: featured
+          in: query
+          schema:
+            type: boolean
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Public product list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductListResponse"
+
+  /v1/products/{id}:
+    get:
+      operationId: getProduct
+      tags: [products]
+      summary: Get product by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+    put:
+      operationId: updateProduct
+      tags: [products]
+      summary: Update product
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProductBody"
+      responses:
+        "200":
+          description: Updated product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+    delete:
+      operationId: deleteProduct
+      tags: [products]
+      summary: Discontinue product
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Product discontinued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessMessage"
+
+  /v1/products/{id}/price:
+    get:
+      operationId: resolveProductPrice
+      tags: [products]
+      summary: Resolve price for a product variant
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: variantId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: qty
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: customerId
+          in: query
+          schema:
+            type: string
+        - name: channel
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: priceListId
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Resolved price
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PriceResolution"
+
+  # ============================================================
+  # PRICE LISTS
+  # ============================================================
+  /v1/price-lists:
+    get:
+      operationId: listPriceLists
+      tags: [pricing]
+      summary: List price lists
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Price lists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PriceListsResponse"
+    post:
+      operationId: createPriceList
+      tags: [pricing]
+      summary: Create price list
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePriceListBody"
+      responses:
+        "201":
+          description: Price list created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PriceList"
+
+  # ============================================================
+  # STOCK
+  # ============================================================
+  /v1/stock/levels:
+    get:
+      operationId: getStockLevels
+      tags: [stock]
+      summary: Get stock levels
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: locationId
+          in: query
+          schema:
+            type: string
+        - name: productId
+          in: query
+          schema:
+            type: string
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: lowStockOnly
+          in: query
+          schema:
+            type: boolean
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Stock levels
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockLevelsResponse"
+
+  /v1/stock/ledger:
+    get:
+      operationId: getStockLedger
+      tags: [stock]
+      summary: Get stock ledger entries
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: productId
+          in: query
+          schema:
+            type: string
+        - name: locationId
+          in: query
+          schema:
+            type: string
+        - name: type
+          in: query
+          schema:
+            type: string
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Ledger entries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockLedgerResponse"
+
+  /v1/stock/receive:
+    post:
+      operationId: receiveStock
+      tags: [stock]
+      summary: Receive stock (goods inward)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReceiveStockBody"
+      responses:
+        "200":
+          description: Stock received
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReceiveStockResponse"
+
+  /v1/stock/adjust:
+    post:
+      operationId: adjustStock
+      tags: [stock]
+      summary: Adjust stock manually
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdjustStockBody"
+      responses:
+        "200":
+          description: Stock adjusted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessMessage"
+
+  # ============================================================
+  # CUSTOMERS
+  # ============================================================
+  /v1/customers:
+    get:
+      operationId: listCustomers
+      tags: [customers]
+      summary: List customers
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: customerType
+          in: query
+          schema:
+            type: string
+        - name: agentId
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Customer list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerListResponse"
+    post:
+      operationId: createCustomer
+      tags: [customers]
+      summary: Create customer
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCustomerBody"
+      responses:
+        "201":
+          description: Customer created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+
+  /v1/customers/{id}:
+    get:
+      operationId: getCustomer
+      tags: [customers]
+      summary: Get customer by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Customer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+    put:
+      operationId: updateCustomer
+      tags: [customers]
+      summary: Update customer
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCustomerBody"
+      responses:
+        "200":
+          description: Updated customer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+
+  /v1/customers/{id}/statement:
+    get:
+      operationId: getCustomerStatement
+      tags: [customers]
+      summary: Get customer credit statement
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Credit statement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerStatementResponse"
+
+  /v1/customers/{id}/loyalty:
+    get:
+      operationId: getCustomerLoyalty
+      tags: [customers]
+      summary: Get customer loyalty points
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Loyalty points
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoyaltyResponse"
+
+  /v1/customers/{id}/payment:
+    post:
+      operationId: recordCustomerPayment
+      tags: [customers]
+      summary: Record customer payment
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecordPaymentBody"
+      responses:
+        "200":
+          description: Payment recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessMessage"
+
+  # ============================================================
+  # SUPPLIERS
+  # ============================================================
+  /v1/suppliers:
+    get:
+      operationId: listSuppliers
+      tags: [suppliers]
+      summary: List suppliers
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Supplier list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplierListResponse"
+    post:
+      operationId: createSupplier
+      tags: [suppliers]
+      summary: Create supplier
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSupplierBody"
+      responses:
+        "201":
+          description: Supplier created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Supplier"
+
+  /v1/suppliers/{id}:
+    get:
+      operationId: getSupplier
+      tags: [suppliers]
+      summary: Get supplier by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Supplier
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Supplier"
+    put:
+      operationId: updateSupplier
+      tags: [suppliers]
+      summary: Update supplier
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSupplierBody"
+      responses:
+        "200":
+          description: Updated supplier
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Supplier"
+
+  # ============================================================
+  # AGENTS
+  # ============================================================
+  /v1/agents:
+    get:
+      operationId: listAgents
+      tags: [agents]
+      summary: List agents
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Agent list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentListResponse"
+    post:
+      operationId: createAgent
+      tags: [agents]
+      summary: Create agent
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAgentBody"
+      responses:
+        "201":
+          description: Agent created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Agent"
+
+  /v1/agents/{id}:
+    get:
+      operationId: getAgent
+      tags: [agents]
+      summary: Get agent by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Agent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Agent"
+    put:
+      operationId: updateAgent
+      tags: [agents]
+      summary: Update agent
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAgentBody"
+      responses:
+        "200":
+          description: Updated agent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Agent"
+
+  /v1/agents/{id}/commission:
+    get:
+      operationId: getAgentCommission
+      tags: [agents]
+      summary: Get agent commission report
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Commission report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommissionResponse"
+
+  # ============================================================
+  # ESTIMATES
+  # ============================================================
+  /v1/estimates:
+    get:
+      operationId: listEstimates
+      tags: [estimates]
+      summary: List estimates
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+        - name: customerId
+          in: query
+          schema:
+            type: string
+        - name: agentId
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Estimate list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EstimateListResponse"
+    post:
+      operationId: createEstimate
+      tags: [estimates]
+      summary: Create estimate
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEstimateBody"
+      responses:
+        "201":
+          description: Estimate created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Estimate"
+
+  /v1/estimates/{id}:
+    get:
+      operationId: getEstimate
+      tags: [estimates]
+      summary: Get estimate by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Estimate
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Estimate"
+
+  /v1/estimates/{id}/convert:
+    put:
+      operationId: convertEstimateToInvoice
+      tags: [estimates]
+      summary: Convert estimate to invoice
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConvertEstimateBody"
+      responses:
+        "200":
+          description: Invoice created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Invoice"
+
+  /v1/estimates/from-brochure:
+    post:
+      operationId: createEstimateFromBrochure
+      tags: [estimates]
+      summary: Create estimate from uploaded brochure
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EstimateFromBrochureBody"
+      responses:
+        "201":
+          description: Estimate created from brochure
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EstimateFromBrochureResponse"
+
+  # ============================================================
+  # INVOICES
+  # ============================================================
+  /v1/invoices:
+    get:
+      operationId: listInvoices
+      tags: [invoices]
+      summary: List invoices
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: invoiceNo
+          in: query
+          schema:
+            type: string
+        - name: customerId
+          in: query
+          schema:
+            type: string
+        - name: agentId
+          in: query
+          schema:
+            type: string
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+        - name: financialYear
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Invoice list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvoiceListResponse"
+    post:
+      operationId: createInvoice
+      tags: [invoices]
+      summary: Create direct invoice
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateInvoiceBody"
+      responses:
+        "201":
+          description: Invoice created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Invoice"
+
+  /v1/invoices/{id}:
+    get:
+      operationId: getInvoice
+      tags: [invoices]
+      summary: Get invoice by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Invoice
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Invoice"
+
+  /v1/invoices/{id}/share:
+    post:
+      operationId: shareInvoice
+      tags: [invoices]
+      summary: Share invoice via WhatsApp/Email
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Invoice shared
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessMessage"
+
+  /v1/invoices/gst-report:
+    get:
+      operationId: getGstReport
+      tags: [invoices]
+      summary: Get GSTR-1 report data
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: month
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: year
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: GST report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GstReportResponse"
+
+  # ============================================================
+  # PURCHASE ORDERS
+  # ============================================================
+  /v1/purchase-orders:
+    get:
+      operationId: listPurchaseOrders
+      tags: [purchase-orders]
+      summary: List purchase orders
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: supplierId
+          in: query
+          schema:
+            type: string
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Purchase order list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseOrderListResponse"
+    post:
+      operationId: createPurchaseOrder
+      tags: [purchase-orders]
+      summary: Create purchase order
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePurchaseOrderBody"
+      responses:
+        "201":
+          description: Purchase order created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseOrder"
+
+  /v1/purchase-orders/{id}:
+    get:
+      operationId: getPurchaseOrder
+      tags: [purchase-orders]
+      summary: Get purchase order by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Purchase order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseOrder"
+
+  /v1/purchase-orders/{id}/receive:
+    put:
+      operationId: receivePurchaseOrder
+      tags: [purchase-orders]
+      summary: Mark PO as received
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReceivePurchaseOrderBody"
+      responses:
+        "200":
+          description: PO received
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessMessage"
+
+  # ============================================================
+  # TRANSFERS
+  # ============================================================
+  /v1/transfers:
+    get:
+      operationId: listTransfers
+      tags: [transfers]
+      summary: List stock transfers
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: fromLocationId
+          in: query
+          schema:
+            type: string
+        - name: toLocationId
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Transfer list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransferListResponse"
+    post:
+      operationId: createTransfer
+      tags: [transfers]
+      summary: Create stock transfer
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTransferBody"
+      responses:
+        "201":
+          description: Transfer created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transfer"
+
+  /v1/transfers/pending:
+    get:
+      operationId: listPendingTransfers
+      tags: [transfers]
+      summary: List pending and in-transit transfers
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Pending transfers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransferListResponse"
+
+  /v1/transfers/{id}:
+    get:
+      operationId: getTransfer
+      tags: [transfers]
+      summary: Get transfer by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Transfer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transfer"
+
+  /v1/transfers/{id}/dispatch:
+    put:
+      operationId: dispatchTransfer
+      tags: [transfers]
+      summary: Dispatch stock transfer
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DispatchTransferBody"
+      responses:
+        "200":
+          description: Transfer dispatched
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transfer"
+
+  /v1/transfers/{id}/receive:
+    put:
+      operationId: receiveTransfer
+      tags: [transfers]
+      summary: Receive stock transfer
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReceiveTransferBody"
+      responses:
+        "200":
+          description: Transfer received
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transfer"
+
+  # ============================================================
+  # COUPONS
+  # ============================================================
+  /v1/coupons:
+    get:
+      operationId: listCoupons
+      tags: [coupons]
+      summary: List coupons
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Coupon list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CouponListResponse"
+    post:
+      operationId: createCoupon
+      tags: [coupons]
+      summary: Create coupon
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCouponBody"
+      responses:
+        "201":
+          description: Coupon created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Coupon"
+
+  /v1/coupons/public:
+    get:
+      operationId: listPublicCoupons
+      tags: [coupons]
+      summary: List active public coupons (website)
+      parameters:
+        - name: autoApply
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Public coupons
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CouponListResponse"
+
+  /v1/coupons/validate:
+    post:
+      operationId: validateCoupon
+      tags: [coupons]
+      summary: Validate a coupon code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ValidateCouponBody"
+      responses:
+        "200":
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CouponValidationResponse"
+
+  /v1/coupons/{id}:
+    get:
+      operationId: getCoupon
+      tags: [coupons]
+      summary: Get coupon by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Coupon
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Coupon"
+    put:
+      operationId: updateCoupon
+      tags: [coupons]
+      summary: Update coupon
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCouponBody"
+      responses:
+        "200":
+          description: Updated coupon
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Coupon"
+
+  # ============================================================
+  # POS
+  # ============================================================
+  /v1/pos/sale:
+    post:
+      operationId: posCreateSale
+      tags: [pos]
+      summary: Create POS sale
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PosSaleBody"
+      responses:
+        "200":
+          description: Sale completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PosSaleResponse"
+
+  /v1/pos/return:
+    post:
+      operationId: posReturn
+      tags: [pos]
+      summary: Process POS return
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PosReturnBody"
+      responses:
+        "200":
+          description: Return processed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PosReturnResponse"
+
+  /v1/pos/hold:
+    post:
+      operationId: holdBill
+      tags: [pos]
+      summary: Hold a bill
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HoldBillBody"
+      responses:
+        "200":
+          description: Bill held
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessMessage"
+
+  /v1/pos/held:
+    get:
+      operationId: listHeldBills
+      tags: [pos]
+      summary: List held bills
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: locationId
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Held bills
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HeldBillsResponse"
+
+  /v1/pos/products:
+    get:
+      operationId: getPosProducts
+      tags: [pos]
+      summary: Get products for POS (with stock)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: locationId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: POS product list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PosProductsResponse"
+
+  /v1/pos/shift-close:
+    post:
+      operationId: closeShift
+      tags: [pos]
+      summary: Close shift
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CloseShiftBody"
+      responses:
+        "200":
+          description: Shift closed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShiftSummaryResponse"
+
+  # ============================================================
+  # RETURNS & DAMAGE
+  # ============================================================
+  /v1/returns:
+    get:
+      operationId: listReturns
+      tags: [returns]
+      summary: List returns
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Returns list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReturnListResponse"
+
+  /v1/damage:
+    post:
+      operationId: logDamage
+      tags: [returns]
+      summary: Log damaged goods
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LogDamageBody"
+      responses:
+        "201":
+          description: Damage logged
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessMessage"
+    get:
+      operationId: listDamage
+      tags: [returns]
+      summary: List damage logs
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: locationId
+          in: query
+          schema:
+            type: string
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Damage logs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DamageListResponse"
+
+  # ============================================================
+  # BROCHURE
+  # ============================================================
+  /v1/brochure/parse/{uploadId}:
+    get:
+      operationId: parseBrochure
+      tags: [brochure]
+      summary: Parse uploaded brochure
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: uploadId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: customerId
+          in: query
+          schema:
+            type: string
+        - name: priceListId
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Parsed brochure
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrochureParseResponse"
+
+  # ============================================================
+  # REPORTS
+  # ============================================================
+  /v1/reports/sales:
+    get:
+      operationId: getSalesReport
+      tags: [reports]
+      summary: Get sales report
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+        - name: locationId
+          in: query
+          schema:
+            type: string
+        - name: agentId
+          in: query
+          schema:
+            type: string
+        - name: channel
+          in: query
+          schema:
+            type: string
+        - name: groupBy
+          in: query
+          schema:
+            type: string
+        - name: summary
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Sales report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SalesReportResponse"
+
+  /v1/reports/stock:
+    get:
+      operationId: getStockReport
+      tags: [reports]
+      summary: Get stock report
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: locationId
+          in: query
+          schema:
+            type: string
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: lowStockOnly
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Stock report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockReportResponse"
+
+  /v1/reports/outstanding:
+    get:
+      operationId: getOutstandingReport
+      tags: [reports]
+      summary: Get outstanding/ageing report
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: agentId
+          in: query
+          schema:
+            type: string
+        - name: customerType
+          in: query
+          schema:
+            type: string
+        - name: summary
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Outstanding report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OutstandingReportResponse"
+
+  /v1/reports/commission:
+    get:
+      operationId: getCommissionReport
+      tags: [reports]
+      summary: Get commission report
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: agentId
+          in: query
+          schema:
+            type: string
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+        - name: period
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Commission report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommissionReportResponse"
+
+  /v1/reports/daybook:
+    get:
+      operationId: getDaybookReport
+      tags: [reports]
+      summary: Get day book
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: date
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Day book
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DaybookResponse"
+
+  # ============================================================
+  # NOTIFICATIONS
+  # ============================================================
+  /v1/notify/log:
+    get:
+      operationId: getNotificationLog
+      tags: [notifications]
+      summary: Get notification log
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: eventType
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: recipientId
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Notification log
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationLogResponse"
+
+  # ============================================================
+  # SETTINGS
+  # ============================================================
+  /v1/settings/company:
+    get:
+      operationId: getCompanySettings
+      tags: [settings]
+      summary: Get company settings
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Company settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanySettings"
+    put:
+      operationId: updateCompanySettings
+      tags: [settings]
+      summary: Update company settings
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCompanySettingsBody"
+      responses:
+        "200":
+          description: Settings updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanySettings"
+
+  /v1/settings/pricing:
+    get:
+      operationId: getPricingSettings
+      tags: [settings]
+      summary: Get pricing settings
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Pricing settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PricingSettings"
+    put:
+      operationId: updatePricingSettings
+      tags: [settings]
+      summary: Update pricing settings
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePricingSettingsBody"
+      responses:
+        "200":
+          description: Settings updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PricingSettings"
+
+  # ============================================================
+  # USERS
+  # ============================================================
+  /v1/users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List users
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: User list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserListResponse"
+    post:
+      operationId: createUser
+      tags: [users]
+      summary: Create user
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserBody"
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /v1/users/{id}:
+    get:
+      operationId: getUser
+      tags: [users]
+      summary: Get user by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: User
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+    put:
+      operationId: updateUser
+      tags: [users]
+      summary: Update user
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserBody"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  # ============================================================
+  # LOCATIONS
+  # ============================================================
+  /v1/locations:
+    get:
+      operationId: listLocations
+      tags: [locations]
+      summary: List locations
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Location list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LocationListResponse"
+    post:
+      operationId: createLocation
+      tags: [locations]
+      summary: Create location
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLocationBody"
+      responses:
+        "201":
+          description: Location created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Location"
+
+  # ============================================================
+  # PACKING JOBS
+  # ============================================================
+  /v1/packing-jobs:
+    get:
+      operationId: listPackingJobs
+      tags: [reports]
+      summary: List packing jobs
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Packing jobs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PackingJobListResponse"
+    post:
+      operationId: createPackingJob
+      tags: [reports]
+      summary: Create packing job
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePackingJobBody"
+      responses:
+        "201":
+          description: Packing job created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PackingJob"
+
+  /v1/packing-jobs/{id}/complete:
+    put:
+      operationId: completePackingJob
+      tags: [reports]
+      summary: Complete packing job
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Packing job completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PackingJob"
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
   schemas:
     HealthStatus:
       type: object
@@ -34,3 +2396,2174 @@ components:
       required:
         - status
 
+    SuccessMessage:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+      required:
+        - success
+        - message
+
+    ApiError:
+      type: object
+      properties:
+        success:
+          type: boolean
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+
+    PaginationMeta:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        pages:
+          type: integer
+
+    # AUTH SCHEMAS
+    LoginBody:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+
+    PinLoginBody:
+      type: object
+      required: [username, pin, locationId]
+      properties:
+        username:
+          type: string
+        pin:
+          type: string
+        locationId:
+          type: string
+
+    LoginResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            accessToken:
+              type: string
+            user:
+              $ref: "#/components/schemas/UserProfile"
+
+    RefreshResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            accessToken:
+              type: string
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        username:
+          type: string
+        role:
+          type: string
+        locationIds:
+          type: array
+          items:
+            type: string
+        maxDiscountPct:
+          type: number
+
+    # USER SCHEMAS
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        username:
+          type: string
+        role:
+          type: string
+          enum: [SUPER_ADMIN, ERP_MANAGER, ACCOUNTANT, AGENT, WH_MANAGER, CASHIER]
+        locationIds:
+          type: array
+          items:
+            type: string
+        email:
+          type: string
+        phone:
+          type: string
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+
+    UserListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/User"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    CreateUserBody:
+      type: object
+      required: [name, username, password, role]
+      properties:
+        name:
+          type: string
+        username:
+          type: string
+        password:
+          type: string
+        pin:
+          type: string
+        role:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        locationIds:
+          type: array
+          items:
+            type: string
+        maxDiscountPct:
+          type: number
+
+    UpdateUserBody:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        role:
+          type: string
+        locationIds:
+          type: array
+          items:
+            type: string
+        isActive:
+          type: boolean
+        maxDiscountPct:
+          type: number
+
+    # PRODUCT SCHEMAS
+    ProductVariant:
+      type: object
+      properties:
+        variantId:
+          type: string
+        size:
+          type: string
+        packContent:
+          type: string
+        unit:
+          type: string
+        prices:
+          type: object
+          properties:
+            purchase:
+              type: number
+            wholesaleBulk:
+              type: number
+            retailOnline:
+              type: number
+            retailEst:
+              type: number
+            agent:
+              type: number
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+        code:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+          enum: [Ground, Aerial, Sparkler, Novelty, Gift Box, Bundle]
+        description:
+          type: string
+        hsnCode:
+          type: string
+        onlineDisplay:
+          type: boolean
+        status:
+          type: string
+          enum: [Active, Discontinued]
+        variants:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductVariant"
+        imageUrl:
+          type: string
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    ProductListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Product"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    CreateProductBody:
+      type: object
+      required: [code, name, category, variants]
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+        description:
+          type: string
+        hsnCode:
+          type: string
+        onlineDisplay:
+          type: boolean
+        variants:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductVariant"
+
+    UpdateProductBody:
+      type: object
+      properties:
+        name:
+          type: string
+        category:
+          type: string
+        description:
+          type: string
+        hsnCode:
+          type: string
+        onlineDisplay:
+          type: boolean
+        status:
+          type: string
+        variants:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductVariant"
+
+    PriceResolution:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            resolvedPrice:
+              type: number
+            tier:
+              type: string
+            resolutionReason:
+              type: string
+            bulkRateApplied:
+              type: boolean
+            thresholdUsed:
+              type: integer
+
+    # PRICE LIST SCHEMAS
+    PriceList:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        season:
+          type: string
+        isActive:
+          type: boolean
+        validFrom:
+          type: string
+        validUntil:
+          type: string
+
+    PriceListsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/PriceList"
+
+    CreatePriceListBody:
+      type: object
+      required: [name, season]
+      properties:
+        name:
+          type: string
+        season:
+          type: string
+        validFrom:
+          type: string
+        validUntil:
+          type: string
+        isActive:
+          type: boolean
+
+    # STOCK SCHEMAS
+    StockLevel:
+      type: object
+      properties:
+        productId:
+          type: string
+        productName:
+          type: string
+        productCode:
+          type: string
+        variantId:
+          type: string
+        variantSize:
+          type: string
+        locationId:
+          type: string
+        locationName:
+          type: string
+        currentQty:
+          type: integer
+        reorderLevel:
+          type: integer
+        isLow:
+          type: boolean
+
+    StockLevelsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/StockLevel"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    StockLedgerEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        productId:
+          type: string
+        productName:
+          type: string
+        variantId:
+          type: string
+        locationId:
+          type: string
+        type:
+          type: string
+          enum: [IN, OUT, MOVE, ADJUST, DAMAGE, RESERVE, UNRESERVE]
+        qty:
+          type: integer
+        batchNo:
+          type: string
+        refType:
+          type: string
+        refId:
+          type: string
+        notes:
+          type: string
+        ts:
+          type: string
+
+    StockLedgerResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/StockLedgerEntry"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    ReceiveStockBody:
+      type: object
+      required: [purchaseOrderId, warehouseId, items]
+      properties:
+        purchaseOrderId:
+          type: string
+        warehouseId:
+          type: string
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              productId:
+                type: string
+              variantId:
+                type: string
+              qty:
+                type: integer
+              batchNo:
+                type: string
+              damagedQty:
+                type: integer
+
+    ReceiveStockResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            received:
+              type: integer
+            damaged:
+              type: integer
+
+    AdjustStockBody:
+      type: object
+      required: [productId, variantId, locationId, qty, reason]
+      properties:
+        productId:
+          type: string
+        variantId:
+          type: string
+        locationId:
+          type: string
+        qty:
+          type: integer
+        reason:
+          type: string
+
+    # CUSTOMER SCHEMAS
+    Customer:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        address:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        gstin:
+          type: string
+        customerType:
+          type: string
+          enum: [RETAIL, WHOLESALE, AGENT_CUSTOMER, VIP, WALK_IN]
+        agentId:
+          type: string
+        creditLimit:
+          type: number
+        outstandingBalance:
+          type: number
+        loyaltyPoints:
+          type: integer
+        status:
+          type: string
+        createdAt:
+          type: string
+
+    CustomerListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Customer"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    CreateCustomerBody:
+      type: object
+      required: [name, phone, customerType]
+      properties:
+        name:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        address:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        gstin:
+          type: string
+        customerType:
+          type: string
+        agentId:
+          type: string
+        creditLimit:
+          type: number
+
+    UpdateCustomerBody:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        address:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        gstin:
+          type: string
+        customerType:
+          type: string
+        agentId:
+          type: string
+        creditLimit:
+          type: number
+        status:
+          type: string
+
+    CustomerStatementEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        amount:
+          type: number
+        runningBalance:
+          type: number
+        reference:
+          type: string
+        date:
+          type: string
+        notes:
+          type: string
+
+    CustomerStatementResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            entries:
+              type: array
+              items:
+                $ref: "#/components/schemas/CustomerStatementEntry"
+            currentBalance:
+              type: number
+
+    LoyaltyEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        points:
+          type: integer
+        referenceId:
+          type: string
+        date:
+          type: string
+
+    LoyaltyResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            entries:
+              type: array
+              items:
+                $ref: "#/components/schemas/LoyaltyEntry"
+            totalPoints:
+              type: integer
+
+    RecordPaymentBody:
+      type: object
+      required: [amount, date]
+      properties:
+        amount:
+          type: number
+        date:
+          type: string
+        reference:
+          type: string
+        notes:
+          type: string
+
+    # SUPPLIER SCHEMAS
+    Supplier:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        contactPerson:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        address:
+          type: string
+        gstin:
+          type: string
+        status:
+          type: string
+        createdAt:
+          type: string
+
+    SupplierListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Supplier"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    CreateSupplierBody:
+      type: object
+      required: [name, phone]
+      properties:
+        name:
+          type: string
+        contactPerson:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        address:
+          type: string
+        gstin:
+          type: string
+
+    UpdateSupplierBody:
+      type: object
+      properties:
+        name:
+          type: string
+        contactPerson:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        address:
+          type: string
+        gstin:
+          type: string
+
+    # AGENT SCHEMAS
+    CommissionTier:
+      type: object
+      properties:
+        from:
+          type: number
+        to:
+          type: number
+        rate:
+          type: number
+
+    Agent:
+      type: object
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        name:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        promoCode:
+          type: string
+        commissionTiers:
+          type: array
+          items:
+            $ref: "#/components/schemas/CommissionTier"
+        maxDiscountPct:
+          type: number
+        monthlyTarget:
+          type: number
+        status:
+          type: string
+
+    AgentListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Agent"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    CreateAgentBody:
+      type: object
+      required: [name, phone]
+      properties:
+        name:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        promoCode:
+          type: string
+        commissionTiers:
+          type: array
+          items:
+            $ref: "#/components/schemas/CommissionTier"
+        maxDiscountPct:
+          type: number
+        monthlyTarget:
+          type: number
+
+    UpdateAgentBody:
+      type: object
+      properties:
+        name:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        promoCode:
+          type: string
+        commissionTiers:
+          type: array
+          items:
+            $ref: "#/components/schemas/CommissionTier"
+        maxDiscountPct:
+          type: number
+        monthlyTarget:
+          type: number
+
+    CommissionResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                type: object
+                properties:
+                  invoiceNo:
+                    type: string
+                  amount:
+                    type: number
+                  commission:
+                    type: number
+                  date:
+                    type: string
+            totalCommission:
+              type: number
+            totalSales:
+              type: number
+
+    # ESTIMATE SCHEMAS
+    EstimateLineItem:
+      type: object
+      properties:
+        productId:
+          type: string
+        productName:
+          type: string
+        variantId:
+          type: string
+        variantSize:
+          type: string
+        qty:
+          type: integer
+        resolvedPrice:
+          type: number
+        resolutionReason:
+          type: string
+        bulkRateApplied:
+          type: boolean
+        amount:
+          type: number
+
+    Estimate:
+      type: object
+      properties:
+        id:
+          type: string
+        estimateNo:
+          type: string
+        type:
+          type: string
+          enum: [WHOLESALE, RETAIL, AGENT]
+        customerId:
+          type: string
+        customerName:
+          type: string
+        agentId:
+          type: string
+        priceListId:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/EstimateLineItem"
+        subtotal:
+          type: number
+        couponCode:
+          type: string
+        couponDiscount:
+          type: number
+        total:
+          type: number
+        status:
+          type: string
+          enum: [draft, confirmed, converted, cancelled]
+        convertedInvoiceId:
+          type: string
+        notes:
+          type: string
+        createdAt:
+          type: string
+
+    EstimateListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Estimate"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    CreateEstimateBody:
+      type: object
+      required: [type, items]
+      properties:
+        type:
+          type: string
+        customerId:
+          type: string
+        priceListId:
+          type: string
+        agentId:
+          type: string
+        couponCode:
+          type: string
+        stockReserved:
+          type: boolean
+        items:
+          type: array
+          items:
+            type: object
+            required: [productId, variantId, qty]
+            properties:
+              productId:
+                type: string
+              variantId:
+                type: string
+              qty:
+                type: integer
+        notes:
+          type: string
+
+    ConvertEstimateBody:
+      type: object
+      required: [paymentMode]
+      properties:
+        paymentMode:
+          type: string
+          enum: [CASH, UPI, CARD, CREDIT, SPLIT]
+        couponCode:
+          type: string
+        logisticsDetails:
+          type: object
+          properties:
+            vehicleNo:
+              type: string
+            lrNo:
+              type: string
+            dispatchTo:
+              type: string
+
+    EstimateFromBrochureBody:
+      type: object
+      required: [uploadId]
+      properties:
+        uploadId:
+          type: string
+        customerId:
+          type: string
+        priceListId:
+          type: string
+        couponCode:
+          type: string
+
+    EstimateFromBrochureResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            estimate:
+              $ref: "#/components/schemas/Estimate"
+            unmatchedCodes:
+              type: array
+              items:
+                type: string
+
+    # INVOICE SCHEMAS
+    Invoice:
+      type: object
+      properties:
+        id:
+          type: string
+        invoiceNo:
+          type: string
+        customerId:
+          type: string
+        customerName:
+          type: string
+        customerGstin:
+          type: string
+        agentId:
+          type: string
+        priceListId:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/EstimateLineItem"
+        subtotal:
+          type: number
+        discountAmount:
+          type: number
+        taxableAmount:
+          type: number
+        cgst:
+          type: number
+        sgst:
+          type: number
+        igst:
+          type: number
+        total:
+          type: number
+        paymentMode:
+          type: string
+        channel:
+          type: string
+        financialYear:
+          type: string
+        status:
+          type: string
+        pdfUrl:
+          type: string
+        createdAt:
+          type: string
+
+    InvoiceListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Invoice"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    CreateInvoiceBody:
+      type: object
+      required: [items, paymentMode]
+      properties:
+        customerId:
+          type: string
+        priceListId:
+          type: string
+        agentId:
+          type: string
+        locationId:
+          type: string
+        couponCode:
+          type: string
+        loyaltyPointsRedeem:
+          type: integer
+        paymentMode:
+          type: string
+        channel:
+          type: string
+        items:
+          type: array
+          items:
+            type: object
+            required: [productId, variantId, qty]
+            properties:
+              productId:
+                type: string
+              variantId:
+                type: string
+              qty:
+                type: integer
+        logisticsDetails:
+          type: object
+
+    GstReportResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            b2b:
+              type: array
+              items:
+                type: object
+            b2c:
+              type: array
+              items:
+                type: object
+            summary:
+              type: object
+
+    # PURCHASE ORDER SCHEMAS
+    PurchaseOrderItem:
+      type: object
+      properties:
+        productId:
+          type: string
+        productName:
+          type: string
+        variantId:
+          type: string
+        orderedQty:
+          type: integer
+        receivedQty:
+          type: integer
+        unitPrice:
+          type: number
+
+    PurchaseOrder:
+      type: object
+      properties:
+        id:
+          type: string
+        poNumber:
+          type: string
+        supplierId:
+          type: string
+        supplierName:
+          type: string
+        warehouseId:
+          type: string
+        status:
+          type: string
+          enum: [draft, sent, partial, received, cancelled]
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PurchaseOrderItem"
+        totalAmount:
+          type: number
+        expectedDate:
+          type: string
+        notes:
+          type: string
+        createdAt:
+          type: string
+
+    PurchaseOrderListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/PurchaseOrder"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    CreatePurchaseOrderBody:
+      type: object
+      required: [supplierId, warehouseId, items]
+      properties:
+        supplierId:
+          type: string
+        warehouseId:
+          type: string
+        items:
+          type: array
+          items:
+            type: object
+            required: [productId, variantId, orderedQty, unitPrice]
+            properties:
+              productId:
+                type: string
+              variantId:
+                type: string
+              orderedQty:
+                type: integer
+              unitPrice:
+                type: number
+        expectedDate:
+          type: string
+        notes:
+          type: string
+
+    ReceivePurchaseOrderBody:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              productId:
+                type: string
+              variantId:
+                type: string
+              receivedQty:
+                type: integer
+              batchNo:
+                type: string
+              damagedQty:
+                type: integer
+
+    # TRANSFER SCHEMAS
+    TransferItem:
+      type: object
+      properties:
+        productId:
+          type: string
+        productName:
+          type: string
+        variantId:
+          type: string
+        qty:
+          type: integer
+        receivedQty:
+          type: integer
+        batchNo:
+          type: string
+
+    Transfer:
+      type: object
+      properties:
+        id:
+          type: string
+        transferNo:
+          type: string
+        fromLocationId:
+          type: string
+        fromLocationName:
+          type: string
+        toLocationId:
+          type: string
+        toLocationName:
+          type: string
+        status:
+          type: string
+          enum: [draft, pending_approval, in_transit, received, cancelled]
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/TransferItem"
+        vehicleNo:
+          type: string
+        notes:
+          type: string
+        dispatchedAt:
+          type: string
+        receivedAt:
+          type: string
+        createdAt:
+          type: string
+
+    TransferListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Transfer"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    CreateTransferBody:
+      type: object
+      required: [fromLocationId, toLocationId, items]
+      properties:
+        fromLocationId:
+          type: string
+        toLocationId:
+          type: string
+        items:
+          type: array
+          items:
+            type: object
+            required: [productId, variantId, qty]
+            properties:
+              productId:
+                type: string
+              variantId:
+                type: string
+              qty:
+                type: integer
+              batchNo:
+                type: string
+        notes:
+          type: string
+
+    DispatchTransferBody:
+      type: object
+      properties:
+        vehicleNo:
+          type: string
+        notes:
+          type: string
+
+    ReceiveTransferBody:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              productId:
+                type: string
+              variantId:
+                type: string
+              receivedQty:
+                type: integer
+
+    # COUPON SCHEMAS
+    Coupon:
+      type: object
+      properties:
+        id:
+          type: string
+        code:
+          type: string
+        type:
+          type: string
+          enum: [flat, percent, minorder, bxgy, bundle, firstorder, agentpromo]
+        discountValue:
+          type: number
+        maxDiscountCap:
+          type: number
+        minOrderValue:
+          type: number
+        usageLimit:
+          type: integer
+        usedCount:
+          type: integer
+        perCustomerLimit:
+          type: integer
+        applicableChannels:
+          type: array
+          items:
+            type: string
+        applicableCustomerTypes:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum: [active, paused, expired]
+        autoApply:
+          type: boolean
+        validFrom:
+          type: string
+        validUntil:
+          type: string
+        description:
+          type: string
+
+    CouponListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Coupon"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    CreateCouponBody:
+      type: object
+      required: [code, type, discountValue, validFrom, validUntil]
+      properties:
+        code:
+          type: string
+        type:
+          type: string
+        discountValue:
+          type: number
+        maxDiscountCap:
+          type: number
+        minOrderValue:
+          type: number
+        usageLimit:
+          type: integer
+        perCustomerLimit:
+          type: integer
+        applicableChannels:
+          type: array
+          items:
+            type: string
+        applicableCustomerTypes:
+          type: array
+          items:
+            type: string
+        autoApply:
+          type: boolean
+        validFrom:
+          type: string
+        validUntil:
+          type: string
+        description:
+          type: string
+
+    UpdateCouponBody:
+      type: object
+      properties:
+        status:
+          type: string
+        discountValue:
+          type: number
+        validUntil:
+          type: string
+        description:
+          type: string
+
+    ValidateCouponBody:
+      type: object
+      required: [code, cartTotal]
+      properties:
+        code:
+          type: string
+        cartTotal:
+          type: number
+        customerId:
+          type: string
+        channel:
+          type: string
+        items:
+          type: array
+          items:
+            type: object
+
+    CouponValidationResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            valid:
+              type: boolean
+            discountAmount:
+              type: number
+            discountDescription:
+              type: string
+            couponId:
+              type: string
+            error:
+              type: string
+
+    # POS SCHEMAS
+    PosSaleBody:
+      type: object
+      required: [locationId, paymentMode, items]
+      properties:
+        customerId:
+          type: string
+        locationId:
+          type: string
+        shiftId:
+          type: string
+        paymentMode:
+          type: string
+        items:
+          type: array
+          items:
+            type: object
+            required: [productId, variantId, qty]
+            properties:
+              productId:
+                type: string
+              variantId:
+                type: string
+              qty:
+                type: integer
+        couponCode:
+          type: string
+        loyaltyPointsRedeem:
+          type: integer
+
+    PosSaleResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            invoice:
+              $ref: "#/components/schemas/Invoice"
+            loyaltyEarned:
+              type: integer
+
+    PosReturnBody:
+      type: object
+      required: [invoiceId, items, reason]
+      properties:
+        invoiceId:
+          type: string
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              productId:
+                type: string
+              variantId:
+                type: string
+              qty:
+                type: integer
+        reason:
+          type: string
+
+    PosReturnResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            returnId:
+              type: string
+            creditAmount:
+              type: number
+
+    HoldBillBody:
+      type: object
+      required: [locationId, items]
+      properties:
+        locationId:
+          type: string
+        customerId:
+          type: string
+        items:
+          type: array
+          items:
+            type: object
+        label:
+          type: string
+
+    HeldBillsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              holdId:
+                type: string
+              label:
+                type: string
+              itemCount:
+                type: integer
+              createdAt:
+                type: string
+
+    PosProductsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              code:
+                type: string
+              name:
+                type: string
+              category:
+                type: string
+              variants:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    variantId:
+                      type: string
+                    size:
+                      type: string
+                    price:
+                      type: number
+                    stock:
+                      type: integer
+
+    CloseShiftBody:
+      type: object
+      required: [shiftId, closingCash]
+      properties:
+        shiftId:
+          type: string
+        closingCash:
+          type: number
+        notes:
+          type: string
+
+    ShiftSummaryResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            totalSales:
+              type: number
+            cashSales:
+              type: number
+            upiSales:
+              type: number
+            cardSales:
+              type: number
+            creditSales:
+              type: number
+            openingCash:
+              type: number
+            closingCash:
+              type: number
+            overShort:
+              type: number
+
+    # RETURN/DAMAGE SCHEMAS
+    Return:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [customer, supplier, online]
+        referenceId:
+          type: string
+        items:
+          type: array
+          items:
+            type: object
+        reason:
+          type: string
+        creditAmount:
+          type: number
+        status:
+          type: string
+        createdAt:
+          type: string
+
+    ReturnListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Return"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    LogDamageBody:
+      type: object
+      required: [locationId, productId, variantId, qty, category]
+      properties:
+        locationId:
+          type: string
+        productId:
+          type: string
+        variantId:
+          type: string
+        batchNo:
+          type: string
+        qty:
+          type: integer
+        category:
+          type: string
+          enum: [transit, storage, handling, expired, other]
+        description:
+          type: string
+
+    DamageLog:
+      type: object
+      properties:
+        id:
+          type: string
+        locationId:
+          type: string
+        productId:
+          type: string
+        productName:
+          type: string
+        variantId:
+          type: string
+        qty:
+          type: integer
+        category:
+          type: string
+        description:
+          type: string
+        createdAt:
+          type: string
+
+    DamageListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/DamageLog"
+
+    # BROCHURE SCHEMAS
+    BrochureParseResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            matchedItems:
+              type: array
+              items:
+                type: object
+                properties:
+                  productId:
+                    type: string
+                  productName:
+                    type: string
+                  productCode:
+                    type: string
+                  variantId:
+                    type: string
+                  qty:
+                    type: integer
+                  resolvedPrice:
+                    type: number
+                  bulkRateApplied:
+                    type: boolean
+            unmatchedCodes:
+              type: array
+              items:
+                type: string
+            totalRows:
+              type: integer
+            matchedCount:
+              type: integer
+
+    # REPORT SCHEMAS
+    SalesReportResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            summary:
+              type: object
+              properties:
+                totalRevenue:
+                  type: number
+                totalInvoices:
+                  type: integer
+                avgOrderValue:
+                  type: number
+            byChannel:
+              type: array
+              items:
+                type: object
+                properties:
+                  channel:
+                    type: string
+                  revenue:
+                    type: number
+                  count:
+                    type: integer
+            items:
+              type: array
+              items:
+                type: object
+
+    StockReportResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/StockLevel"
+
+    OutstandingReportResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            summary:
+              type: object
+              properties:
+                total:
+                  type: number
+                bucket0_30:
+                  type: number
+                bucket31_60:
+                  type: number
+                bucket61_90:
+                  type: number
+                bucket90plus:
+                  type: number
+            customers:
+              type: array
+              items:
+                type: object
+
+    CommissionReportResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            agents:
+              type: array
+              items:
+                type: object
+                properties:
+                  agentId:
+                    type: string
+                  agentName:
+                    type: string
+                  totalSales:
+                    type: number
+                  commission:
+                    type: number
+
+    DaybookResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            date:
+              type: string
+            cashIn:
+              type: number
+            cashOut:
+              type: number
+            upiIn:
+              type: number
+            totalSales:
+              type: number
+            entries:
+              type: array
+              items:
+                type: object
+
+    # NOTIFICATION SCHEMAS
+    NotificationLog:
+      type: object
+      properties:
+        id:
+          type: string
+        eventType:
+          type: string
+        channel:
+          type: string
+        status:
+          type: string
+        recipientId:
+          type: string
+        recipientType:
+          type: string
+        createdAt:
+          type: string
+
+    NotificationLogResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/NotificationLog"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    # SETTINGS SCHEMAS
+    CompanySettings:
+      type: object
+      properties:
+        companyName:
+          type: string
+        gstin:
+          type: string
+        address:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        defaultHSN:
+          type: string
+        invoiceStartNumber:
+          type: integer
+        financialYear:
+          type: string
+        bankDetails:
+          type: string
+
+    UpdateCompanySettingsBody:
+      type: object
+      properties:
+        companyName:
+          type: string
+        gstin:
+          type: string
+        address:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        defaultHSN:
+          type: string
+        financialYear:
+          type: string
+        bankDetails:
+          type: string
+
+    PricingSettings:
+      type: object
+      properties:
+        wholesaleQtyThreshold:
+          type: integer
+        defaultPriceListId:
+          type: string
+        loyaltyEarnRate:
+          type: number
+        loyaltyRedemptionRate:
+          type: number
+        taxRate:
+          type: number
+
+    UpdatePricingSettingsBody:
+      type: object
+      properties:
+        wholesaleQtyThreshold:
+          type: integer
+        defaultPriceListId:
+          type: string
+        loyaltyEarnRate:
+          type: number
+        loyaltyRedemptionRate:
+          type: number
+        taxRate:
+          type: number
+
+    # LOCATION SCHEMAS
+    Location:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          enum: [warehouse, shop]
+        address:
+          type: string
+        city:
+          type: string
+        phone:
+          type: string
+        isActive:
+          type: boolean
+
+    LocationListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Location"
+
+    CreateLocationBody:
+      type: object
+      required: [name, type, address]
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        address:
+          type: string
+        city:
+          type: string
+        phone:
+          type: string
+
+    # PACKING JOB SCHEMAS
+    PackingJob:
+      type: object
+      properties:
+        id:
+          type: string
+        jobNumber:
+          type: string
+        locationId:
+          type: string
+        rawMaterials:
+          type: array
+          items:
+            type: object
+        finishedGoods:
+          type: array
+          items:
+            type: object
+        wasteItems:
+          type: array
+          items:
+            type: object
+        status:
+          type: string
+          enum: [pending, in_progress, completed]
+        notes:
+          type: string
+        completedAt:
+          type: string
+        createdAt:
+          type: string
+
+    PackingJobListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/PackingJob"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    CreatePackingJobBody:
+      type: object
+      required: [locationId, rawMaterials, finishedGoods]
+      properties:
+        locationId:
+          type: string
+        rawMaterials:
+          type: array
+          items:
+            type: object
+        finishedGoods:
+          type: array
+          items:
+            type: object
+        notes:
+          type: string
+
+    # DASHBOARD SCHEMAS
+    DashboardSummary:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            todaySales:
+              type: number
+            todayInvoices:
+              type: integer
+            outstandingTotal:
+              type: number
+            lowStockCount:
+              type: integer
+            activeTransfers:
+              type: integer
+            monthSales:
+              type: number
+            monthGrowth:
+              type: number
+
+    SalesByChannelItem:
+      type: object
+      properties:
+        channel:
+          type: string
+        revenue:
+          type: number
+        count:
+          type: integer
+
+    SalesByChannelResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/SalesByChannelItem"
+
+    TopProductsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              productId:
+                type: string
+              productName:
+                type: string
+              totalQty:
+                type: integer
+              totalRevenue:
+                type: number
+
+    AgentPerformanceResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              agentId:
+                type: string
+              agentName:
+                type: string
+              sales:
+                type: number
+              target:
+                type: number
+              achievement:
+                type: number

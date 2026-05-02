@@ -1,0 +1,119 @@
+import { Link, useLocation } from "wouter";
+import { cn } from "@/lib/utils";
+import { 
+  LayoutDashboard, 
+  Package, 
+  ArrowDownToLine, 
+  ArrowLeftRight, 
+  History, 
+  Settings2, 
+  LogOut,
+  Warehouse,
+  Menu,
+  ChevronLeft
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useState, useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
+
+interface SidebarProps {
+  className?: string;
+}
+
+const navItems = [
+  { icon: LayoutDashboard, label: "Dashboard", href: "/" },
+  { icon: Package, label: "Stock Levels", href: "/stock" },
+  { icon: ArrowDownToLine, label: "Receive Stock", href: "/receive" },
+  { icon: Settings2, label: "Stock Adjust", href: "/adjust" },
+  { icon: ArrowLeftRight, label: "Transfers", href: "/transfers" },
+  { icon: History, label: "Stock Ledger", href: "/ledger" },
+];
+
+export function Sidebar({ className }: SidebarProps) {
+  const [location] = useLocation();
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
+
+  const handleLogout = () => {
+    localStorage.removeItem("wh_token");
+    toast({
+      title: "Logged out",
+      description: "You have been logged out successfully",
+    });
+    setLocation("/login");
+  };
+
+  return (
+    <div className={cn(
+      "relative flex flex-col h-screen border-r bg-[#1e293b] text-white transition-all duration-300",
+      isCollapsed ? "w-16" : "w-64",
+      className
+    )}>
+      <div className="flex items-center h-16 px-4 border-b border-white/10">
+        <Warehouse className="h-6 w-6 text-teal-400" />
+        {!isCollapsed && <span className="ml-3 font-bold text-lg tracking-tight">RATINAM WH</span>}
+      </div>
+
+      <nav className="flex-1 py-4 space-y-1">
+        {navItems.map((item) => {
+          const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href));
+          return (
+            <Link key={item.href} href={item.href}>
+              <a className={cn(
+                "flex items-center px-4 py-3 transition-colors hover:bg-white/10",
+                isActive ? "bg-white/10 text-teal-400 border-r-4 border-teal-400" : "text-gray-300",
+                isCollapsed && "justify-center"
+              )}>
+                <item.icon className={cn("h-5 w-5", !isCollapsed && "mr-3")} />
+                {!isCollapsed && <span>{item.label}</span>}
+              </a>
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className="p-4 border-t border-white/10">
+        <button
+          onClick={handleLogout}
+          className={cn(
+            "flex items-center w-full px-4 py-3 text-gray-300 transition-colors hover:bg-white/10 rounded-md",
+            isCollapsed && "justify-center"
+          )}
+        >
+          <LogOut className={cn("h-5 w-5", !isCollapsed && "mr-3")} />
+          {!isCollapsed && <span>Logout</span>}
+        </button>
+      </div>
+
+      <Button
+        variant="ghost"
+        size="icon"
+        className="absolute -right-4 top-20 h-8 w-8 rounded-full border bg-white text-black hover:bg-gray-100 hidden md:flex"
+        onClick={() => setIsCollapsed(!isCollapsed)}
+      >
+        <ChevronLeft className={cn("h-4 w-4 transition-transform", isCollapsed && "rotate-180")} />
+      </Button>
+    </div>
+  );
+}
+
+export function Layout({ children }: { children: React.ReactNode }) {
+  const [location] = useLocation();
+  const isLoginPage = location === "/login";
+
+  if (isLoginPage) {
+    return <>{children}</>;
+  }
+
+  return (
+    <div className="flex h-screen bg-gray-50 overflow-hidden">
+      <Sidebar />
+      <main className="flex-1 overflow-y-auto p-4 md:p-8">
+        <div className="max-w-7xl mx-auto">
+          {children}
+        </div>
+      </main>
+    </div>
+  );
+}

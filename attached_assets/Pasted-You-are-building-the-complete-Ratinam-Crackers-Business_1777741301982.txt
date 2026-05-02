@@ -1,0 +1,1690 @@
+You are building the complete Ratinam Crackers Business Management System.
+This is a full-stack Node.js + React.js production application.
+
+CRITICAL INSTRUCTION: READ THIS ENTIRE PROMPT BEFORE WRITING ANY CODE.
+Build EXACTLY as specified. No simplified versions. No placeholders.
+Every phase must pass its verifier before you proceed to the next.
+The system must be complete and deployable when all 16 phases pass.
+
+=========================================================
+TECHNOLOGY STACK — FIXED, DO NOT CHANGE
+=========================================================
+
+Backend:  Node.js 20 + Express.js 4 + MongoDB 7 (Mongoose) + Redis (Bull)
+Frontend: React 18 + Vite + Tailwind CSS + shadcn/ui + React Query + Zustand
+Real-time: Socket.io 4
+Testing:  Jest + Supertest (API) + Playwright (E2E)
+PDF:      Puppeteer + PDFKit
+Excel:    exceljs
+Barcode:  bwip-js (generate) + @zxing/browser (scan)
+Offline:  IndexedDB via idb library (POS only)
+Notifications: WATI (WhatsApp) + Twilio (SMS) + Nodemailer+SES (Email)
+Payment:  Razorpay
+Storage:  AWS S3
+
+=========================================================
+PROJECT STRUCTURE
+=========================================================
+
+Create this exact monorepo structure:
+  ratinam-crackers/
+  ├── scripts/verifier.js   ← THE MOST IMPORTANT FILE
+  ├── scripts/seed.js
+  ├── scripts/deploy-prep.sh
+  ├── server/               ← Node.js API
+  ├── client/erp/           ← React ERP Panel
+  ├── client/pos/           ← React POS
+  ├── client/warehouse/     ← React Warehouse
+  ├── client/website/       ← React E-commerce
+  ├── nginx/ratinam.conf    ← Production Nginx config
+  ├── pm2/ecosystem.config.js
+  └── docs/                 ← API.md, DEPLOY.md, ENV.md
+
+=========================================================
+CORE BUSINESS RULES — MEMORISE THESE
+=========================================================
+
+RULE 1 — PRICING (5 tiers, client-confirmed):
+  Tier 1: purchase      = internal cost only, NEVER on any customer document
+  Tier 2: wholesaleBulk = WHOLESALE customers OR qty >= threshold on any line
+  Tier 3: retailOnline  = retail POS + website + walk-in ALL get THE SAME PRICE
+  Tier 4: retailEst     = ERP retail estimate module only
+  Tier 5: agent         = agent billing their assigned customers only
+
+RULE 2 — WHOLESALE QTY TRIGGER:
+  if (lineQty >= settings.wholesaleQtyThreshold) → use Tier 2
+  Default threshold = 10. Config in Settings collection.
+  Applied per line item, not total cart.
+  Applies to ALL customer types including RETAIL and WALK_IN.
+  API response MUST include: resolutionReason + bulkRateApplied: bool
+
+RULE 3 — STOCK LEDGER IS IMMUTABLE:
+  StockLedger = append-only. NEVER update or delete records.
+  Add pre-save hook that throws Error on any update attempt.
+  Current stock = SUM(IN) - SUM(OUT/DAMAGE/RESERVE) via MongoDB aggregation.
+  Types: IN, OUT, MOVE, ADJUST, DAMAGE, RESERVE, UNRESERVE
+
+RULE 4 — COUPON VALIDATION IS ALWAYS SERVER-SIDE:
+  Client sends {code, cartTotal, customerId, channel} to POST /coupons/validate
+  Server returns discountAmount. Client NEVER calculates discount.
+  Coupon usage recorded ONLY after order confirmed, not at validation.
+
+RULE 5 — BROCHURE EXCEL UPLOAD:
+  Column A header = 'Code' (case-insensitive) = ERP product code
+  Column F header = 'Qty' = quantity customer wants
+  Parser uses exceljs. Match by HEADER NAME not column position.
+  Rows with qty=0 or blank = silently skipped.
+  Unmatched codes = returned in unmatchedCodes[] array.
+
+RULE 6 — NOTIFICATIONS (3-channel fallback chain):
+  Try WhatsApp (WATI) → if fail/undelivered 2min → Try SMS (Twilio)
+  → if fail → Try Email (Nodemailer+SES)
+  ALL notifications queued via Bull. NEVER synchronous.
+  38 events total: 17 customer + 21 staff. ALL must be wired.
+
+RULE 7 — API RESPONSE STANDARD:
+  ALWAYS use utils/response.js: success(res, data) or error(res, msg)
+  NEVER use res.json() directly in controllers.
+  ALWAYS include resolutionReason in price responses.
+
+RULE 8 — SECURITY:
+  NEVER return hashedPassword or pin in any API response (User.toJSON strips them)
+  NEVER store JWT in localStorage (use httpOnly cookie for refresh token)
+  NEVER hardcode credentials (always process.env)
+  NEVER expose S3 keys (always presigned URLs)
+  bcrypt rounds = 12 minimum
+
+=========================================================
+VERIFIER SYSTEM — THE BUILD LOOP
+=========================================================
+
+scripts/verifier.js is the gatekeeper between phases.
+
+Usage:
+  node scripts/verifier.js --phase=N    run checks for phase N
+  node scripts/verifier.js --phase=all  run all phases 0-15
+
+The verifier:
+  1. Runs all checks defined for that phase
+  2. For each check: logs green checkmark (pass) or red X (fail)
+  3. If any check fails: prints 'PHASE N: X FAILURES' and exits code 1
+  4. If all pass: prints 'PHASE N: ALL CHECKS PASSED' and exits code 0
+
+YOUR LOOP RULE: After running verifier for phase N:
+  IF result = FAILURES → fix every failure → re-run verifier → loop
+  IF result = ALL CHECKS PASSED → start phase N+1
+  NEVER skip the verifier. NEVER proceed with failures.
+
+After all 16 phases pass, run: node scripts/verifier.js --phase=all
+When output shows all 16 phases passed, print:
+  RATINAM CRACKERS BUILD: COMPLETE
+  All 16 phases verified. System ready for deployment.
+
+=========================================================
+PHASE 0 — SCAFFOLD + VERIFIER + DEPENDENCIES
+=========================================================
+
+CREATE: scripts/verifier.js
+  Structure:
+    const checks = {
+      0: checkPhase0, 1: checkPhase1, ..., 15: checkPhase15
+    };
+    Each checkPhaseN() = async function returning [{name, passed, detail?}]
+    Checks use: fs.existsSync, require() try/catch, supertest, child_process.exec
+    Output: coloured with \\x1b[32m (green) and \\x1b[31m (red) ANSI codes
+
+Phase 0 checks:
+  [FILE] .replit exists
+  [FILE] package.json has 'workspaces' array
+  [FILE] server/package.json exists
+  [FILE] server/.env.example exists with all 25 required variable names
+  [FILE] All 4 client/*/package.json files exist
+  [FILE] All 26 server/models/*.js files exist
+  [FILE] All 29 server/routes/*.js files exist
+  [FILE] All 10 server/services/*.js files exist
+  [FILE] All 5 server/jobs/*.js files exist
+  [FILE] scripts/seed.js exists
+  [FILE] scripts/deploy-prep.sh exists
+
+CREATE: All directory structure and empty placeholder files
+  Each placeholder .js exports an empty object or placeholder function
+  This allows require() to succeed in verifier checks
+
+INSTALL: All dependencies as listed in Section 2.5 and 2.6
+
+Run: node scripts/verifier.js --phase=0
+Fix all failures. Repeat until: PHASE 0: ALL CHECKS PASSED
+
+=========================================================
+PHASE 1 — DATABASE MODELS
+=========================================================
+
+Implement all 26 Mongoose models.
+
+CRITICAL MODELS:
+
+StockLedger.js:
+  Fields: productId(ObjectId,req), variantId(String,req), locationId(ObjectId,req),
+          binLocation(String), type(enum[IN,OUT,MOVE,ADJUST,DAMAGE,RESERVE,UNRESERVE],req),
+          qty(Number,req), batchNo(String), refType(String), refId(ObjectId),
+          actorId(ObjectId,req), channel(String), notes(String), ts(Date,default:now,immutable:true)
+  NO timestamps:true, NO versionKey
+  CRITICAL: Add pre-hook to block ALL updates:
+    schema.pre(['updateOne','findOneAndUpdate','updateMany','replaceOne'], function(){
+      throw new Error('StockLedger is append-only. Use stock.service.js addStockMovement().');
+    });
+  Index: { productId:1, variantId:1, locationId:1, ts:-1 }
+
+Product.js:
+  variants is an array of:
+    { variantId(String,req), size(String,req),
+      priceLists: Map<priceListId → {purchase,wholesaleBulk,retailOnline,retailEst,agent}>,
+      customPrices: [{customerId,price,validFrom,validUntil,setBy,reason}] }
+  Note: retailOnline is ONE field used for ALL of: retail POS, website, walk-in.
+
+User.js:
+  Add toJSON() that removes hashedPassword and pin
+  Add static findByCredentials(username, password) → bcrypt compare
+  Add static findByPin(username, pin, locationId) → bcrypt compare PIN
+  Index: { username: 1 } unique
+
+Coupon.js:
+  Add pre-save validation: if type=percent, discountValue must be 1-100
+  Virtual: remainingUses = usageLimit===0 ? Infinity : usageLimit - usedCount
+
+Settings.js:
+  Single document collection (use findOneAndUpdate with upsert:true)
+  Fields: companyName, gstin, address, bankDetails, defaultHSN(default:'3604'),
+          invoiceStartNumber(default:1), financialYear, defaultPriceListId,
+          wholesaleQtyThreshold(default:10), logoS3Key, brandColors,
+          razorpayKeyId, watiEndpoint, watiToken, twilioSid, twilioToken,
+          sesSmtpHost, sesSmtpUser, sesSmtpPass, emailFrom,
+          savingsApiUrl, savingsApiKey
+
+server/tests/setup.js:
+  Uses mongodb-memory-server (MongoMemoryServer)
+  beforeAll: start server, connect mongoose
+  afterAll: disconnect, stop server
+  beforeEach: clear ALL collections (Model.deleteMany({}) for each model)
+
+server/tests/pricing.test.js — 32 scenarios:
+  For each: create product with all 5 tiers, call pricing.service.resolvePrice(),
+  assert: correct resolvedPrice + correct resolutionReason + correct bulkRateApplied
+  Scenarios cover ALL combinations:
+    channels: POS, WEBSITE, ERP_WHOLESALE_ESTIMATE, ERP_RETAIL_ESTIMATE, ERP_INVOICE
+    customerTypes: RETAIL, WHOLESALE, AGENT_CUSTOMER, VIP, WALK_IN (no customerId)
+    qty: below threshold (9), at threshold (10), above threshold (12)
+    custom override: valid date, expired date
+
+Phase 1 checks:
+  [MODEL] All 26 models can be require()d without error
+  [DB]    MongoDB connects using test connection string
+  [DB]    Redis connects
+  [MODEL] Product model: creating without required field throws ValidationError
+  [MODEL] StockLedger: updateOne throws immutability error
+  [MODEL] User.toJSON(): no hashedPassword or pin in output
+  [MODEL] Coupon pre-save: type=percent with value=150 throws ValidationError
+  [TEST]  All 32 pricing tests pass (jest pricing.test.js)
+
+Run: node scripts/verifier.js --phase=1
+Fix all failures. Repeat until: PHASE 1: ALL CHECKS PASSED
+
+=========================================================
+PHASE 2 — API FOUNDATION: AUTH + MIDDLEWARE + ERROR HANDLING
+=========================================================
+
+CREATE: server/app.js
+  app = express()
+  Middleware stack (ORDER MATTERS):
+    1. helmet() — security headers
+    2. cors({ origin: CORS_ORIGINS.split(','), credentials: true })
+    3. express.json({ limit: '10mb' })
+    4. express.urlencoded({ extended: true, limit: '10mb' })
+    5. morgan('combined', { stream: logger.stream })
+    6. rateLimiter (200 req/15min per IP default)
+    7. All route mounts at /api/v1/
+    8. 404 handler
+    9. Global error handler (LAST)
+
+CREATE: server/middleware/asyncHandler.js
+  module.exports = fn => (req,res,next) => Promise.resolve(fn(req,res,next)).catch(next)
+  EVERY controller must wrap async functions with asyncHandler
+
+CREATE: server/middleware/auth.js
+  verifyToken: extract Bearer token from Authorization header
+              verify with JWT_SECRET → attach req.user = {id,role,locationIds,maxDiscountPct}
+              if missing/invalid/expired → 401 with appropriate error code
+  optionalToken: same but does not block if no token (for public + auth routes)
+
+CREATE: server/middleware/rbac.js
+  requireRole = (...roles) => (req,res,next) =>
+    roles.includes(req.user?.role) ? next() : next(new ForbiddenError('Access denied'))
+
+CREATE: server/middleware/errorHandler.js
+  Global error handler: (err, req, res, next) =>
+  Map error types:
+    ZodError → 400, code: VALIDATION_ERROR, include field-level errors
+    Mongoose ValidationError → 400, code: VALIDATION_ERROR
+    Mongoose 11000 (duplicate) → 409, code: DUPLICATE_KEY, include field name
+    JsonWebTokenError → 401, code: INVALID_TOKEN
+    TokenExpiredError → 401, code: TOKEN_EXPIRED
+    Custom NotFoundError → 404
+    Custom ForbiddenError → 403
+    Default → 500 (hide details in production, show in dev)
+
+CREATE: server/utils/response.js
+  success(res, data, statusCode=200, meta={})
+    → res.status(statusCode).json({ success:true, data, meta })
+  error(res, message, statusCode=400, code='BAD_REQUEST', fields=[])
+    → res.status(statusCode).json({ success:false, error:{code,message,fields} })
+  paginate(res, data, total, page, limit)
+    → success(res, data, 200, { page, limit, total, pages: ceil(total/limit) })
+
+CREATE: server/routes/auth.routes.js + server/controllers/auth.controller.js
+  POST /api/v1/auth/login
+    body: { username, password }
+    → User.findByCredentials() → generate accessToken + refreshToken
+    → store refreshToken hash in Redis with TTL = JWT_REFRESH_EXPIRES
+    → return { success:true, data:{ accessToken, user:{id,name,role,locationIds} } }
+    → set refreshToken as httpOnly cookie
+    Rate limit: 5 requests per 15 min per IP
+
+  POST /api/v1/auth/pin-login
+    body: { username, pin, locationId }
+    → User.findByPin() → same token generation
+    Rate limit: 5 per 15min per IP
+
+  POST /api/v1/auth/refresh
+    → Read refreshToken from httpOnly cookie or body
+    → Verify against Redis (not blacklisted)
+    → Verify JWT signature
+    → Return new accessToken
+
+  POST /api/v1/auth/logout
+    → Blacklist refreshToken in Redis
+    → Clear httpOnly cookie
+
+Phase 2 checks:
+  [API]  POST /auth/login with seed admin credentials → 200 + accessToken
+  [API]  POST /auth/login with wrong password → 401
+  [API]  GET /api/v1/products (protected) without token → 401
+  [API]  GET /api/v1/products with expired token → 401 code:TOKEN_EXPIRED
+  [API]  POST /auth/refresh with valid refresh token → 200 + new accessToken
+  [API]  Route with requireRole(['ADMIN']) as Cashier → 403
+  [API]  POST /auth/login 6 times → 6th attempt → 429
+  [SHAPE] Error responses always: {success:false, error:{code,message}}
+  [TEST]  auth.test.js all tests pass
+
+Run: node scripts/verifier.js --phase=2
+Fix all failures. Repeat until: PHASE 2: ALL CHECKS PASSED
+
+=========================================================
+PHASE 3 — PRICING ENGINE + PRODUCT API
+=========================================================
+
+CREATE: server/services/pricing.service.js
+
+  async function resolvePrice({ productId, variantId, qty, customerId,
+                                 channel, priceListId, userRole })
+  Returns: { resolvedPrice, tier, resolutionReason, bulkRateApplied, thresholdUsed }
+
+  ALGORITHM (execute in EXACTLY this order):
+  1. Load product + find variant by variantId
+  2. Load active price list ID (use passed priceListId or fetch from Settings)
+  3. Get prices = variant.priceLists.get(activePriceListId)
+     If no prices found: throw Error('No prices for this variant/season')
+  4. Load threshold = Settings.wholesaleQtyThreshold || 10
+  5. IF customerId provided: check variant.customPrices for active override
+     (validFrom <= now <= validUntil)
+     IF found: return { resolvedPrice:override.price, tier:'customOverride',
+                        resolutionReason:'custom_price_override',
+                        bulkRateApplied:false, thresholdUsed:threshold }
+  6. IF customerId provided: load customer.customerType
+     ELSE: customerType = 'WALK_IN'
+  7. Determine tier:
+     if customerType === 'WHOLESALE':
+       tier='wholesaleBulk', reason='customer_type_wholesale'
+     elif qty >= threshold:
+       tier='wholesaleBulk', reason='wholesale_qty_rule'
+     elif channel === 'ERP_RETAIL_ESTIMATE':
+       tier='retailEst', reason='retail_estimate_channel'
+     elif userRole === 'AGENT' and channel startsWith 'ERP':
+       tier='agent', reason='agent_billing'
+     else:
+       tier='retailOnline', reason='retail_standard'
+       # This covers: RETAIL POS + WEBSITE + WALK_IN + VIP retail = ALL same price
+  8. return { resolvedPrice:prices[tier], tier, resolutionReason:reason,
+              bulkRateApplied: tier==='wholesaleBulk', thresholdUsed:threshold }
+
+  Also export: async function resolveLineItems(items[], context) → resolves prices for array
+
+CREATE: All product routes (product.routes.js + product.controller.js):
+
+  GET /api/v1/products
+    Auth: required. Query: category, status, onlineDisplay, search, page(1), limit(20)
+    Returns paginated product list. Purchase rate included for Manager+ roles.
+    For Cashier/Agent: omit purchase rate from response.
+
+  GET /api/v1/products/public
+    Auth: API key (for website) OR no auth.
+    Returns: only onlineDisplay=true products.
+    Price field: ONLY retailOnline tier. NO purchase rate. NO other tiers.
+
+  POST /api/v1/products
+    Auth: Manager+. Body: full product object with variants[].
+    After save: generate barcode for each variant, save to Barcode collection.
+    Trigger audit log.
+
+  PUT /api/v1/products/:id → update. Auth: Manager+.
+  DELETE /api/v1/products/:id → set status=Discontinued. Auth: Admin only.
+
+  GET /api/v1/products/:id/price
+    Auth: required. Query: qty(required), customerId, channel(required), priceListId
+    Returns: { resolvedPrice, tier, resolutionReason, bulkRateApplied, thresholdUsed }
+
+  POST /api/v1/products/:id/custom-price
+    Auth: Admin. Body: { customerId, variantId, price, validFrom, validUntil, reason }
+    Adds to variant.customPrices array.
+
+CREATE: pricing routes:
+  GET/POST /api/v1/price-lists
+  PUT /api/v1/price-lists/:id/activate → sets isActive=true, others to false
+  GET /api/v1/price-lists/compare?listA=X&listB=Y → side-by-side comparison
+
+Phase 3 checks:
+  [TEST]  All 32 pricing scenarios pass (pricing.test.js — from Phase 1)
+  [API]   GET /products returns paginated list with correct shape
+  [API]   GET /products/public returns ONLY onlineDisplay=true, ONLY retailOnline price
+  [API]   GET /products/public response: NO purchase field present
+  [RULE]  GET /products/:id/price?qty=10&channel=POS → bulkRateApplied=true
+  [RULE]  GET /products/:id/price?qty=9&channel=POS → bulkRateApplied=false
+  [RULE]  GET /products/:id/price?qty=5 with WHOLESALE customer → bulkRateApplied=true
+  [RULE]  Price response always has: resolutionReason field
+  [RULE]  Custom price override returned when date is valid
+  [TEST]  product.test.js all tests pass
+
+Run: node scripts/verifier.js --phase=3
+Fix all failures. Repeat until: PHASE 3: ALL CHECKS PASSED
+
+=========================================================
+PHASE 4 — STOCK SYSTEM + BARCODES + PURCHASE ORDERS
+=========================================================
+
+CREATE: server/services/stock.service.js
+
+  async getStockLevel(productId, variantId, locationId):
+    MongoDB aggregation on StockLedger:
+      $match: { productId, variantId, locationId }
+      $group: { _id: null,
+                inQty: $sum of qty where type IN ['IN','UNRESERVE'],
+                outQty: $sum of qty where type IN ['OUT','DAMAGE','RESERVE','ADJUST_OUT'],
+                adjustIn: $sum where type=ADJUST and qty > 0,
+                adjustOut: $sum where type=ADJUST and qty < 0 }
+    Return: inQty + adjustIn - outQty + adjustOut
+    NOTE: ADJUST records use positive qty for additions, negative for subtractions
+
+  async addStockMovement(data):
+    Creates new StockLedger document.
+    After save: emit socket.io event 'stock:updated' to relevant location room.
+    After save: check if new stock level < reorder threshold → emit 'low_stock:alert'
+    Returns saved document.
+
+  async validateStockSufficient(productId, variantId, locationId, requiredQty):
+    const available = await getStockLevel(...)
+    return { sufficient: available >= requiredQty, available }
+
+  async bulkValidateStock(items[], locationId):
+    Validates multiple items at once. Returns array of { ...item, sufficient, available }.
+
+CREATE: stock routes:
+  GET /api/v1/stock/levels
+    Query: locationId, productId, category, lowStockOnly(bool)
+    Returns: [{productId, variantId, locationId, currentQty, reorderLevel, isLow}]
+
+  GET /api/v1/stock/ledger
+    Auth: Manager+. Query: productId, locationId, type, dateFrom, dateTo, page, limit
+
+  POST /api/v1/stock/receive
+    Auth: Warehouse+. Body: {purchaseOrderId, warehouseId, items[{productId,variantId,qty,batchNo,damagedQty}]}
+    For each item: call addStockMovement(type='IN')
+    If damagedQty > 0: call addStockMovement(type='DAMAGE') + create DamageLog
+    Generate barcode for each non-damaged batch
+    Update PO item received quantities
+    Return: { received, damaged, barcodes[] }
+
+  POST /api/v1/stock/adjust
+    Auth: Admin. Body: {productId, variantId, locationId, qty, reason(required), type:'ADJUST'}
+    Creates ADJUST record. reason is mandatory — throw 400 if missing.
+
+CREATE: server/services/barcode.service.js
+
+  async generateProductBarcode(productId, variantId, batchNo, locationId):
+    code = 'RC-' + shortId()   (or use product code + batch)
+    pngBuffer = await bwipjs.toBuffer({ bcid:'code128', text:code, scale:3, height:10 })
+    qrBuffer = await bwipjs.toBuffer({ bcid:'qrcode', text:JSON.stringify({type:'product',code,productId,variantId}), scale:4 })
+    Save Barcode document: { code, type:'product', entityId:productId, locationId, batchNo }
+    Return { code, pngBase64:pngBuffer.toString('base64'), qrBase64 }
+
+  async lookupBarcode(code):
+    Find Barcode by code field
+    Populate entityId based on type (product → Product, transfer → StockTransfer, etc.)
+    Return { type, entityId, entityData }
+
+  async generateLabelHTML(barcodes[]):
+    Return printable HTML with CSS grid of labels
+    Each label: product name, pack content, batch no, CODE128 barcode image (base64), QR code
+    CSS: @media print { page margins 5mm, labels in 3-column grid }
+
+CREATE: barcode routes:
+  POST /api/v1/barcodes/generate   body:{productId,variantId,batchNo,locationId}
+  GET  /api/v1/barcodes/scan/:code returns entity context
+  POST /api/v1/barcodes/print-batch body:{barcodes:[]} returns HTML string
+
+CREATE: purchase order routes:
+  GET    /api/v1/purchase-orders   filter:status,supplierId,dateFrom,dateTo
+  POST   /api/v1/purchase-orders   create PO; send email to supplier with PDF (queued)
+  GET    /api/v1/purchase-orders/:id
+  PUT    /api/v1/purchase-orders/:id/receive   → calls stock.service.addStockMovement
+  POST   /api/v1/purchase-orders/:id/return    → OUT records + debit note
+
+Phase 4 checks:
+  [TEST]  stock.test.js all pass
+  [RULE]  POST /stock/receive creates correct IN StockLedger records
+  [RULE]  GET /stock/levels returns aggregated qty (not raw ledger count)
+  [RULE]  POST /stock/adjust without reason → 400
+  [RULE]  StockLedger.findOneAndUpdate() throws immutability error
+  [API]   POST /barcodes/generate returns base64 PNG (non-empty string)
+  [API]   GET /barcodes/scan/:code returns type + entityData
+  [API]   POST /barcodes/print-batch returns HTML string with 'barcode' in content
+
+Run: node scripts/verifier.js --phase=4
+Fix all failures. Repeat until: PHASE 4: ALL CHECKS PASSED
+
+=========================================================
+PHASE 5 — CUSTOMERS, SUPPLIERS, AGENTS + IMPORT/EXPORT
+=========================================================
+
+Customer routes (customer.routes.js):
+  GET /customers  search:name/phone/gstin/city/agentId  paginated
+  POST /customers  validate phone unique; on success: attempt savings sync (async, non-blocking)
+  PUT /customers/:id  update; re-sync savings (async)
+  DELETE /customers/:id  deactivate (status field), NOT hard delete
+  GET /customers/:id/statement  all CreditLedger entries chronological + running balance
+  POST /customers/:id/payment  body:{amount,date,reference}
+    → create CreditLedger entry type=PAYMENT
+    → update Customer.outstandingBalance (subtract)
+    → trigger notification 'payment_received'
+  GET /customers/:id/loyalty  all LoyaltyLedger entries + current balance
+
+Supplier routes: standard CRUD (GET list, GET:id, POST, PUT, soft DELETE)
+
+Agent routes:
+  GET /agents  GET /agents/:id  POST /agents  PUT /agents/:id
+  GET /agents/:id/commission  body filter:{dateFrom,dateTo}
+    → aggregate invoices where agentId=this + confirmed → calc commission per tier
+    → return itemised commission list + total
+  PUT /agents/:id/commission/mark-paid  body:{period,amount}
+  GET /agents/:id/targets  return target vs actual for current month/season
+
+CREATE: server/services/excel.service.js
+
+  async parseImport(module, buffer):
+    Open workbook from buffer using exceljs
+    Get header row (row 1) → build column index map by header name (toLowerCase().trim())
+    Iterate data rows:
+      Extract values by column header (NOT position)
+      Validate required fields → if missing: add to errorRows
+      Run module-specific validation (phone format, GSTIN format, etc.)
+    Return { validRows[], errorRows[{row, reason}] }
+
+  async generateExport(module, data, options):
+    Create ExcelJS Workbook
+    Add worksheet with styled header row (bold, background colour)
+    Add data rows
+    Return workbook.xlsx.writeBuffer()
+
+  async generateTemplate(module):
+    Create workbook with header row + one example row (greyed out)
+    Add data validation dropdowns for enum fields (category, customerType, etc.)
+    Return workbook.xlsx.writeBuffer()
+
+Import routes (import.routes.js):
+  POST /api/v1/import/:module   (multipart, field:'file', .xlsx only)
+    multer memory storage (limit 10MB)
+    Call excel.service.parseImport(module, req.file.buffer)
+    For each valid row: call appropriate service to create record
+    Return { imported: count, errors: [{row, reason}] }
+  GET /api/v1/import/template/:module
+    Call excel.service.generateTemplate(module)
+    Return as download: Content-Disposition: attachment; filename=[module]-template.xlsx
+
+Export routes (export.routes.js):
+  GET /api/v1/export/:module
+    Accept same query params as list endpoints
+    Fetch all matching data (no pagination limit for export)
+    Call excel.service.generateExport(module, data)
+    Return as download: Content-Disposition: attachment
+
+Phase 5 checks:
+  [API]  POST /customers with duplicate phone → 409 with field:'phone'
+  [API]  GET /customers?phone=X → returns matching customer
+  [API]  GET /customers/:id/statement returns entries sorted by date + running balance
+  [API]  POST /customers/:id/payment → outstandingBalance decreases correctly
+  [IMPORT] POST /import/customers with valid xlsx → success count > 0
+  [IMPORT] POST /import/customers with invalid file type → 400
+  [IMPORT] POST /import/customers with duplicate phone in rows → error row returned
+  [EXPORT] GET /export/customers → Content-Type contains 'spreadsheetml'
+  [TMPL]  GET /import/template/customers → valid xlsx with correct headers
+  [TEST]  customer import columns matched by header name not position
+
+Run: node scripts/verifier.js --phase=5
+Fix all failures. Repeat until: PHASE 5: ALL CHECKS PASSED
+
+=========================================================
+PHASE 6 — ESTIMATES, INVOICES, COUPONS, TRANSFERS
+=========================================================
+
+CREATE: server/services/coupon.service.js
+
+  async validateCoupon({ code, cartTotal, customerId, channel, items[] }):
+    1. Find coupon by code (case-insensitive). If not found: return {valid:false, error:'NOT_FOUND'}
+    2. Check status==='active'. If not: return {valid:false, error:'COUPON_INACTIVE'}
+    3. Check now >= validFrom AND now <= validUntil. If not: return {valid:false, error:'EXPIRED'}
+    4. Check usageLimit===0 OR usedCount < usageLimit. If not: return {valid:false, error:'LIMIT_REACHED'}
+    5. Check perCustomerLimit: if set, query CouponUsage.count({couponId, customerId}) < limit
+    6. Check channel in coupon.applicableChannels OR coupon.applicableChannels includes 'ALL'
+    7. If customerId: load customer type. Check customerType in coupon.applicableCustomerTypes
+    8. Check cartTotal >= coupon.minOrderValue
+    9. Calculate discountAmount:
+       flat: min(coupon.discountValue, cartTotal)
+       percent: min(cartTotal * discountValue/100, maxDiscountCap||Infinity)
+       minorder: flat discountValue
+       bxgy: (floor(itemQty/buyQty) * getQty) * itemPrice
+       bundle/firstorder/agentpromo: same as flat or percent
+    10. Return {valid:true, discountAmount, discountDescription, couponId}
+
+  IMPORTANT: validateCoupon NEVER modifies the coupon document.
+  Coupon usage only recorded AFTER order/invoice confirmed.
+
+Coupon routes:
+  GET /coupons/public → active, autoApply=true coupons for website offers page
+  POST /coupons/validate → no auth required. Returns discount amount.
+  GET /coupons → all coupons (Manager+)
+  POST /coupons → create (Manager+)
+  PUT /coupons/:id → update/pause/resume
+  GET /coupons/:id/usage-report → usage analytics
+
+Estimate routes:
+  POST /estimates   body:{type, customerId, priceListId, agentId, items[{productId,variantId,qty}],
+                          couponCode, stockReserved, logisticsNotes}
+    For each item: call pricing.service.resolvePrice() → store resolvedPrice + resolutionReason
+    If couponCode: call coupon.service.validateCoupon() → store couponDiscount
+    Validate stock (warn only if insufficient — save estimate regardless)
+    If stockReserved: create RESERVE StockLedger entries
+    Generate estimate number (sequential)
+    Queue: estimate PDF generation (pdf job)
+    Trigger: estimate_created notification
+
+  POST /estimates/from-brochure   body:{uploadId, customerId, priceListId}
+    Load BrochureUpload by uploadId → get matchedItems[]
+    Create estimate with all matched items (prices resolved)
+    Return: { estimate, unmatchedCodes[] }
+
+  PUT /estimates/:id/convert   body:{paymentMode, logisticsDetails, couponCode?}
+    HARD block: validate ALL items have sufficient stock
+    Create Invoice document (copy all estimate data + add invoice-specific fields)
+    For each line: addStockMovement(type='OUT', ref:{type:'INVOICE',id:invoice._id})
+    If coupon: create CouponUsage record; increment coupon.usedCount
+    If retail customer: award loyalty points (Net amount / 100 * earn_rate points)
+    Create LoyaltyLedger EARN entry
+    If credit paymentMode: update Customer.outstandingBalance += netAmount
+    Create CreditLedger INVOICE entry
+    Queue: invoice PDF generation
+    Trigger: invoice_generated notification
+    Update estimate status = 'converted', convertedInvoiceId = invoice._id
+
+  PUT /estimates/:id/reserve  → create RESERVE StockLedger entries
+  GET /estimates  filter:type,customerId,agentId,status,dateFrom,dateTo
+
+Invoice routes:
+  POST /invoices  (direct invoice, same logic as estimate convert)
+  GET /invoices  filter:invoiceNo,customerId,agentId,dateFrom,dateTo,financialYear
+  GET /invoices/:id/pdf  → return presigned S3 URL for invoice PDF
+  POST /invoices/:id/share  → queue WhatsApp + Email with PDF link
+  GET /invoices/gst-report  → GSTR-1 formatted data
+
+Transfer routes:
+  POST /transfers  body:{fromLocationId,toLocationId,stops[],items[{productId,variantId,batchNo,qty}]}
+    Validate stock at source for each item
+    If items above approval threshold: status='pending_approval', notify manager
+    Else: status='draft'
+
+  PUT /transfers/:id/dispatch
+    Validate status is draft or approved
+    For each item: addStockMovement(type='RESERVE', locationId:fromLocation)
+    Generate transfer note QR: encode transferId
+    Generate Transfer Note PDF (queued)
+    status = 'in_transit'
+    Notify destination manager (transfer_dispatched)
+
+  PUT /transfers/:id/receive  body:{items[{productId,variantId,receivedQty}]}
+    For each item: addStockMovement(type='IN', locationId:toLocation)
+    For each item: addStockMovement(type='UNRESERVE', locationId:fromLocation)
+    If receivedQty !== expectedQty: record discrepancy, notify owner
+    status = 'received'
+    Notify source (transfer_received)
+
+  GET /transfers/pending  all transfers in 'in_transit' or 'pending_approval' status
+
+Phase 6 checks:
+  [TEST]  coupon.test.js all tests pass
+  [TEST]  estimate.test.js all tests pass
+  [RULE]  POST /coupons/validate with expired coupon → {valid:false, error:'EXPIRED'}
+  [RULE]  POST /coupons/validate with per-customer limit exceeded → {valid:false}
+  [RULE]  POST /estimates creates estimate with resolvedPrice + resolutionReason on each item
+  [RULE]  PUT /estimates/:id/convert with insufficient stock → 400 error
+  [RULE]  PUT /estimates/:id/convert creates Invoice + OUT StockLedger records
+  [RULE]  PUT /estimates/:id/convert records CouponUsage if coupon applied
+  [RULE]  PUT /transfers/:id/dispatch creates RESERVE stock records
+  [RULE]  PUT /transfers/:id/receive creates IN + UNRESERVE records at correct locations
+
+Run: node scripts/verifier.js --phase=6
+Fix all failures. Repeat until: PHASE 6: ALL CHECKS PASSED
+
+=========================================================
+PHASE 7 — POS API + BROCHURE PARSER + RETURNS + PACKING
+=========================================================
+
+CREATE: server/services/brochure.service.js
+
+  async parseBrochure(buffer, priceListId, customerId, userRole):
+    Open Excel from buffer using exceljs
+    Find header row (row 1). Build column map by header name (case-insensitive).
+    IF 'code' column not found: throw Error('Column structure not recognised. Expected Code header in first row.')
+    IF 'qty' column not found: throw Error('Column structure not recognised. Expected Qty header.')
+    Iterate rows starting row 2:
+      code = row.getCell(codeColIdx).text.trim()
+      qty = parseInt(row.getCell(qtyColIdx).text)
+      remarks = row.getCell(remarksColIdx)?.text || ''
+      IF qty <= 0 OR isNaN(qty): skip row silently
+      product = await Product.findOne({ code: code, status: 'Active' })
+      IF not found: push to unmatchedCodes[] and continue
+      Determine variant (match by pack content from Col C if available, else use first variant)
+      price = await pricing.service.resolvePrice({productId, variantId, qty, customerId, channel:'ERP_WHOLESALE_ESTIMATE', priceListId, userRole})
+      push to matchedItems[]
+    Return { matchedItems[], unmatchedCodes[], totalRows, matchedCount }
+
+  async generateBrochureTemplate(priceListId, tier='wholesaleBulk', categoryFilter):
+    Fetch all active, onlineDisplay=true products (or all active if no filter)
+    Create ExcelJS workbook
+    Headers: Code | Product Name | Pack Content | Unit | Rate Per Box | Qty | Amount | Remarks
+    Pre-fill: Code, Product Name, Pack Content, Unit, Rate (from priceList[tier])
+    Lock/grey Cols A-E and G (read-only visual hint via cell style)
+    Leave Col F (Qty) blank for customer to fill
+    Col G formula: =E{row}*F{row}
+    Return workbook buffer
+
+Brochure routes:
+  POST /brochure/upload   multipart field:'brochure' (.xlsx, .xls only, max 5MB)
+    Validate MIME type. Store in BrochureUpload document.
+    Return { uploadId, fileName, fileSize, uploadedAt }
+
+  GET /brochure/parse/:uploadId  query:customerId,priceListId
+    Load BrochureUpload, get file buffer
+    Call brochure.service.parseBrochure()
+    Return { matchedItems[], unmatchedCodes[], totalRows, matchedCount }
+
+  POST /brochure/create-estimate/:uploadId  body:{customerId, priceListId, couponCode?}
+    Parse brochure → create Estimate document from matchedItems
+    Return { estimate, unmatchedCodes[] }
+
+  GET /brochure/generate-template  query:priceListId,tier,category
+    Call brochure.service.generateBrochureTemplate()
+    Return as Excel download
+
+POS routes:
+  POST /pos/sale
+    body: { customerId?, locationId, shiftId, paymentMode,
+            items[{productId,variantId,qty}], couponCode?, loyaltyPointsRedeem?,
+            X-Idempotency-Key header }
+    Check idempotency: if key in Redis → return cached response (no duplicate)
+    For each item: resolvePrice(channel='POS')
+    bulkValidateStock() for all items at locationId
+    validateCoupon() if couponCode provided
+    Validate loyalty redemption if loyaltyPointsRedeem > 0:
+      check customer.loyaltyPoints >= loyaltyPointsRedeem
+      loyaltyDiscount = loyaltyPointsRedeem * redemption_rate
+    If paymentMode=CREDIT: check customer.outstandingBalance + netAmount <= customer.creditLimit
+    USE MongoDB transaction (session) for atomicity:
+      Create SalesOrder document
+      Create Invoice document
+      addStockMovement(OUT) for each item
+      Record CouponUsage
+      Deduct loyalty points: LoyaltyLedger REDEEM + update Customer.loyaltyPoints
+      Earn new loyalty points (if retail): LoyaltyLedger EARN + update Customer.loyaltyPoints
+      If CREDIT: CreditLedger INVOICE + Customer.outstandingBalance += netAmount
+    END transaction
+    Cache response in Redis with idempotency key (TTL 24hr)
+    Queue: invoice PDF generation, receipt notification
+    Return: invoice with all line items + resolvedPrices
+
+  POST /pos/return  body:{invoiceId, items[{productId,variantId,qty}], reason}
+    Load original invoice. Validate items are in it.
+    Validate return window (Settings.returnWindowDays, default 7)
+    Create Return document
+    addStockMovement(IN) for each returned item at shop location
+    Generate credit note. Queue PDF.
+    If original was CREDIT: CreditLedger RETURN + Customer.outstandingBalance -= refundAmount
+    Trigger: return_accepted notification
+
+  POST /pos/hold  body:{cart, customerId?, note}
+    Store cart as JSON in Redis: key=pos:hold:{locationId}:{uuid}, TTL=4hrs
+    Return { holdId }
+
+  GET /pos/held?locationId=X
+    Scan Redis keys matching pos:hold:{locationId}:*
+    Return array of held bills
+
+  GET /pos/products?locationId=X
+    Return all active products with current stock at locationId
+    Optimised for POS: only fields needed for quick-add (id, code, name, variants, stock)
+    This is the endpoint that populates the IndexedDB offline cache
+
+  GET /pos/shift-summary?shiftId=X
+    Aggregate all POS sales for this shift
+
+  POST /pos/shift-close  body:{shiftId, closingCash}
+    Mark shift as closed. Calculate over/short.
+    Queue: end-of-day email to owner + manager
+    Trigger: daily_summary notification
+
+Packing job routes:
+  GET /packing-jobs  GET /packing-jobs/:id  POST /packing-jobs
+  PUT /packing-jobs/:id/complete
+    For each raw material: addStockMovement(OUT, ref:packingJob)
+    For each finished good: generate new batch no + barcode; addStockMovement(IN)
+    For each waste item: addStockMovement(DAMAGE) + DamageLog entry
+    status = 'completed'
+    Trigger: packing_complete notification
+
+Return routes:
+  POST /returns/customer → handled by /pos/return above or ERP equivalent
+  POST /returns/supplier  body:{purchaseOrderId, items[], reason}
+    addStockMovement(OUT) for returned items
+    Generate debit note PDF (queued)
+    Queue email to supplier
+
+  POST /returns/online  body:{orderId, items[], reason}
+    Initiate Razorpay refund via razorpay.payments.refund()
+    addStockMovement(IN) for returned items (to warehouse)
+    Create Return document
+    Trigger: refund_processed notification
+
+Damage routes:
+  POST /damage  body:{locationId,productId,variantId,batchNo,qty,category,description,photoBase64?}
+    addStockMovement(DAMAGE)
+    Create DamageLog document. If photo: upload to S3.
+    Trigger: damage_logged notification
+  GET /damage  filter:locationId,category,dateFrom,dateTo
+
+Phase 7 checks:
+  [TEST]  brochure.test.js all tests pass
+  [TEST]  pos.test.js all tests pass
+  [RULE]  POST /brochure/upload with non-xlsx → 400
+  [RULE]  GET /brochure/parse/:id returns matchedItems + unmatchedCodes
+  [RULE]  GET /brochure/generate-template returns valid xlsx download
+  [RULE]  POST /pos/sale (atomic): creates Invoice + correct OUT stock records
+  [RULE]  POST /pos/sale with duplicate X-Idempotency-Key → returns same invoice, no duplicate records
+  [RULE]  POST /pos/sale with credit exceeding limit → 400
+  [RULE]  POST /pos/return adds stock back + creates credit note record
+  [RULE]  PUT /packing-jobs/:id/complete creates correct IN + OUT + DAMAGE ledger records
+
+Run: node scripts/verifier.js --phase=7
+Fix all failures. Repeat until: PHASE 7: ALL CHECKS PASSED
+
+=========================================================
+PHASE 8 — NOTIFICATIONS + REPORTS + SETTINGS + SYNC
+=========================================================
+
+CREATE: server/services/notification.service.js
+
+  async queueNotification({ recipientId, recipientType, channel, templateId, eventType, payload })
+    Create NotificationLog: { recipientId, recipientType, channel:channel||'whatsapp',
+                               templateId, eventType, payload, status:'queued', ts:now }
+    Add job to notificationQueue: { notificationLogId, payload }
+    Return log document
+
+  async triggerEvent(eventType, payload, overrideChannel?):
+    Look up event in event-to-template map (see below)
+    Look up recipient based on eventType (customer, owner, manager, agent, etc.)
+    Call queueNotification for each channel in the event's channel config
+
+  EVENT MAP (all 38 events — must ALL be implemented):
+  Customer events (17):
+    order_placed: customer(phone), channels:[WA,EMAIL]
+    order_confirmed: customer(phone), channels:[WA,SMS]
+    order_ready_pickup: customer(phone), channels:[WA,SMS]
+    order_dispatched: customer(phone), channels:[WA,SMS]
+    order_delivered: customer(phone), channels:[WA,EMAIL+PDF]
+    invoice_generated: customer(phone), channels:[WA+PDF,EMAIL+PDF]
+    invoice_shared: customer(phone), channels:[WA+PDF]
+    payment_received: customer(phone), channels:[WA,EMAIL]
+    payment_overdue: customer(phone), channels:[WA,SMS,EMAIL]
+    credit_limit_warning: customer(phone), channels:[WA]
+    return_accepted: customer(phone), channels:[WA,EMAIL+PDF]
+    refund_processed: customer(phone), channels:[WA,EMAIL]
+    coupon_promo: customer(phone), channels:[WA,EMAIL]  (opted-in only)
+    loyalty_earned: customer(phone), channels:[WA]
+    loyalty_redeemed: customer(phone), channels:[WA]
+    loyalty_expiry_warning: customer(phone), channels:[WA,EMAIL]
+    festival_greeting: customer(phone), channels:[WA,EMAIL]  (opted-in only)
+  Staff events (21):
+    new_website_order: owner+whMgr, channels:[WA,EMAIL]
+    low_stock: owner+locationMgr, channels:[WA,EMAIL]
+    transfer_dispatched: destMgr, channels:[WA]
+    transfer_received: sourceMgr+owner, channels:[WA]
+    transfer_discrepancy: owner+erpMgr, channels:[WA,SMS,EMAIL]
+    po_raised: owner (if above threshold), channels:[EMAIL]
+    goods_received: owner+erpMgr, channels:[WA]
+    packing_complete: erpMgr+owner, channels:[WA]
+    damage_logged: owner+locationMgr, channels:[WA]
+    commission_due: agent+owner, channels:[EMAIL+PDF]
+    commission_paid: agent, channels:[WA,EMAIL]
+    daily_summary: owner+erpMgr, channels:[WA,EMAIL+Excel]
+    weekly_summary: owner, channels:[EMAIL+Excel]
+    backup_success: owner, channels:[EMAIL]
+    backup_failed: owner+admin, channels:[WA,SMS,EMAIL]
+    new_user: newUser, channels:[WA,SMS,EMAIL]
+    login_failed: owner+admin, channels:[WA,SMS]
+    large_order: owner, channels:[WA]
+    coupon_exhausted: owner, channels:[EMAIL]
+    transfer_overdue: owner+mgrs, channels:[WA,EMAIL]
+    savings_sync_failed: owner+admin, channels:[WA,SMS,EMAIL]
+
+CREATE: server/jobs/notification.job.js
+  Process notificationQueue jobs:
+  a) Load NotificationLog document
+  b) Determine channel: whatsapp first, then sms, then email
+  c) WhatsApp: POST to WATI API endpoint with template name + variables
+     Set timeout 30s. If error or timeout: go to step d.
+  d) If WA failed: attempt SMS via twilio.messages.create()
+     If error: go to step e.
+  e) If SMS failed: attempt email via Nodemailer transporter.sendMail()
+  f) Update NotificationLog: status=delivered|failed, deliveredAt, channel_used
+  g) If all fail: emit socket event 'notification:failed' to admin room
+
+Notification routes:
+  POST /notify/send  body:{recipientId,recipientType,eventType,payload}  Auth:Manager+
+  POST /notify/bulk  body:{segment:{customerType?,minPurchase?,city?},eventType,payload}  Auth:Admin
+    Fetch matching customers; queue notification for each (max 1000/batch)
+  GET /notify/log  filter:eventType,channel,status,dateFrom,dateTo,recipientId
+  GET /notify/templates  returns list of configured WA template names
+  PUT /notify/settings  body:notification config (credentials)  Auth:Admin
+
+Report routes:
+  GET /reports/sales  query:dateFrom,dateTo,locationId,agentId,channel,export?
+    Aggregate invoices. Return summary + itemised list.
+    If export=xlsx: call excel.service.generateExport → return file download
+
+  GET /reports/gst  query:month,year  Auth:Manager+
+    Return GSTR-1 formatted: B2B section (GSTIN customers), B2C section
+    Fields: invoiceNo, date, customerGSTIN, placeOfSupply, HSN,
+            taxableValue, cgstRate, cgstAmt, sgstRate, sgstAmt, igstRate, igstAmt
+
+  GET /reports/stock  query:locationId,category,lowStockOnly
+  GET /reports/outstanding  query:agentId,customerType  (returns ageing buckets)
+    Bucket logic: dueDate or today - invoice date
+    Buckets: 0-30, 31-60, 61-90, 90+ days
+  GET /reports/commission  query:agentId,dateFrom,dateTo
+  GET /reports/coupons  returns coupon performance analytics
+  GET /reports/damage  query:locationId,category,dateFrom,dateTo
+  GET /reports/daybook  query:date
+  GET /reports/loyalty  query:customerId,dateFrom,dateTo
+  All reports: add ?export=xlsx to get Excel download
+
+Settings routes:
+  GET/PUT /settings/company
+  GET/PUT /settings/tax  (GST rates per HSN)
+  GET/PUT /settings/pricing  (includes wholesaleQtyThreshold)
+  GET/PUT /settings/integrations  (API credentials for WA/SMS/Email/Razorpay/Savings)
+
+Sync routes (savings system — apiKey middleware):
+  POST /sync/customer  body:{name,phone,email,address,savings_id}
+    Upsert Customer by phone. Set savingsId = savings_id.
+    Return: {erpCustomerId, action:'created'|'updated'}
+  GET /sync/customer/:phone → return ERP customer by phone
+  GET /sync/customers/pending?since=ISO_DATE → customers updated after date, not yet synced
+  POST /sync/ack/:erpCustomerId body:{savings_id} → store savingsId on customer
+
+Webhook routes:
+  POST /webhooks/razorpay
+    Verify X-Razorpay-Signature header using crypto.createHmac
+    If invalid: 401
+    If payment.captured event: create SalesOrder, trigger order_placed notification
+    Return 200
+  POST /webhooks/wati → update NotificationLog delivery status
+
+User routes (Admin only):
+  GET/POST/PUT /users  GET /users/:id  PUT /users/:id/pin
+
+Phase 8 checks:
+  [TEST]  notification.test.js all pass
+  [TEST]  sync.test.js all pass
+  [RULE]  POST /notify/send creates NotificationLog with status=queued
+  [RULE]  Notification job processes: updates NotificationLog status
+  [RULE]  GET /reports/sales returns correct total for seeded test invoices
+  [RULE]  GET /reports/sales?export=xlsx returns Excel file
+  [RULE]  GET /reports/gst returns B2B and B2C sections
+  [RULE]  GET /reports/outstanding returns ageing buckets
+  [RULE]  POST /sync/customer creates customer with savingsId set
+  [RULE]  POST /webhooks/razorpay with invalid signature → 401
+  [RULE]  GET/PUT /settings/pricing updates wholesaleQtyThreshold
+
+Run: node scripts/verifier.js --phase=8
+Fix all failures. Repeat until: PHASE 8: ALL CHECKS PASSED
+
+=========================================================
+PHASE 9 — ERP REACT FRONTEND
+=========================================================
+
+Build client/erp/ — the main ERP admin interface.
+
+SETUP:
+  Vite + React 18 (JSX). Tailwind CSS.
+  Install and configure shadcn/ui (npx shadcn-ui@latest init)
+  React Router v6. React Query (TanStack). Zustand.
+
+FILE: client/erp/src/api/client.js
+  Axios instance with:
+    baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1'
+    withCredentials: true (for httpOnly cookie)
+    Request interceptor: attach Authorization: Bearer {accessToken from Zustand}
+    Response interceptor: on 401 → attempt token refresh → retry request once
+
+FILE: client/erp/src/store/authStore.js (Zustand)
+  State: { user, accessToken, isAuthenticated }
+  Actions: login(credentials), logout(), setToken(token)
+
+BUILD ALL PAGES:
+
+/login
+  Username + password form → POST /auth/login → store token → redirect /dashboard
+
+/dashboard
+  Widgets using React Query:
+  - Today's sales card (GET /reports/sales?dateFrom=today)
+  - Outstanding collections (GET /reports/outstanding?summary=true)
+  - Low stock alerts (GET /stock/levels?lowStockOnly=true)
+  - Revenue by channel bar chart (Recharts BarChart, GET /reports/sales?groupBy=channel)
+  - Top 5 products table
+  - Agent performance table (GET /reports/commission?period=thisMonth)
+  - Active transfers count (GET /transfers/pending?count=true)
+
+/products  (paginated table with search, category filter, status filter)
+  Columns: Code, Name, Category, Variants count, Status, Online, Actions
+  Export button → GET /export/products
+  Import button → opens modal → file upload → POST /import/products
+
+/products/new  and  /products/:id
+  Form: all product fields + variants section
+  Pricing grid: for each variant, 5 rows (one per tier) × columns (one per price list season)
+  Cashiers/Agents: purchase rate row is HIDDEN
+  After save: show generated barcodes with Print Labels button
+
+/estimates/new  ← CRITICAL PAGE
+  Two tabs: 'Manual Entry' | 'Upload Brochure'
+  Manual tab: customer selector → auto-loads tier prices → line item table
+    Each line: product search, variant select, qty input, rate (auto-filled, editable)
+    BULK RATE BADGE: green badge 'Bulk Rate Applied' when bulkRateApplied=true
+    resolutionReason tooltip on hover of rate field
+    Coupon code field → live validation via POST /coupons/validate
+  Upload tab: drag-and-drop zone (react-dropzone)
+    On file drop: POST /brochure/upload → show uploadId
+    Click 'Parse & Load': GET /brochure/parse/:uploadId → populate line items
+    Unmatched codes section (red background): list codes not found in ERP
+    Staff must resolve/delete unmatched before saving
+
+/invoices  (list table + search + filters)
+/invoices/new  (same form as estimate convert but direct invoice)
+/invoices/:id
+  View invoice with all details
+  'Print with Banner' button → download PDF
+  'Print without Banner' button → download plain PDF
+  'Share WhatsApp' button → POST /invoices/:id/share
+  Bulk rate badges on applicable line items
+
+/customers, /customers/new, /customers/:id, /customers/:id/statement
+/suppliers, /suppliers/new, /suppliers/:id
+/agents, /agents/new, /agents/:id, /agents/:id/commission
+/purchase, /purchase/new, /purchase/:id/receive
+/packing, /packing/new, /packing/:id/complete
+/transfers, /transfers/new, /transfers/:id/dispatch, /transfers/:id/receive
+/returns
+/coupons  (list + create form with all 11 type options)
+/reports  (type selector + date filters + data table + Export button)
+/notifications  (log viewer + bulk campaign sender)
+/settings  (tabs: Company, Pricing, Tax, Integrations, Users)
+  Settings/Pricing tab must show: wholesaleQtyThreshold with editable number field
+  Settings/Users tab: user list + create/edit form + import button
+
+GLOBAL REQUIREMENTS:
+  All tables: sortable columns, pagination, search
+  All forms: react-hook-form + Zod validation, inline error messages
+  All mutations: toast notifications (react-hot-toast) on success and error
+  Sidebar nav with lucide-react icons, active state highlighting
+  Responsive: works on tablet (1024px+) and desktop
+  Loading skeletons on all data-fetching components
+
+Phase 9 checks (Playwright — tests/e2e/erp.spec.js):
+  [E2E] /login → valid credentials → redirects to /dashboard
+  [E2E] /dashboard → all 7 widgets render without JS errors
+  [E2E] /products → table renders with at least 1 product (seeded data)
+  [E2E] /products/new → create form → submit → product appears in list
+  [E2E] /estimates/new → Upload Brochure tab visible
+  [E2E] /estimates/new → file drop zone accepts xlsx file
+  [E2E] Qty=10 on line item → 'Bulk Rate Applied' badge visible
+  [E2E] /invoices → table renders + Export button exists
+  [E2E] /settings → Pricing tab → wholesaleQtyThreshold field editable
+  [CONSOLE] No unhandled errors on any page
+
+Run: node scripts/verifier.js --phase=9
+Fix all failures. Repeat until: PHASE 9: ALL CHECKS PASSED
+
+=========================================================
+PHASE 10 — WAREHOUSE DASHBOARD REACT FRONTEND
+=========================================================
+
+Build client/warehouse/ — warehouse operations interface.
+No prices visible. No customer financial data. No billing.
+
+CRITICAL: Large touch targets (min 48px height on all buttons).
+Barcode input field: always focused, accepts USB scanner input (keyboard).
+Camera scan button using @zxing/browser as alternative.
+
+/login  (username + password for warehouse staff/manager)
+
+/ (Home dashboard)
+  Pick Tasks panel: orders with status=pending_pick, colour-coded by urgency (red>1hr, amber>30min, green<30min)
+  Pending Transfers panel: transfers awaiting dispatch or receipt at this location
+  Low Stock panel: products below reorder threshold at this warehouse
+  Today's Inward: POs with expectedDate=today
+  Socket.io connection: on 'order:new' event → refresh pick tasks without page reload
+
+/inward
+  List open POs. Click PO → receipt screen.
+  For each PO line: product name, ordered qty, input field for received qty
+  Barcode scan: scan product barcode → find matching line → focus qty field
+  'Mark Damage' button per line → qty + category + description + photo upload
+  'Confirm Receipt' → POST /stock/receive → success toast + label print prompt
+  'Print Labels' → POST /barcodes/print-batch → opens print dialog with label HTML
+
+/putaway
+  After receipt: product list needing putaway
+  For each: scan product barcode → scan shelf QR → confirm location
+  PATCH /inventory-batches/:id/location → update bin location
+
+/picks
+  Active pick tasks list
+  Click task: pick list with product, qty, bin location
+  Scan product barcode → mark line as picked
+  All picked → 'Mark as Picked' → moves to dispatch queue
+
+/dispatch
+  Dispatch queue (picked orders ready for dispatch)
+  Click: enter vehicle no + notes
+  'Print Transfer Note' → generate + open print dialog
+  'Confirm Dispatch' → PUT /transfers/:id/dispatch
+
+/packing
+  Packing job list + 'New Job' button
+  New job form: raw materials table + finished goods table + waste table
+  'Complete Job' → PUT /packing-jobs/:id/complete → auto-queues label printing
+
+/stock-take
+  Zone selector dropdown
+  Scan items: barcode → product shown → enter actual count
+  Real-time variance indicator (green=match, red=discrepancy)
+  'Submit Count' → creates adjustment request (pending admin approval)
+
+/damage  (damage logging form)
+/barcodes  (select products + batches → print labels)
+
+Phase 10 checks (Playwright — tests/e2e/warehouse.spec.js):
+  [E2E] /login → warehouse staff credentials → redirect /
+  [E2E] Home shows pick tasks panel (even if empty)
+  [E2E] Socket.io connection established (check window.__socket exists)
+  [E2E] /inward → list of open POs renders
+  [E2E] /damage → form submits → DamageLog created via API
+  [E2E] All buttons ≥ 48px height (accessibility check)
+  [CONSOLE] No unhandled errors on any warehouse page
+
+Run: node scripts/verifier.js --phase=10
+Fix all failures. Repeat until: PHASE 10: ALL CHECKS PASSED
+
+=========================================================
+PHASE 11 — POS REACT FRONTEND
+=========================================================
+
+Build client/pos/ — shop counter billing interface.
+CRITICAL: Touch-optimised. All targets ≥ 48px. Fast keyboard/scanner input.
+
+/login  (PIN numpad — large 4×3 grid of number buttons + clear/submit)
+  PIN entry → POST /auth/pin-login
+  Toggle link: 'Use username/password instead'
+
+/shift-start  (Opening cash entry)
+  Denomination grid: enter count of each note/coin denomination
+  Calculate total. 'Start Shift' → POST /pos/shift-close (init) or custom endpoint.
+
+/ (Main Sale Screen — the most important page)
+  LAYOUT:
+  Left 60%: Product search + Quick-add grid
+    Search input (always focused, accepts USB scanner)
+    On scan/enter: GET /products/:code → add to cart
+    Quick-add tiles: configurable top-20 products (large image + name + price)
+    Each tile tap: add to cart with qty 1
+  Right 40%: Cart panel
+    Line items: product, variant, qty (±), price, resolutionReason tooltip, Bulk Rate badge
+    BULK RATE BADGE: large green badge 'Bulk Rate Applied' when bulkRateApplied=true
+    When qty crosses threshold: badge appears instantly + price updates
+    Subtotal, coupon discount, loyalty discount, tax, TOTAL at bottom
+  Bottom bar:
+    Customer button → search by phone → name + type + loyalty points shown
+    Coupon Code input → live validate on type (debounce 500ms)
+    Loyalty: if customer selected + has points: 'Redeem 500pts = ₹50' checkbox
+    Payment buttons: CASH | UPI | CARD | CREDIT | SPLIT
+    BILL button (large, green) → POST /pos/sale
+
+OFFLINE MODE (IndexedDB via idb):
+  On page load: fetch GET /pos/products?locationId=X → store in IndexedDB 'products' store
+  Cache: last 500 products with stock levels. TTL: 1 hour.
+  window.addEventListener('offline', () => { setIsOffline(true) })
+  window.addEventListener('online', () => { setIsOffline(false); syncOfflineQueue() })
+  When offline: show 'OFFLINE MODE' banner (red). Serve products from IndexedDB.
+  POS bills in offline mode: store in IndexedDB 'pendingBills' store
+  On reconnect: syncOfflineQueue() → for each pending bill → POST /pos/sale with X-Idempotency-Key
+  Show 'X bills pending sync' badge until queue empty
+
+/return
+  Invoice lookup: input field (type invoice no) or scan button (camera @zxing/browser)
+  Load invoice → show all line items with checkboxes
+  Select items + qty → reason dropdown → 'Process Return'
+
+/held  (Held bills list → click to resume)
+
+/shift-close
+  Cash count form (denomination grid)
+  Summary: total sales by payment mode, loyalty issued, coupons used
+  Over/short calculation
+  'Close Shift' button → POST /pos/shift-close
+
+Phase 11 checks (Playwright — tests/e2e/pos.spec.js):
+  [E2E] /login → PIN numpad renders + correct keys → submit → redirect /
+  [E2E] / → product search returns results → click adds to cart
+  [E2E] Qty adjustment to 10 on cart line → 'Bulk Rate Applied' badge appears
+  [E2E] Coupon code input → enter valid code → discount line appears
+  [E2E] BILL button → successful sale → invoice modal/toast shown
+  [E2E] /return → invoice number input → bill loads
+  [OFFLINE] Mock navigator.onLine=false → 'OFFLINE MODE' banner appears
+  [OFFLINE] Search still returns products from IndexedDB cache
+  [CONSOLE] No unhandled errors on POS pages
+
+Run: node scripts/verifier.js --phase=11
+Fix all failures. Repeat until: PHASE 11: ALL CHECKS PASSED
+
+=========================================================
+PHASE 12 — E-COMMERCE WEBSITE REACT FRONTEND
+=========================================================
+
+Build client/website/ — public-facing site. No auth. Guest checkout only.
+
+SETUP:
+  Add react-helmet-async for SEO meta tags.
+  Cart persistence: Zustand store persisted to localStorage (zustand/middleware persist).
+
+/  (Home)
+  Hero section: banner image from Settings.heroBannerS3Key
+  Offer banners: GET /coupons/public → show active auto-show coupons as cards
+  Category grid: Ground | Aerial | Sparkler | Novelty | Gift Box | Bundles
+  Featured products: GET /products/public?featured=true (top 8 by sales)
+  About snippet + CTA
+  Shop locations: static Google Maps embed per location
+  SEO: <title>Ratinam Crackers — Showering Happiness</title>
+
+/catalogue
+  GET /products/public with filters (category, priceMin, priceMax, packSize)
+  Sort: popularity | price asc | price desc | new arrivals
+  Each product card: image, name, price (retailOnline), stock badge
+  Stock badge: 'In Stock'(green) | 'Limited Stock'(amber, qty<10) | 'Out of Stock'(red)
+  'Bulk Deal Available' badge if product has wholesaleBulk tier < retailOnline (informational)
+
+/product/:id  (Product detail page)
+  react-helmet-async: <title>{product.name}</title>
+  <script type='application/ld+json'> Product JSON-LD schema
+  Image carousel (multiple images)
+  Variant selector (size dropdown) → price updates
+  Qty selector → if qty>=threshold: show 'Bulk Price: ₹X per box' callout
+  Add to Cart button
+
+/cart
+  Zustand cart store. Qty adjust. Remove items.
+  Coupon code input → POST /coupons/validate → show discount
+  Auto-apply: on cart load → GET /coupons/public?autoApply=true → if valid → apply
+  Order total: subtotal, coupon discount, delivery estimate, TAX (18%), TOTAL
+  'Proceed to Checkout' button
+
+/checkout  (Guest checkout — no login)
+  Form: name, phone, email, address, city, state, PIN
+  Delivery type: Home Delivery | Pickup from Shop
+  If pickup: shop selector dropdown (GET /locations?type=shop)
+  Date preference (min date: tomorrow)
+  Coupon field (one last check)
+  'Pay Now' → create Razorpay order → open Razorpay checkout modal
+  On success: Razorpay fires callback → POST /orders (via webhook in server)
+  Redirect to /order/{orderId}
+
+/order/:id  (Order tracking — public, no auth)
+  GET /orders/:id/public
+  Status timeline: Placed → Confirmed → Packing → Dispatched → Delivered
+  Each status with timestamp when it occurred
+
+/offers  (GET /coupons/public → list all active visible coupons)
+
+/about  (Brand story, shop locations with maps, contact form)
+
+robots.txt in public folder:
+  Allow: /
+  Disallow: /api/
+  Sitemap: https://rathinamcracker.com/sitemap.xml
+
+Add server route: GET /api/v1/sitemap
+  Fetch all onlineDisplay=true products
+  Return XML sitemap with product URLs
+
+Phase 12 checks (Playwright — tests/e2e/website.spec.js):
+  [E2E] / → hero renders, category grid renders, no JS errors
+  [E2E] /catalogue → products render with stock badges
+  [E2E] /product/:id → images, variant selector, JSON-LD present in DOM
+  [E2E] Qty=10 on product page → 'Bulk Price' callout appears
+  [E2E] Add to cart → /cart shows item
+  [E2E] Cart persists on page reload (localStorage)
+  [E2E] Coupon code entry → validates and shows discount
+  [E2E] /checkout → form renders → all required fields validate
+  [SEO] /product/:id has <script type=application/ld+json> with @type:Product
+  [CONSOLE] No unhandled errors on any website page
+
+Run: node scripts/verifier.js --phase=12
+Fix all failures. Repeat until: PHASE 12: ALL CHECKS PASSED
+
+=========================================================
+PHASE 13 — PDF GENERATION + S3 INTEGRATION
+=========================================================
+
+CREATE: server/services/pdf.service.js using Puppeteer
+
+  async generateInvoicePDF(invoiceId, variant='with-banner'):
+    Load invoice with populated: customer, items[].product, agent, company(Settings)
+    Build HTML template string (see required sections below)
+    Launch Puppeteer browser (headless)
+    Set page.setContent(html)
+    pdf = await page.pdf({ format:'A4', printBackground:true, margin:{top:10,bottom:10,left:10,right:10} })
+    Close browser
+    Upload to S3: key = invoices/{financialYear}/{invoiceNo}.pdf
+    Update Invoice.pdfS3Key
+    Return presigned URL (1 hour expiry)
+
+  Invoice HTML must include:
+    WITH BANNER variant: Ohm Star Brand logo/banner image at top (placeholder if no logo)
+    WITHOUT BANNER variant: clean header with company name text only
+    Company details: name, address, GSTIN, licence no (from Settings)
+    'TAX INVOICE' heading + '(DUPLICATE)' stamp on second page
+    Customer section: name, address, GSTIN, place of supply
+    Invoice details box: invoice no, date, FY, HSN code
+    Line items table: Case Nos | Cases | Code | Product Name | Contents | Qty | Rate | Per | Unit | Amount
+    Logistics section: Vehicle No, LR No & Date, Doc Through, Despatch To, Order No
+    Totals section: Subtotal → Discount% → Grant Total → Packing → SGST 9% + CGST 9% (or IGST 18%) → Mahamai → Insurance → Round Off → Net Amount → Commission → Closing Amount
+    QR code at bottom: encode invoice ID string (for POS return scanning)
+    Footer: company phone, support info, page number
+
+  async generateEstimatePDF(estimateId):
+    Similar to invoice but header says 'ESTIMATE' not 'TAX INVOICE'
+    No tax section. Show estimated total only.
+
+  async generateCreditNotePDF(returnId):
+    Load return document. Header says 'CREDIT NOTE'.
+    Reference original invoice number.
+    Show returned items table + credit amount.
+
+  async generateTransferNotePDF(transferId):
+    A4 document: from/to locations, items table, vehicle details
+    Large QR code centred on page (encodes transferId)
+    QR must be scannable by @zxing/browser (use QR code format not CODE128)
+
+  async generateLabelHTML(barcodes[]):
+    Return HTML string (not PDF — printed directly from browser)
+    CSS: @media print { margin: 5mm; } grid of 3 columns
+    Each label cell (38mm × 25mm approx): product name, size, batch, CODE128 barcode (base64 img), QR
+
+CREATE: server/utils/s3.js
+  const { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3')
+  const { getSignedUrl } = require('@aws-sdk/s3-request-presigner')
+
+  async uploadBuffer(buffer, key, contentType):
+    await s3.send(new PutObjectCommand({ Bucket, Key:key, Body:buffer, ContentType:contentType }))
+    Return: https://{bucket}.s3.{region}.amazonaws.com/{key}
+
+  async getSignedDownloadUrl(key, expiresIn=3600):
+    Return presigned URL from getSignedUrl(s3, GetObjectCommand, {expiresIn})
+
+  async deleteObject(key):
+    await s3.send(new DeleteObjectCommand({ Bucket, Key:key }))
+
+Wire PDF generation into Bull jobs (server/jobs/pdf.job.js):
+  Process pdfQueue jobs:
+  job.data.type: 'invoice' | 'estimate' | 'credit_note' | 'transfer_note'
+  job.data.id: document ID
+  Call appropriate pdf.service function
+  On success: emit socket event 'pdf:ready' to document owner
+  On failure: update document pdfStatus='failed', notify admin
+
+Phase 13 checks:
+  [PDF]  generateInvoicePDF() returns non-empty Buffer
+  [PDF]  PDF content contains company name (parse PDF text with pdf-parse)
+  [PDF]  PDF content contains invoice number
+  [PDF]  generateTransferNotePDF() returns PDF with QR code content
+  [HTML] generateLabelHTML() returns string containing '<img' (barcode images)
+  [S3]   uploadBuffer() called without error (mock S3 with @aws-sdk/client-s3-mock)
+  [S3]   getSignedDownloadUrl() returns string starting with 'https://'
+  [JOB]  pdfQueue processes jobs (mock Puppeteer to return buffer in tests)
+
+Run: node scripts/verifier.js --phase=13
+Fix all failures. Repeat until: PHASE 13: ALL CHECKS PASSED
+
+=========================================================
+PHASE 14 — SEED DATA + FULL INTEGRATION TESTS
+=========================================================
+
+CREATE: scripts/seed.js
+
+  Seed in this exact order (dependencies require this order):
+
+  1. SETTINGS: Create Settings document:
+     companyName:'Ratinam Crackers', gstin:'33XXXXX', defaultHSN:'3604',
+     wholesaleQtyThreshold:10, invoiceStartNumber:1, financialYear:'2025-26'
+
+  2. LOCATIONS: Create 3 locations:
+     {name:'Main Warehouse', type:'warehouse', address:'Sivakasi'}
+     {name:'Sivakasi Shop', type:'shop', address:'Sivakasi Main Road'}
+     {name:'Virudhunagar Shop', type:'shop', address:'Virudhunagar Bazaar'}
+
+  3. USERS: Create 8 users:
+     Admin: {username:'admin', password:'Admin@1234', role:'SUPER_ADMIN', locationIds:[all]}
+     Manager: {username:'manager', password:'Manager@1234', role:'ERP_MANAGER'}
+     Accountant: {username:'accountant', password:'Account@1234', role:'ACCOUNTANT'}
+     Agent1: {username:'agent.kiru', password:'Agent@1234', role:'AGENT', promoCode:'KIRU2026'}
+     Agent2: {username:'agent.ravi', password:'Agent@1234', role:'AGENT', promoCode:'RAVI2026'}
+     WH Manager: {username:'wh.manager', password:'Whouse@1234', role:'WH_MANAGER', locationIds:[warehouse]}
+     Cashier1: {username:'cashier.1', pin:'1234', password:'Cashier@1234', role:'CASHIER', locationIds:[shop1]}
+     Cashier2: {username:'cashier.2', pin:'5678', password:'Cashier@1234', role:'CASHIER', locationIds:[shop2]}
+
+  4. SUPPLIERS: Create 5 suppliers (realistic Sivakasi cracker companies)
+
+  5. AGENTS: Create 2 Agent documents (linked to Agent1, Agent2 users)
+     Agent1: commission:[{from:0,to:50000,rate:3},{from:50001,to:100000,rate:4},{from:100001,to:0,rate:5}]
+     Agent1: maxDiscountPct:10, monthlyTarget:200000
+
+  6. CUSTOMERS: Create 20 customers with mix of types:
+     5 RETAIL, 5 WHOLESALE, 5 AGENT_CUSTOMER (assigned to Agent1), 3 VIP, 2 with credit limits
+     Realistic Tamil Nadu names, addresses, some with valid-format GSTIN
+
+  7. PRICE LIST: Create 1 active price list: {name:'2026 Dec-Apr', season:'2026', isActive:true}
+
+  8. PRODUCTS: Create 30 products across categories (6 per category):
+     Ground: Chakkar varieties, Flower Pots
+     Aerial: Rockets, Bombs
+     Sparkler: 30cm, 50cm varieties
+     Novelty: Fountains, Snakes
+     Gift Box: 3 family packs
+     Each product: 2-3 variants (5pcs, 10pcs, 50pcs)
+     Each variant: all 5 price tiers filled (realistic prices)
+     Products 1-10: onlineDisplay=true
+
+  9. COUPONS: Create 5 coupons:
+     DIWALI200: flat ₹200, all channels, valid 3 months from now
+     SEASON10: 10% off, max ₹500, minOrder ₹1000, POS+Website
+     KIRU10: agentpromo 10%, channels:ERP, applicableCustomerTypes:WHOLESALE
+     WELCOME15: firstorder 15%, Website only, perCustomerLimit:1
+     BOGO1: bxgy (buy 10 get 1), POS+Website
+
+  10. OPENING STOCK: Create stock for all 30 products at all 3 locations:
+      Each product-variant-location: 50-500 units
+      Use stock.service.addStockMovement(type='IN') for each
+      actorId: admin user ID
+
+  11. BARCODES: Generate barcodes for all products (call barcode.service)
+
+  console.log('Seed complete: X users, X products, X customers, X locations seeded')
+  console.log('Admin login: username=admin password=Admin@1234')
+
+FULL INTEGRATION TEST (server/tests/integration.test.js):
+
+  This test simulates the complete business flow end-to-end:
+
+  beforeAll: run seed.js (or seed via service functions)
+
+  Test 1: Product creation
+    POST /products → product created → GET /products/:id → matches input
+
+  Test 2: Purchase order flow
+    POST /purchase-orders → GET pending PO →
+    PUT /purchase-orders/:id/receive → GET /stock/levels → stock increased
+
+  Test 3: Wholesale estimate from brochure
+    Generate brochure template → fill 5 product qtys → upload →
+    POST /brochure/create-estimate → estimate created with correct prices
+
+  Test 4: Estimate with qty threshold
+    Create estimate line with qty=10 → verify bulkRateApplied=true in response
+    Create estimate line with qty=9 → verify bulkRateApplied=false
+
+  Test 5: Estimate to invoice
+    POST /estimates → PUT /estimates/:id/convert →
+    Stock decremented → Invoice created → CouponUsage recorded
+
+  Test 6: POS sale (retail)
+    POST /pos/sale with RETAIL customer, qty=5 → bulkRateApplied=false
+    POST /pos/sale with RETAIL customer, qty=10 → bulkRateApplied=true, wholesaleBulk price
+    Loyalty points awarded after sale
+
+  Test 7: Customer return
+    POST /pos/return → stock added back → credit note created
+
+  Test 8: Stock transfer
+    POST /transfers → PUT dispatch → stock reserved at source →
+    PUT receive → stock at destination increased → source UNRESERVED
+
+  Test 9: Coupon validation
+    POST /coupons/validate valid → {valid:true, discountAmount > 0}
+    POST /coupons/validate expired → {valid:false, error:'EXPIRED'}
+    POST /coupons/validate below minOrder → {valid:false, error:'MINIMUM_NOT_MET'}
+
+  Test 10: Savings sync
+    POST /sync/customer → customer created in ERP with savingsId set
+    POST /sync/ack/:id → savingsId confirmed on customer
+
+  Test 11: Report accuracy
+    After tests 5+6: GET /reports/sales?dateFrom=today → total matches expected
+
+  Test 12: Notification queue
+    After test 6: NotificationLog has entries for loyalty_earned event
+
+Phase 14 checks:
+  [SEED]  scripts/seed.js runs without error
+  [SEED]  After seed: GET /products returns total=30
+  [SEED]  After seed: GET /customers returns total=20
+  [SEED]  After seed: GET /stock/levels shows non-zero at all 3 locations
+  [TEST]  server/tests/integration.test.js: all 12 tests pass
+  [TEST]  npm test (ALL Jest test files): 0 failures
+  [E2E]   npm run test:e2e (ALL Playwright specs): 0 failures
+  [LINT]  npm run lint: 0 errors
+
+Run: node scripts/verifier.js --phase=14
+Fix all failures. Repeat until: PHASE 14: ALL CHECKS PASSED
+
+=========================================================
+PHASE 15 — PRODUCTION BUILD + DEPLOYMENT PREP + DOCS
+=========================================================
+
+1. PRODUCTION BUILDS:
+   For each client workspace, ensure vite.config.js has:
+     build.outDir: 'dist'
+     build.chunkSizeWarningLimit: 1000
+   Run: npm run build:all
+   Verify each client/*/dist/index.html exists.
+
+2. CREATE: nginx/ratinam.conf
+   Complete Nginx config with:
+   - Gzip compression (text/plain, text/css, application/json, application/javascript)
+   - Rate limit zones: api (200r/m), auth (5r/m)
+   - HTTP → HTTPS redirect for all domains
+   - Server blocks for all 6 domains (api, erp, pos, wh, website, deal)
+   - SSL cert paths for wildcard cert
+   - Static file caching (1y for immutable assets)
+   - try_files $uri $uri/ /index.html for all SPA blocks
+   - proxy_pass with correct headers for api + deal (PHP-FPM) blocks
+   - Socket.io proxy (Upgrade + Connection headers)
+
+3. CREATE: pm2/ecosystem.config.js
+   module.exports = { apps: [{ name:'ratinam-api', script:'server/index.js',
+     instances:2, exec_mode:'cluster', watch:false,
+     env_production:{ NODE_ENV:'production', PORT:3000 },
+     error_file:'logs/err.log', out_file:'logs/out.log',
+     log_date_format:'YYYY-MM-DD HH:mm:ss',
+     max_memory_restart:'400M' }] }
+
+4. CREATE: scripts/deploy-prep.sh  (chmod +x)
+   #!/bin/bash
+   set -e
+   echo '=== Ratinam Crackers Deploy Prep ==='
+   # Install production dependencies
+   npm ci --workspace=server --omit=dev
+   # Build all frontends
+   npm run build:all
+   # Copy Nginx config
+   sudo cp nginx/ratinam.conf /etc/nginx/sites-available/ratinam
+   sudo ln -sf /etc/nginx/sites-available/ratinam /etc/nginx/sites-enabled/ratinam
+   sudo nginx -t && sudo systemctl reload nginx
+   echo 'Nginx configured and reloaded'
+   # Start/restart PM2
+   pm2 startOrReload pm2/ecosystem.config.js --env production
+   pm2 save
+   echo 'PM2 started. Run: pm2 startup to enable on reboot.'
+   echo '=== Deploy prep complete ==='
+
+5. CREATE: scripts/backup.sh  (chmod +x)
+   #!/bin/bash
+   DATE=$(date +%Y%m%d_%H%M%S)
+   mongodump --uri=$MONGODB_URI --out=/tmp/backup_$DATE
+   tar -czf /tmp/backup_$DATE.tar.gz -C /tmp backup_$DATE
+   aws s3 cp /tmp/backup_$DATE.tar.gz s3://$AWS_S3_BUCKET/backups/
+   rm -rf /tmp/backup_$DATE /tmp/backup_$DATE.tar.gz
+   echo 'Backup complete'
+
+6. CREATE: docs/DEPLOY.md
+   Comprehensive step-by-step from Replit to AWS EC2:
+   Step 1: Launch EC2 t3.small (Ubuntu 24.04, 40GB GP3, SG: 22+80+443)
+   Step 2: sudo apt update && sudo apt upgrade -y
+   Step 3: Install Node.js 20 (nodesource), PM2, Nginx, Redis, MongoDB 7
+   Step 4: Configure MongoDB (auth on, cacheSizeGB=0.5, bindIp=127.0.0.1)
+   Step 5: Configure Redis (maxmemory 80mb)
+   Step 6: Create /var/www/ratinam — clone or rsync code
+   Step 7: cp server/.env.example server/.env.production && fill all values
+   Step 8: bash scripts/deploy-prep.sh
+   Step 9: certbot --nginx -d rathinamcracker.com -d '*.rathinamcracker.com'
+   Step 10: Update DNS A records for all 5 sub-domains to EC2 Elastic IP
+   Step 11: NODE_ENV=production node scripts/seed.js (first time only)
+   Step 12: node scripts/verifier.js --phase=all (confirm everything works)
+   Step 13: crontab -e → add: 0 2 * * * /var/www/ratinam/scripts/backup.sh
+   Step 14: pm2 startup → run the command it outputs
+
+7. CREATE: docs/API.md
+   For every route group: method, path, auth level, request, response, errors
+   Generated from route files: add JSDoc comments to every route → run script to compile
+
+8. CREATE: docs/ENV.md
+   Table: variable name | required | description | example | used by
+   One row per env variable (25 total)
+
+Phase 15 checks:
+  [BUILD] npm run build:all exits 0
+  [BUILD] client/erp/dist/index.html exists
+  [BUILD] client/pos/dist/index.html exists
+  [BUILD] client/warehouse/dist/index.html exists
+  [BUILD] client/website/dist/index.html exists
+  [NGINX] nginx -t -c $(pwd)/nginx/ratinam.conf exits 0 (valid syntax)
+  [PM2]   pm2/ecosystem.config.js exports object with apps[] array
+  [SHELL] scripts/deploy-prep.sh is executable (mode 755)
+  [SHELL] scripts/backup.sh is executable
+  [DOCS]  docs/DEPLOY.md exists and has 14 numbered steps
+  [DOCS]  docs/API.md exists and covers all route groups
+  [DOCS]  docs/ENV.md exists with all 25 variable names
+
+Run: node scripts/verifier.js --phase=15
+Fix all failures. Repeat until: PHASE 15: ALL CHECKS PASSED
+
+=========================================================
+FINAL VERIFICATION — RUN ALL PHASES
+=========================================================
+
+Run: node scripts/verifier.js --phase=all
+
+This runs all checks from Phase 0 through Phase 15 sequentially.
+Also runs: npm test (zero failures required) + npm run test:e2e (zero failures)
+
+Required output for build completion:
+  PHASE 0: ALL CHECKS PASSED
+  PHASE 1: ALL CHECKS PASSED
+  PHASE 2: ALL CHECKS PASSED
+  PHASE 3: ALL CHECKS PASSED
+  PHASE 4: ALL CHECKS PASSED
+  PHASE 5: ALL CHECKS PASSED
+  PHASE 6: ALL CHECKS PASSED
+  PHASE 7: ALL CHECKS PASSED
+  PHASE 8: ALL CHECKS PASSED
+  PHASE 9: ALL CHECKS PASSED
+  PHASE 10: ALL CHECKS PASSED
+  PHASE 11: ALL CHECKS PASSED
+  PHASE 12: ALL CHECKS PASSED
+  PHASE 13: ALL CHECKS PASSED
+  PHASE 14: ALL CHECKS PASSED
+  PHASE 15: ALL CHECKS PASSED
+  =========================================
+  RATINAM CRACKERS BUILD: COMPLETE
+  All 16 phases verified. System ready for deployment.
+  Next step: Follow docs/DEPLOY.md to deploy to AWS EC2
+  =========================================
+
+DO NOT mark the build complete until you see this exact output.
+
+=========================================================
+GLOBAL CODE QUALITY STANDARDS
+=========================================================
+
+These standards apply to EVERY file. Enforce throughout.
+
+ASYNC: Every async route handler wrapped in asyncHandler middleware.
+RESPONSES: Every controller uses success() or error() from utils/response.js.
+LOGGING: Use winston logger, never console.log in production code.
+SECRETS: Zero hardcoded credentials. All from process.env.
+AUTH: Refresh tokens in httpOnly cookies, not localStorage.
+S3: Never expose S3 URLs directly. Always presigned URLs.
+PAGINATION: All list endpoints paginate. Default limit 20, max 100.
+INDEXES: Create all MongoDB indexes on first-run (model definitions).
+LEAN: All Mongoose read queries use .lean() unless modifying.
+VALIDATION: Zod schemas validate ALL API inputs before controllers run.
+AUDIT: All mutations (POST/PUT/PATCH/DELETE) logged to AuditLog.
+ESLINT: npm run lint must pass with 0 errors on final build.
+SECURITY: bcrypt 12 rounds, helmet on all responses, rate limiting on auth.
+ERRORS: Never expose stack traces in production (NODE_ENV=production).
+JOBS: Heavy operations (PDF, Excel export, notifications) ALWAYS in Bull queue.
+SOCKET: Stock updates emitted after EVERY stock movement. Low stock checked after every OUT.
