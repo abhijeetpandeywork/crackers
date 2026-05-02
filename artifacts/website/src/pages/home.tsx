@@ -10,17 +10,19 @@ import {
 } from "lucide-react";
 import { Layout } from "@/components/layout";
 
+type ProductVariantLite = { prices?: { retailOnline?: number } };
 type Product = {
   id: string;
   name?: string;
   category?: string;
-  priceRange?: { min?: number; max?: number };
+  variants?: ProductVariantLite[];
 };
 
-const num = (v: unknown): number => {
-  if (v === null || v === undefined || v === "") return 0;
-  const n = Number(v);
-  return Number.isFinite(n) ? n : 0;
+const minPrice = (p: Product): number => {
+  const prices = (p.variants ?? [])
+    .map((v) => Number(v?.prices?.retailOnline))
+    .filter((n) => Number.isFinite(n) && n > 0);
+  return prices.length === 0 ? 0 : Math.min(...prices);
 };
 
 function useDiwaliCountdown() {
@@ -258,7 +260,18 @@ export default function Home() {
                       <div className="p-5">
                         <h3 className="font-bold text-gray-900 mb-1 line-clamp-1">{product.name}</h3>
                         <div className="flex items-center justify-between mt-2">
-                          <p className="text-red-600 font-bold text-lg">₹{num(product.priceRange?.min).toLocaleString("en-IN")}<span className="text-xs text-gray-500 font-medium">+</span></p>
+                          {(() => {
+                            const m = minPrice(product);
+                            return (
+                              <p className="text-red-600 font-bold text-lg">
+                                {m > 0 ? (
+                                  <>₹{m.toLocaleString("en-IN")}<span className="text-xs text-gray-500 font-medium">+</span></>
+                                ) : (
+                                  <span className="text-sm text-gray-500 font-semibold">Price on call</span>
+                                )}
+                              </p>
+                            );
+                          })()}
                           <span className="text-xs text-amber-600 font-semibold flex items-center gap-1"><BadgeCheck className="h-3.5 w-3.5" /> PESO</span>
                         </div>
                       </div>

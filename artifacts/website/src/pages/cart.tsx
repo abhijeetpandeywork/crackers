@@ -27,33 +27,34 @@ export default function Cart() {
 
   const handleApplyCoupon = async () => {
     if (!couponCode) return;
-    
+
     try {
-      const res = await validateCoupon.mutateAsync({ 
-        data: { 
+      const res = await validateCoupon.mutateAsync({
+        data: {
           code: couponCode,
-          orderAmount: subtotal
-        } 
+          cartTotal: subtotal,
+        },
       });
-      
-      if (res.data.valid) {
-        setAppliedCoupon(res.data);
+
+      const payload = res.data;
+      if (payload?.valid) {
+        setAppliedCoupon({ ...payload, code: couponCode });
         toast({
-          title: "Coupon Applied!",
-          description: `You saved ₹${res.data.discountAmount}.`,
+          title: "Coupon applied!",
+          description: `You saved ₹${(payload.discountAmount ?? 0).toLocaleString("en-IN")}.`,
         });
       } else {
         toast({
-          title: "Invalid Coupon",
-          description: res.data.message || "This coupon cannot be used.",
-          variant: "destructive"
+          title: "Invalid coupon",
+          description: payload?.error || "This coupon cannot be used.",
+          variant: "destructive",
         });
       }
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to validate coupon.",
-        variant: "destructive"
+        description: "Failed to validate coupon. Please try again.",
+        variant: "destructive",
       });
     }
   };

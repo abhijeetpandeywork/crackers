@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useParams, Link } from "wouter";
-import { useListPublicProducts, useGetProduct } from "@workspace/api-client-react";
+import { useListPublicProducts } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -26,38 +26,46 @@ export default function ProductDetail() {
   const [qty, setQty] = useState(1);
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
 
-  // Fallback pattern as per instructions
-  const { data: directProduct, isLoading: isLoadingDirect, isError: isErrorDirect } = useGetProduct(id!);
-  const { data: publicProducts, isLoading: isLoadingPublic } = useListPublicProducts({ limit: 100 });
+  const { data: publicProducts, isLoading } = useListPublicProducts({ limit: 500 });
 
   const product = useMemo(() => {
-    if (directProduct?.data) return directProduct.data;
     return publicProducts?.data?.find((p: any) => p.id === id);
-  }, [directProduct, publicProducts, id]);
+  }, [publicProducts, id]);
 
-  const isLoading = isLoadingDirect || isLoadingPublic;
-
-  const selectedVariant = useMemo(() => {
-    if (!product?.variants) return null;
-    if (selectedVariantId) return product.variants.find((v: any) => v.id === selectedVariantId);
+  const selectedVariant: any = useMemo(() => {
+    if (!product?.variants?.length) return null;
+    if (selectedVariantId) return product.variants.find((v: any) => v.variantId === selectedVariantId);
     return product.variants[0];
   }, [product, selectedVariantId]);
 
+  const variantLabel = (v: any) =>
+    [v?.size, v?.packContent].filter(Boolean).join(" · ") || "Standard";
+
   const handleAddToCart = () => {
     if (!product || !selectedVariant) return;
-    
+
+    const unitPrice = Number(selectedVariant.prices?.retailOnline) || 0;
+    if (unitPrice <= 0) {
+      toast({
+        title: "Price unavailable",
+        description: "Please call us on +91 98765 43210 to confirm pricing.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     addItem({
-      productId: product.id,
-      variantId: selectedVariant.id,
-      productName: product.name,
-      variantLabel: selectedVariant.label,
+      productId: product.id ?? "",
+      variantId: selectedVariant.variantId ?? "",
+      productName: product.name ?? "Product",
+      variantLabel: variantLabel(selectedVariant),
       qty,
-      unitPrice: selectedVariant.price?.retailOnline || 0
+      unitPrice,
     });
 
     toast({
       title: "Added to cart",
-      description: `${qty} x ${product.name} (${selectedVariant.label}) added.`,
+      description: `${qty} × ${product.name} (${variantLabel(selectedVariant)}) added.`,
     });
   };
 
@@ -126,7 +134,7 @@ export default function ProductDetail() {
 
               <div className="mb-8">
                 <p className="text-gray-600 leading-relaxed italic">
-                  Experience the magic of authentic Sivakasi fireworks. This {product.category.toLowerCase()} is perfect for making your celebrations unforgettable. 
+                  Experience the magic of authentic Sivakasi fireworks. This {(product.category ?? "cracker").toLowerCase()} is perfect for making your celebrations unforgettable. 
                   All our products follow strict safety guidelines.
                 </p>
               </div>
@@ -135,19 +143,29 @@ export default function ProductDetail() {
               <div className="mb-8">
                 <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest mb-4">Select Variant</h3>
                 <div className="flex flex-wrap gap-3">
-                  {product.variants?.map((v: any) => (
-                    <button
-                      key={v.id}
-                      onClick={() => setSelectedVariantId(v.id)}
-                      className={`px-6 py-3 rounded-2xl border-2 transition-all text-sm font-bold ${
-                        (selectedVariantId === v.id || (!selectedVariantId && product.variants[0].id === v.id))
-                          ? "border-red-600 bg-red-50 text-red-600"
-                          : "border-gray-100 bg-gray-50 text-gray-600 hover:border-gray-200"
-                      }`}
-                    >
-                      {v.label}
-                    </button>
-                  ))}
+                  {product.variants?.map((v: any, idx: number) => {
+                    const isActive =
+                      selectedVariantId === v.variantId ||
+                      (!selectedVariantId && idx === 0);
+                    return (
+                      <button
+                        key={v.variantId ?? idx}
+                        onClick={() => setSelectedVariantId(v.variantId ?? null)}
+                        className={`px-6 py-3 rounded-2xl border-2 transition-all text-sm font-bold text-left ${
+                          isActive
+                            ? "border-red-600 bg-red-50 text-red-600"
+                            : "border-gray-100 bg-gray-50 text-gray-600 hover:border-gray-200"
+                        }`}
+                      >
+                        <span className="block">{v.size ?? "Standard"}</span>
+                        {v.packContent && (
+                          <span className="block text-[10px] font-semibold opacity-70 mt-0.5">
+                            {v.packContent}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -156,12 +174,16 @@ export default function ProductDetail() {
                 <div className="bg-gray-50 rounded-3xl p-8 mb-8 border border-gray-100">
                   <div className="flex items-end justify-between mb-6">
                     <div>
-                      <p className="text-sm text-gray-500 font-medium mb-1">Price per unit</p>
-                      <span className="text-4xl font-extrabold text-gray-900">₹{selectedVariant.price?.retailOnline || 0}</span>
+                      <p className="text-sm text-gray-500 font-medium mb-1">Price per {selectedVariant.unit?.toLowerCase() ?? "unit"}</p>
+                      <span className="text-4xl font-extrabold text-gray-900">
+                        {Number(selectedVariant.prices?.retailOnline) > 0
+                          ? `₹${Number(selectedVariant.prices?.retailOnline).toLocaleString("en-IN")}`
+                          : "Price on call"}
+                      </span>
                     </div>
                     <div className="text-right">
                       <p className="text-xs text-gray-500 uppercase tracking-tighter">Contents</p>
-                      <p className="font-bold text-gray-700">{selectedVariant.contents || '1 Pack'}</p>
+                      <p className="font-bold text-gray-700">{selectedVariant.packContent ?? "1 Pack"}</p>
                     </div>
                   </div>
 

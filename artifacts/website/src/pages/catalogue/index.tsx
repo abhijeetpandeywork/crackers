@@ -23,7 +23,15 @@ export default function Catalogue() {
   });
 
   const products = data?.data || [];
-  const totalPages = data?.pagination?.totalPages || 1;
+  const totalPages = data?.meta?.pages || 1;
+
+  const priceRange = (p: any): { min: number; max: number } => {
+    const prices = (p?.variants ?? [])
+      .map((v: any) => Number(v?.prices?.retailOnline))
+      .filter((n: number) => Number.isFinite(n) && n > 0);
+    if (prices.length === 0) return { min: 0, max: 0 };
+    return { min: Math.min(...prices), max: Math.max(...prices) };
+  };
 
   const categories = ["All", "Ground", "Aerial", "Sparkler", "Gift Box", "Bundle", "Novelty"];
 
@@ -104,9 +112,18 @@ export default function Catalogue() {
                       </h3>
                       <p className="text-sm text-gray-500 mb-3">Code: {product.code}</p>
                       <div className="mt-auto flex items-center justify-between">
-                        <span className="text-lg font-bold text-gray-900">
-                          ₹{product.priceRange?.min || 0} – ₹{product.priceRange?.max || 0}
-                        </span>
+                        {(() => {
+                          const r = priceRange(product);
+                          return (
+                            <span className="text-lg font-bold text-gray-900">
+                              {r.min === 0 && r.max === 0
+                                ? "Price on call"
+                                : r.min === r.max
+                                  ? `₹${r.min.toLocaleString("en-IN")}`
+                                  : `₹${r.min.toLocaleString("en-IN")} – ₹${r.max.toLocaleString("en-IN")}`}
+                            </span>
+                          );
+                        })()}
                         <Button size="sm" variant="outline" className="rounded-full border-red-100 text-red-600 hover:bg-red-50 group-hover:bg-red-600 group-hover:text-white group-hover:border-red-600 transition-all">
                           View
                         </Button>
