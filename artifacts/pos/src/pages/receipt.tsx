@@ -111,7 +111,7 @@ const ReceiptScreen = () => {
       {/* Print Overlay (Hidden on Screen) */}
       <div className="hidden print:block fixed inset-0 bg-white text-black p-8 font-mono">
         <div className="text-center border-b pb-4 mb-4">
-          <h1 className="text-2xl font-bold">RATINAM CRACKERS</h1>
+          <h1 className="text-2xl font-bold">RATHINAM CRACKERS</h1>
           <p>Sivakasi, Tamil Nadu</p>
           <p>GSTIN: 33XXXXXXXXXXXXX</p>
         </div>

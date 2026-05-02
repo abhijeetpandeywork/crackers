@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * Ratinam Crackers — System Verifier
+ * Rathinam Crackers — System Verifier
  *
  * Automated end-to-end health checks for the entire stack.
  * Verifies API health, auth, RBAC, pricing engine, stock immutability,
@@ -359,7 +359,7 @@ const sections: Array<{ name: string; checks: () => Promise<CheckResult[]> }> = 
 
 async function main() {
   console.log(`\n${BOLD}${CYAN}╔════════════════════════════════════════════════════╗${RESET}`);
-  console.log(`${BOLD}${CYAN}║  Ratinam Crackers — System Verifier              ║${RESET}`);
+  console.log(`${BOLD}${CYAN}║  Rathinam Crackers — System Verifier              ║${RESET}`);
   console.log(`${BOLD}${CYAN}╚════════════════════════════════════════════════════╝${RESET}`);
   console.log(`${YELLOW}Target: ${BASE}${RESET}\n`);
 

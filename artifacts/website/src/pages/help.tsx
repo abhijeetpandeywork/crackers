@@ -66,7 +66,7 @@ export default function WebsiteHelp() {
               <h1 className="text-3xl md:text-4xl font-bold">Help & FAQ</h1>
             </div>
             <p className="text-white/80 max-w-2xl">
-              Everything about ordering crackers from Ratinam — from picking products to delivery and GST invoices.
+              Everything about ordering crackers from Rathinam — from picking products to delivery and GST invoices.
             </p>
           </div>
         </section>

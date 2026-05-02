@@ -49,7 +49,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       {/* Sidebar */}
       <aside className="w-64 flex-shrink-0 border-r bg-sidebar text-sidebar-foreground flex flex-col">
         <div className="h-14 flex items-center px-4 font-bold text-lg border-b border-sidebar-border text-primary-foreground tracking-tight">
-          RATINAM ERP
+          RATHINAM ERP
         </div>
         
         <ScrollArea className="flex-1 py-4">

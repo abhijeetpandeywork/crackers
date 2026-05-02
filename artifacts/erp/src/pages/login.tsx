@@ -36,7 +36,7 @@ export default function Login() {
     <div className="min-h-screen flex flex-col items-center justify-center bg-zinc-950 p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-extrabold tracking-tight text-white mb-2">RATINAM</h1>
+          <h1 className="text-4xl font-extrabold tracking-tight text-white mb-2">RATHINAM</h1>
           <p className="text-zinc-400 font-medium">ERP Operations Console</p>
         </div>
 

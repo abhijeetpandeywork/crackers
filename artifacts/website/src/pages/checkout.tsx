@@ -40,7 +40,7 @@ export default function Checkout() {
           </div>
           <h1 className="text-4xl font-extrabold text-gray-900 mb-4">Order Placed!</h1>
           <p className="text-xl text-gray-600 mb-8">
-            Thank you for choosing Ratinam Crackers. Your Order ID is <span className="font-bold text-red-600">#{orderId}</span>.
+            Thank you for choosing Rathinam Crackers. Your Order ID is <span className="font-bold text-red-600">#{orderId}</span>.
           </p>
           
           <div className="bg-amber-50 border border-amber-100 rounded-3xl p-8 mb-10 text-left">

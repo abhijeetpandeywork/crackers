@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 
-const JWT_SECRET = process.env["SESSION_SECRET"] ?? "ratinam-secret";
+const JWT_SECRET = process.env["SESSION_SECRET"] ?? "rathinam-secret";
 const ACCESS_TTL = "15m";
 const REFRESH_TTL = "7d";
 

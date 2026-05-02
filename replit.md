@@ -1,4 +1,4 @@
-# Ratinam Crackers Business Management System
+# Rathinam Crackers Business Management System
 
 ## Architecture Overview
 

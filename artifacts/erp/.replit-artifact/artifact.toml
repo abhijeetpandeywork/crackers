@@ -1,6 +1,6 @@
 kind = "web"
 previewPath = "/"
-title = "Ratinam Crackers ERP"
+title = "Rathinam Crackers ERP"
 version = "1.0.0"
 id = "artifacts/erp"
 router = "path"

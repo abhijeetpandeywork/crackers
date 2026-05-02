@@ -143,7 +143,7 @@ export default function HelpIndex() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Help & Documentation</h1>
           <p className="text-sm text-muted-foreground">
-            Learn how to use every part of the Ratinam ERP — guides, FAQs, and architecture notes.
+            Learn how to use every part of the Rathinam ERP — guides, FAQs, and architecture notes.
           </p>
         </div>
       </div>

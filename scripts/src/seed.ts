@@ -6,17 +6,17 @@ async function seed() {
 
   // Settings
   await db.insert(settingsTable).values([
-    { key: "company", value: { companyName: "Ratinam Crackers", gstin: "33AABCR1234A1Z5", address: "123 Main Road, Sivakasi, Tamil Nadu - 626123", phone: "9876543210", email: "info@ratinamcrackers.com", defaultHSN: "36049000", financialYear: "2025-2026", bankDetails: "SBI - 1234567890 - SBIN0001234" } },
+    { key: "company", value: { companyName: "Rathinam Crackers", gstin: "33AABCR1234A1Z5", address: "123 Main Road, Sivakasi, Tamil Nadu - 626123", phone: "9876543210", email: "info@rathinamcrackers.com", defaultHSN: "36049000", financialYear: "2025-2026", bankDetails: "SBI - 1234567890 - SBIN0001234" } },
     { key: "pricing", value: { wholesaleQtyThreshold: 10, loyaltyEarnRate: 1, loyaltyRedemptionRate: 1, taxRate: 0.18 } },
   ]).onConflictDoNothing();
 
   // Admin user
   const passwordHash = await bcrypt.hash("admin123", 10);
   await db.insert(usersTable).values([
-    { id: "usr-admin", name: "Super Admin", username: "admin", passwordHash, pin: "1234", role: "SUPER_ADMIN", locationIds: [], email: "admin@ratinam.com", isActive: true },
-    { id: "usr-mgr", name: "ERP Manager", username: "manager", passwordHash, pin: "2345", role: "ERP_MANAGER", locationIds: [], email: "manager@ratinam.com", isActive: true },
-    { id: "usr-cashier", name: "POS Cashier", username: "cashier", passwordHash, pin: "3456", role: "CASHIER", locationIds: ["loc-shop1"], email: "cashier@ratinam.com", isActive: true },
-    { id: "usr-wh", name: "Warehouse Manager", username: "warehouse", passwordHash, pin: "4567", role: "WH_MANAGER", locationIds: ["loc-wh1"], email: "wh@ratinam.com", isActive: true },
+    { id: "usr-admin", name: "Super Admin", username: "admin", passwordHash, pin: "1234", role: "SUPER_ADMIN", locationIds: [], email: "admin@rathinam.com", isActive: true },
+    { id: "usr-mgr", name: "ERP Manager", username: "manager", passwordHash, pin: "2345", role: "ERP_MANAGER", locationIds: [], email: "manager@rathinam.com", isActive: true },
+    { id: "usr-cashier", name: "POS Cashier", username: "cashier", passwordHash, pin: "3456", role: "CASHIER", locationIds: ["loc-shop1"], email: "cashier@rathinam.com", isActive: true },
+    { id: "usr-wh", name: "Warehouse Manager", username: "warehouse", passwordHash, pin: "4567", role: "WH_MANAGER", locationIds: ["loc-wh1"], email: "wh@rathinam.com", isActive: true },
   ]).onConflictDoNothing();
 
   // Locations

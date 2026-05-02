@@ -83,11 +83,11 @@ export default function InvoiceDetail() {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-sm space-y-1">
-            <div className="font-bold text-lg">RATINAM CRACKERS</div>
+            <div className="font-bold text-lg">RATHINAM CRACKERS</div>
             <p>123 Factory Road, Sivakasi, Tamil Nadu</p>
             <p>GSTIN: 33AAAAA0000A1Z5</p>
             <p>Phone: +91 98765 43210</p>
-            <p>Email: sales@ratinamcrackers.com</p>
+            <p>Email: sales@rathinamcrackers.com</p>
           </CardContent>
         </Card>
 

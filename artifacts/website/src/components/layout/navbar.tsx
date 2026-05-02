@@ -22,7 +22,7 @@ export function Navbar() {
           <div className="flex items-center">
             <Link href="/" className="flex items-center space-x-2">
               <span className="text-2xl font-bold bg-gradient-to-r from-red-600 to-amber-500 bg-clip-text text-transparent">
-                🎆 RATINAM
+                🎆 RATHINAM
               </span>
             </Link>
           </div>

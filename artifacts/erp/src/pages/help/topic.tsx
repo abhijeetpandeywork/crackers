@@ -382,7 +382,7 @@ const TOPICS: Record<string, Topic> = {
   },
   architecture: {
     title: "Architecture & API",
-    lead: "How the Ratinam system is built — for technical users and integrators.",
+    lead: "How the Rathinam system is built — for technical users and integrators.",
     sections: [
       {
         heading: "Stack",

@@ -7,7 +7,7 @@ const router = Router();
 
 router.get("/settings/company", authenticate, async (_req, res) => {
   const rows = await db.select().from(settingsTable).where(eq(settingsTable.key, "company")).limit(1);
-  const defaults = { companyName: "Ratinam Crackers", gstin: "", address: "Sivakasi, Tamil Nadu", phone: "", email: "", defaultHSN: "36049000", invoiceStartNumber: 1, financialYear: "2025-2026", bankDetails: "" };
+  const defaults = { companyName: "Rathinam Crackers", gstin: "", address: "Sivakasi, Tamil Nadu", phone: "", email: "", defaultHSN: "36049000", invoiceStartNumber: 1, financialYear: "2025-2026", bankDetails: "" };
   res.json({ success: true, data: rows[0] ? (rows[0].value as any) : defaults });
 });
 

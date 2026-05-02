@@ -54,7 +54,7 @@ export function Sidebar({ className }: SidebarProps) {
     )}>
       <div className="flex items-center h-16 px-4 border-b border-white/10">
         <Warehouse className="h-6 w-6 text-teal-400" />
-        {!isCollapsed && <span className="ml-3 font-bold text-lg tracking-tight">RATINAM WH</span>}
+        {!isCollapsed && <span className="ml-3 font-bold text-lg tracking-tight">RATHINAM WH</span>}
       </div>
 
       <nav className="flex-1 py-4 space-y-1">

@@ -40,7 +40,7 @@ export default function Home() {
         
         <div className="relative z-10 text-center px-4">
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold text-white mb-6 tracking-tight">
-            Celebrate with <span className="text-amber-400">Ratinam Crackers</span>
+            Celebrate with <span className="text-amber-400">Rathinam Crackers</span>
           </h1>
           <p className="text-xl md:text-2xl text-amber-100/90 mb-10 max-w-3xl mx-auto font-medium">
             Premium Sivakasi Fireworks Since 1985. Making every festival extraordinary with safety and brilliance.

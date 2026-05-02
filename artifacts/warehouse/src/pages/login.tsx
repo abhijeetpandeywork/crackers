@@ -21,7 +21,7 @@ export default function Login() {
         setAuthTokenGetter(() => localStorage.getItem("wh_token"));
         toast({
           title: "Login successful",
-          description: "Welcome to Ratinam Warehouse Management System",
+          description: "Welcome to Rathinam Warehouse Management System",
         });
         setLocation("/");
       },
@@ -49,7 +49,7 @@ export default function Login() {
               <Warehouse className="h-10 w-10 text-primary" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold">RATINAM WAREHOUSE</CardTitle>
+          <CardTitle className="text-2xl font-bold">RATHINAM WAREHOUSE</CardTitle>
           <CardDescription>Enter your credentials to access the warehouse system</CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>

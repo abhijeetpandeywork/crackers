@@ -1,6 +1,6 @@
 kind = "web"
 previewPath = "/website/"
-title = "Ratinam Crackers Website"
+title = "Rathinam Crackers Website"
 version = "1.0.0"
 id = "artifacts/website"
 router = "path"
