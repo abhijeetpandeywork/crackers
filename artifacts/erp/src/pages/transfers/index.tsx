@@ -49,12 +49,14 @@ export default function TransfersList() {
   };
 
   const getStatusBadge = (status: string) => {
+    const label = (status ?? "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
     switch (status) {
-      case "Pending": return <Badge variant="secondary">{status}</Badge>;
-      case "Dispatched": return <Badge variant="default" className="bg-blue-500">{status}</Badge>;
-      case "Received": return <Badge variant="default" className="bg-green-500">{status}</Badge>;
-      case "Cancelled": return <Badge variant="destructive">{status}</Badge>;
-      default: return <Badge variant="outline">{status}</Badge>;
+      case "draft": return <Badge variant="outline">{label}</Badge>;
+      case "pending_approval": return <Badge variant="secondary">{label}</Badge>;
+      case "in_transit": return <Badge variant="default" className="bg-blue-500">{label}</Badge>;
+      case "received": return <Badge variant="default" className="bg-green-500">{label}</Badge>;
+      case "cancelled": return <Badge variant="destructive">{label}</Badge>;
+      default: return <Badge variant="outline">{label || status}</Badge>;
     }
   };
 

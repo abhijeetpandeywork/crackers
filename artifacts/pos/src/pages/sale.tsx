@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation, Link } from "wouter";
 import { 
   useGetPosProducts, 
@@ -6,7 +6,8 @@ import {
   useListHeldBills, 
   useValidateCoupon, 
   usePosCreateSale,
-  useCloseShift
+  useCloseShift,
+  useListCustomers
 } from "@workspace/api-client-react";
 import { useCart } from "@/context/cart";
 import { Input } from "@/components/ui/input";
@@ -15,6 +16,11 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { 
   Search, 
   Plus, 
@@ -23,9 +29,8 @@ import {
   Pause, 
   History, 
   LogOut, 
-  CheckCircle2,
-  ChevronRight,
   User,
+  UserX,
   HelpCircle
 } from "lucide-react";
 import { 
@@ -45,9 +50,11 @@ const SaleScreen = () => {
   const [couponCode, setCouponCode] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"CASH" | "CARD" | "UPI">("CASH");
   const [cashReceived, setCashReceived] = useState("");
-  
+  const [activeLocationId, setActiveLocationId] = useState<string>("");
+  const [customerSearch, setCustomerSearch] = useState("");
+
   const { 
-    items, addItem, removeItem, updateQty, clearCart, 
+    items, addItem, removeItem, updateQty, clearCart, loadHeldBill,
     subtotal, gst, discount, total, 
     coupon, applyCoupon, customer, setCustomer 
   } = useCart();
@@ -55,17 +62,38 @@ const SaleScreen = () => {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
 
-  const { data: productsData, isLoading: loadingProducts } = useGetPosProducts({ 
-    locationId: "loc1", // required
-  });
+  // Resolve real location ID once on mount (instead of hardcoded "loc1")
+  useEffect(() => {
+    const token = localStorage.getItem("pos_token");
+    if (!token) return;
+    fetch("/api/v1/locations", { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(res => {
+        const locs = res?.data ?? [];
+        const shop = locs.find((l: any) => l.type === "shop") ?? locs[0];
+        if (shop?.id) setActiveLocationId(shop.id);
+      })
+      .catch(() => {});
+  }, []);
+
+  const { data: productsData } = useGetPosProducts(
+    { locationId: activeLocationId },
+    { query: { enabled: !!activeLocationId } }
+  );
 
   const { mutate: holdBill } = useHoldBill();
-  const { data: heldBillsResponse } = useListHeldBills({
-    locationId: "loc1"
-  });
+  const { data: heldBillsResponse, refetch: refetchHeldBills } = useListHeldBills(
+    { locationId: activeLocationId },
+    { query: { enabled: !!activeLocationId } }
+  );
   const { mutate: validateCoupon, isPending: validatingCoupon } = useValidateCoupon();
   const { mutate: createSale, isPending: checkingOut } = usePosCreateSale();
   const { mutate: closeShift } = useCloseShift();
+
+  const { data: customersData } = useListCustomers(
+    { search: customerSearch || undefined, limit: 10 },
+    { query: { enabled: customerSearch.length >= 2 } }
+  );
 
   const handleApplyCoupon = () => {
     if (!couponCode) return;
@@ -104,7 +132,7 @@ const SaleScreen = () => {
         qty: i.qty
       })),
       paymentMode: paymentMethod,
-      locationId: "loc1", // required
+      locationId: activeLocationId,
       couponCode: coupon?.code,
       customerId: customer?.id
     };
@@ -130,21 +158,39 @@ const SaleScreen = () => {
     holdBill(
       { 
         data: { 
-          locationId: "loc1",
+          locationId: activeLocationId,
+          customerId: customer?.id,
           items: items.map(i => ({
             productId: i.productId,
             variantId: i.variantId,
-            qty: i.qty
+            productName: i.productName,
+            variantLabel: i.variantLabel,
+            qty: i.qty,
+            unitPrice: i.unitPrice,
           })) 
         } 
       },
       {
         onSuccess: () => {
           clearCart();
+          refetchHeldBills();
           toast({ title: "Bill held successfully" });
         }
       }
     );
+  };
+
+  const handleResumeBill = (bill: any) => {
+    const billItems = (bill.items ?? []).map((i: any) => ({
+      productId: i.productId,
+      variantId: i.variantId,
+      productName: i.productName ?? "Item",
+      variantLabel: i.variantLabel ?? "",
+      qty: i.qty ?? 1,
+      unitPrice: i.unitPrice ?? 0,
+    }));
+    loadHeldBill({ items: billItems, customer: bill.customer ?? null });
+    toast({ title: "Bill resumed", description: `Loaded ${billItems.length} items into the cart` });
   };
 
   const handleCloseShift = () => {
@@ -260,10 +306,15 @@ const SaleScreen = () => {
                   {heldBills.map((bill: any) => (
                     <div key={bill.id} className="p-4 bg-zinc-900 border border-zinc-800 rounded-lg flex items-center justify-between">
                       <div>
-                        <p className="font-bold">Bill #{bill.id.slice(0,8)}</p>
-                        <p className="text-xs text-zinc-500">{new Date(bill.createdAt).toLocaleTimeString()}</p>
+                        <p className="font-bold">Bill #{String(bill.id).slice(0,8)}</p>
+                        <p className="text-xs text-zinc-500">
+                          {(bill.items?.length ?? 0)} items
+                          {bill.createdAt ? ` • ${new Date(bill.createdAt).toLocaleTimeString()}` : ""}
+                        </p>
                       </div>
-                      <Button size="sm">Resume</Button>
+                      <Button size="sm" onClick={() => handleResumeBill(bill)} data-testid={`resume-${bill.id}`}>
+                        Resume
+                      </Button>
                     </div>
                   ))}
                   {!heldBills.length && <p className="text-center text-zinc-600 py-8">No held bills</p>}
@@ -327,6 +378,72 @@ const SaleScreen = () => {
             <Button variant="secondary" className="h-12 px-6" onClick={handleApplyCoupon} disabled={validatingCoupon}>
               APPLY
             </Button>
+          </div>
+
+          {/* Customer picker */}
+          <div className="flex items-center gap-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="flex-1 h-12 bg-zinc-950 border-zinc-800 justify-start text-left"
+                  data-testid="customer-picker"
+                >
+                  <User className="h-4 w-4 mr-2 text-primary" />
+                  {customer ? (
+                    <span className="truncate">
+                      <span className="font-bold">{customer.name}</span>
+                      {customer.phone ? <span className="text-zinc-500 ml-2">{customer.phone}</span> : null}
+                    </span>
+                  ) : (
+                    <span className="text-zinc-500">Walk-in customer</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[360px] bg-zinc-950 border-zinc-800 p-0" align="start">
+                <div className="p-3 border-b border-zinc-800">
+                  <Input
+                    autoFocus
+                    placeholder="Search by name or phone…"
+                    className="bg-zinc-900 border-zinc-800 h-10"
+                    value={customerSearch}
+                    onChange={(e) => setCustomerSearch(e.target.value)}
+                    data-testid="customer-search-input"
+                  />
+                </div>
+                <div className="max-h-64 overflow-y-auto">
+                  {customerSearch.length < 2 && (
+                    <p className="text-xs text-zinc-500 p-3">Type at least 2 characters to search</p>
+                  )}
+                  {customerSearch.length >= 2 && (customersData?.data?.items ?? []).length === 0 && (
+                    <p className="text-xs text-zinc-500 p-3">No customers found</p>
+                  )}
+                  {(customersData?.data?.items ?? []).map((c: any) => (
+                    <button
+                      key={c.id}
+                      onClick={() => { setCustomer(c); setCustomerSearch(""); }}
+                      className="w-full text-left p-3 hover:bg-zinc-900 border-b border-zinc-900"
+                      data-testid={`customer-option-${c.id}`}
+                    >
+                      <p className="font-bold text-sm">{c.name}</p>
+                      <p className="text-xs text-zinc-500">{c.phone} {c.type ? `• ${c.type}` : ""}</p>
+                    </button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+            {customer && (
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-12 w-12 border-zinc-800 text-red-400"
+                onClick={() => setCustomer(null)}
+                data-testid="clear-customer"
+                title="Clear customer"
+              >
+                <UserX className="h-5 w-5" />
+              </Button>
+            )}
           </div>
 
           <div className="space-y-2 text-zinc-400">

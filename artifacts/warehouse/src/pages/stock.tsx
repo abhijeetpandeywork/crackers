@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useGetStockLevels } from "@workspace/api-client-react";
 import { Input } from "@/components/ui/input";
 import { 
@@ -26,6 +26,16 @@ export default function StockLevels() {
   const [search, setSearch] = useState("");
   const [locationId, setLocationId] = useState<string>("all");
   const [lowStockOnly, setLowStockOnly] = useState(false);
+  const [locations, setLocations] = useState<Array<{ id: string; name: string }>>([]);
+
+  useEffect(() => {
+    const token = localStorage.getItem("wh_token");
+    if (!token) return;
+    fetch("/api/v1/locations", { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(res => setLocations(res?.data ?? []))
+      .catch(() => {});
+  }, []);
 
   const { data: stockData, isLoading } = useGetStockLevels({
     locationId: locationId === "all" ? undefined : locationId,
@@ -75,9 +85,9 @@ export default function StockLevels() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Locations</SelectItem>
-                  {/* Mock locations - in real app fetch from /api/v1/locations */}
-                  <SelectItem value="1">Main Warehouse</SelectItem>
-                  <SelectItem value="2">Retail Shop 1</SelectItem>
+                  {locations.map(loc => (
+                    <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

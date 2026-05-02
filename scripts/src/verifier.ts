@@ -330,7 +330,114 @@ const sections: Array<{ name: string; checks: () => Promise<CheckResult[]> }> = 
     },
   },
   {
-    name: "8. Public / Website APIs",
+    name: "8. Locations, Users & Settings (admin)",
+    checks: async () => {
+      const out: CheckResult[] = [];
+      const tok = await login("admin", "admin123");
+      if (!tok) {
+        out.push({ name: "Skipped — no admin token", passed: false });
+        return out;
+      }
+      const headers = { Authorization: `Bearer ${tok}` };
+
+      const locs = await http("/api/v1/locations", { headers });
+      out.push({
+        name: "GET /locations returns 200",
+        passed: locs.status === 200,
+        detail: `status=${locs.status}`,
+      });
+      const locArr = (locs.body as { data?: unknown[] })?.data;
+      out.push({
+        name: "Locations seed has at least one entry",
+        passed: Array.isArray(locArr) && locArr.length > 0,
+        detail: `count=${Array.isArray(locArr) ? locArr.length : 0}`,
+      });
+
+      const users = await http("/api/v1/users", { headers });
+      out.push({
+        name: "GET /users returns 200 (admin)",
+        passed: users.status === 200,
+        detail: `status=${users.status}`,
+      });
+
+      const company = await http("/api/v1/settings/company", { headers });
+      out.push({
+        name: "GET /settings/company returns 200",
+        passed: company.status === 200,
+        detail: `status=${company.status}`,
+      });
+      const cBody = JSON.stringify(company.body ?? "");
+      out.push({
+        name: "Company settings reference brand 'Rathinam'",
+        passed: /Rathinam/i.test(cBody),
+        detail: cBody.slice(0, 80),
+      });
+
+      const pricing = await http("/api/v1/settings/pricing", { headers });
+      out.push({
+        name: "GET /settings/pricing returns 200",
+        passed: pricing.status === 200,
+        detail: `status=${pricing.status}`,
+      });
+
+      // End-to-end transfer flow: create → dispatch → receive
+      if (Array.isArray(locArr) && locArr.length >= 2) {
+        const products = await http("/api/v1/products?limit=1", { headers });
+        const raw = (products.body as { data?: unknown })?.data;
+        const items = (Array.isArray(raw) ? raw : (raw as { items?: any[] })?.items ?? []) as any[];
+        const prod = items[0];
+        const variantId = prod?.variants?.[0]?.id ?? prod?.variants?.[0]?.variantId;
+        const fromId = (locArr[0] as { id: string }).id;
+        const toId = (locArr[1] as { id: string }).id;
+        if (prod && variantId) {
+          const created = await http("/api/v1/transfers", {
+            method: "POST",
+            headers: { ...headers, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              fromLocationId: fromId,
+              toLocationId: toId,
+              items: [{ productId: prod.id, variantId, qty: 1 }],
+              notes: "verifier round-trip",
+            }),
+          });
+          const tBody = created.body as { data?: { id?: string } };
+          const tid = tBody?.data?.id;
+          out.push({
+            name: "POST /transfers creates a draft transfer",
+            passed: created.status === 201 && !!tid,
+            detail: `status=${created.status}`,
+          });
+          if (tid) {
+            const disp = await http(`/api/v1/transfers/${tid}/dispatch`, {
+              method: "PUT",
+              headers: { ...headers, "Content-Type": "application/json" },
+              body: JSON.stringify({}),
+            });
+            out.push({
+              name: "PUT /transfers/:id/dispatch returns 200",
+              passed: disp.status === 200,
+              detail: `status=${disp.status}`,
+            });
+            const recv = await http(`/api/v1/transfers/${tid}/receive`, {
+              method: "PUT",
+              headers: { ...headers, "Content-Type": "application/json" },
+              body: JSON.stringify({
+                items: [{ productId: prod.id, variantId, receivedQty: 1 }],
+              }),
+            });
+            out.push({
+              name: "PUT /transfers/:id/receive returns 200",
+              passed: recv.status === 200,
+              detail: `status=${recv.status}`,
+            });
+          }
+        }
+      }
+      return out;
+    },
+  },
+  {
+    name: "9. Public / Website APIs",
     checks: async () => {
       const out: CheckResult[] = [];
       const pub = await http("/api/v1/products/public?limit=3");

@@ -29,6 +29,7 @@ import NewPurchaseOrder from "@/pages/purchase-orders/new";
 import PurchaseOrderDetail from "@/pages/purchase-orders/[id]";
 import TransfersList from "@/pages/transfers/index";
 import NewTransfer from "@/pages/transfers/new";
+import TransferDetail from "@/pages/transfers/[id]";
 import CouponsList from "@/pages/coupons/index";
 import SalesReport from "@/pages/reports/sales";
 import OutstandingReport from "@/pages/reports/outstanding";
@@ -124,6 +125,9 @@ function Router() {
       </Route>
       <Route path="/transfers/new">
         {(params) => <ProtectedRoute component={NewTransfer} {...params} />}
+      </Route>
+      <Route path="/transfers/:id">
+        {(params) => <ProtectedRoute component={TransferDetail} {...params} />}
       </Route>
       <Route path="/coupons">
         {(params) => <ProtectedRoute component={CouponsList} {...params} />}

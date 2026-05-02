@@ -24,6 +24,7 @@ interface CartContextType {
   removeItem: (productId: string, variantId: string) => void;
   updateQty: (productId: string, variantId: string, qty: number) => void;
   clearCart: () => void;
+  loadHeldBill: (payload: { items: Omit<CartItem, 'lineTotal'>[]; customer?: any | null; coupon?: CouponData | null }) => void;
   subtotal: number;
   gst: number;
   discount: number;
@@ -77,6 +78,12 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setCustomer(null);
   };
 
+  const loadHeldBill: CartContextType['loadHeldBill'] = ({ items: newItems, customer: c, coupon: co }) => {
+    setItems(newItems.map(i => ({ ...i, lineTotal: i.qty * i.unitPrice })));
+    setCustomer(c ?? null);
+    setCoupon(co ?? null);
+  };
+
   const subtotal = items.reduce((sum, item) => sum + item.lineTotal, 0);
   
   let discount = 0;
@@ -94,7 +101,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   return (
     <CartContext.Provider value={{ 
-      items, addItem, removeItem, updateQty, clearCart, 
+      items, addItem, removeItem, updateQty, clearCart, loadHeldBill,
       subtotal, gst, discount, total, 
       coupon, applyCoupon: setCoupon,
       customer, setCustomer
