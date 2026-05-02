@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, ArrowRightLeft, Calendar, User, FileText, IndianRupee } from "lucide-react";
+import { ArrowLeft, ArrowRightLeft, Calendar, User, FileText, IndianRupee, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { generateEstimatePdf, savePdf } from "@workspace/pdf";
 
 export default function EstimateDetail() {
   const [, params] = useRoute("/estimates/:id");
@@ -15,6 +16,14 @@ export default function EstimateDetail() {
   
   const { data, isLoading, refetch } = useGetEstimate(params?.id as string);
   const convertMutation = useConvertEstimateToInvoice();
+
+  const handleDownloadPdf = () => {
+    const est = data?.data;
+    if (!est) return;
+    const doc = generateEstimatePdf(est as any);
+    savePdf(doc, `estimate-${est.estimateNumber || est.id.slice(0, 8)}`);
+    toast({ title: "PDF downloaded" });
+  };
 
   const handleConvert = async () => {
     try {
@@ -64,6 +73,9 @@ export default function EstimateDetail() {
           </div>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={handleDownloadPdf} data-testid="estimate-download-pdf">
+            <Download className="mr-2 h-4 w-4" /> Download PDF
+          </Button>
           {estimate.status !== 'Converted' && (
             <Button onClick={handleConvert} disabled={convertMutation.isPending}>
               <ArrowRightLeft className="mr-2 h-4 w-4" /> Convert to Invoice

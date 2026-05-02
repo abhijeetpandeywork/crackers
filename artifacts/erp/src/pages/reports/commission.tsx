@@ -8,7 +8,9 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Wallet, Users, Target } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Wallet, Users, Target, Download } from "lucide-react";
+import { generateReportPdf, savePdf } from "@workspace/pdf";
 
 export default function CommissionReport() {
   const [dateFrom, setDateFrom] = useState(() => {
@@ -27,6 +29,42 @@ export default function CommissionReport() {
   });
 
   const report = data?.data;
+
+  // API returns { agents: [{ agentId, agentName, totalSales, commission }] }.
+  // Some legacy code expected items[] with salesTotal/commissionEarned — accept both.
+  const r = report as any;
+  const rawAgents: any[] = r?.agents ?? r?.items ?? [];
+  const rows = rawAgents.map((a: any) => ({
+    agentName: a.agentName ?? "-",
+    promoCode: a.promoCode ?? "-",
+    salesTotal: Number(a.totalSales ?? a.salesTotal) || 0,
+    commissionRate: Number(a.commissionRate) || 0,
+    commissionEarned: Number(a.commission ?? a.commissionEarned) || 0,
+  }));
+  const totalAgentSales = rows.reduce((s, x) => s + x.salesTotal, 0);
+  const totalCommission = rows.reduce((s, x) => s + x.commissionEarned, 0);
+
+  const handleExportPdf = () => {
+    const doc = generateReportPdf({
+      title: "Commission Report",
+      subtitle: `Period: ${dateFrom} to ${dateTo}${agentId !== "ALL" ? ` (filtered by agent)` : ""}`,
+      period: `${dateFrom} → ${dateTo}`,
+      summary: [
+        { label: "Total Agent Sales", value: `Rs. ${totalAgentSales.toLocaleString("en-IN")}` },
+        { label: "Total Commission", value: `Rs. ${totalCommission.toLocaleString("en-IN")}` },
+        { label: "Active Agents", value: String(rows.length) },
+      ],
+      columns: ["Agent Name", "Promo Code", "Sales Total (Rs.)", "Commission Rate (%)", "Commission Earned (Rs.)"],
+      rows: rows.map((it) => [
+        it.agentName,
+        it.promoCode,
+        it.salesTotal,
+        it.commissionRate,
+        it.commissionEarned,
+      ]),
+    });
+    savePdf(doc, `commission-report-${dateFrom}_to_${dateTo}`);
+  };
 
   return (
     <div className="space-y-6">
@@ -58,6 +96,9 @@ export default function CommissionReport() {
             <Label htmlFor="to" className="text-xs font-bold uppercase text-muted-foreground px-1">To</Label>
             <Input id="to" type="date" className="h-9 w-40" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
           </div>
+          <Button variant="outline" size="sm" className="h-9" onClick={handleExportPdf} disabled={isLoading} data-testid="commission-export-pdf">
+            <Download className="mr-2 h-4 w-4" /> Export PDF
+          </Button>
         </div>
       </div>
 
@@ -68,7 +109,7 @@ export default function CommissionReport() {
             <Users className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₹{report?.totalAgentSales?.toLocaleString('en-IN') || 0}</div>
+            <div className="text-2xl font-bold">₹{totalAgentSales.toLocaleString('en-IN')}</div>
           </CardContent>
         </Card>
         <Card>
@@ -77,7 +118,7 @@ export default function CommissionReport() {
             <Wallet className="h-4 w-4 text-accent" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-accent">₹{report?.totalCommission?.toLocaleString('en-IN') || 0}</div>
+            <div className="text-2xl font-bold text-accent">₹{totalCommission.toLocaleString('en-IN')}</div>
           </CardContent>
         </Card>
         <Card>
@@ -86,7 +127,7 @@ export default function CommissionReport() {
             <Target className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{report?.items?.length || 0}</div>
+            <div className="text-2xl font-bold">{rows.length}</div>
           </CardContent>
         </Card>
       </div>
@@ -114,21 +155,21 @@ export default function CommissionReport() {
                       <TableCell colSpan={5}><Skeleton className="h-4 w-full" /></TableCell>
                     </TableRow>
                   ))
-                ) : report?.items?.length === 0 ? (
+                ) : rows.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                       No commission data for this period.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  report?.items?.map((item: any, i: number) => (
+                  rows.map((item, i: number) => (
                     <TableRow key={i}>
                       <TableCell className="font-medium">{item.agentName}</TableCell>
                       <TableCell><code>{item.promoCode}</code></TableCell>
-                      <TableCell className="text-right">₹{item.salesTotal?.toLocaleString('en-IN')}</TableCell>
+                      <TableCell className="text-right">₹{item.salesTotal.toLocaleString('en-IN')}</TableCell>
                       <TableCell className="text-right">{item.commissionRate}%</TableCell>
                       <TableCell className="text-right font-bold text-accent">
-                        ₹{item.commissionEarned?.toLocaleString('en-IN')}
+                        ₹{item.commissionEarned.toLocaleString('en-IN')}
                       </TableCell>
                     </TableRow>
                   ))

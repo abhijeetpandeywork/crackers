@@ -15,9 +15,10 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  ArrowLeft, ArrowRightLeft, Send, PackageCheck, Truck, MapPin, FileText,
+  ArrowLeft, ArrowRightLeft, Send, PackageCheck, Truck, MapPin, FileText, Download,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { generateTransferPdf, savePdf } from "@workspace/pdf";
 
 export default function TransferDetail() {
   const [, params] = useRoute("/transfers/:id");
@@ -43,6 +44,13 @@ export default function TransferDetail() {
       case "cancelled": return <Badge variant="destructive">{label}</Badge>;
       default: return <Badge variant="outline">{label || status}</Badge>;
     }
+  };
+
+  const handleDownloadPdf = () => {
+    if (!t) return;
+    const doc = generateTransferPdf(t as any);
+    savePdf(doc, `transfer-${t.transferNo || t.id?.slice(0, 8) || "note"}`);
+    toast({ title: "PDF downloaded" });
   };
 
   const handleDispatch = async () => {
@@ -112,6 +120,9 @@ export default function TransferDetail() {
         </div>
         <div className="flex items-center gap-3">
           {statusBadge(t.status)}
+          <Button variant="outline" onClick={handleDownloadPdf} data-testid="transfer-download-pdf">
+            <Download className="mr-2 h-4 w-4" /> Download PDF
+          </Button>
           {(t.status === "draft" || t.status === "pending_approval") && (
             <Button onClick={handleDispatch} disabled={dispatchM.isPending} data-testid="dispatch-btn">
               <Send className="mr-2 h-4 w-4" /> Dispatch

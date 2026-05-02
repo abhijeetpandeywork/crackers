@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, PackageCheck, Truck, Calendar, IndianRupee, User, FileText, Loader2 } from "lucide-react";
+import { ArrowLeft, PackageCheck, Truck, Calendar, IndianRupee, User, FileText, Loader2, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { generatePurchaseOrderPdf, savePdf } from "@workspace/pdf";
 
 export default function PurchaseOrderDetail() {
   const [, params] = useRoute("/purchase-orders/:id");
@@ -14,6 +15,14 @@ export default function PurchaseOrderDetail() {
   
   const { data, isLoading, refetch } = useGetPurchaseOrder(params?.id as string);
   const receiveMutation = useReceivePurchaseOrder();
+
+  const handleDownloadPdf = () => {
+    const po = data?.data;
+    if (!po) return;
+    const doc = generatePurchaseOrderPdf(po as any);
+    savePdf(doc, `purchase-order-${po.poNumber || po.id.slice(0, 8)}`);
+    toast({ title: "PDF downloaded" });
+  };
 
   const handleReceive = async () => {
     try {
@@ -62,6 +71,9 @@ export default function PurchaseOrderDetail() {
           </div>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={handleDownloadPdf} data-testid="po-download-pdf">
+            <Download className="mr-2 h-4 w-4" /> Download PDF
+          </Button>
           {po.status === 'Sent' && (
             <Button onClick={handleReceive} disabled={receiveMutation.isPending}>
               {receiveMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PackageCheck className="mr-2 h-4 w-4" />}

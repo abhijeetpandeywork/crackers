@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, Share2, Download, Printer, IndianRupee, Building, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { generateInvoicePdf, savePdf } from "@workspace/pdf";
 
 export default function InvoiceDetail() {
   const [, params] = useRoute("/invoices/:id");
@@ -21,6 +22,14 @@ export default function InvoiceDetail() {
     } catch (error) {
       toast({ title: "Error", description: "Failed to share invoice", variant: "destructive" });
     }
+  };
+
+  const handleDownloadPdf = () => {
+    const inv = data?.data;
+    if (!inv) return;
+    const doc = generateInvoicePdf(inv as any);
+    savePdf(doc, `invoice-${inv.invoiceNumber || inv.id.slice(0, 8)}`);
+    toast({ title: "PDF downloaded" });
   };
 
   if (isLoading) {
@@ -69,7 +78,7 @@ export default function InvoiceDetail() {
           <Button variant="outline" size="sm" onClick={handleShare} disabled={shareMutation.isPending}>
             <Share2 className="mr-2 h-4 w-4" /> Share
           </Button>
-          <Button size="sm">
+          <Button size="sm" onClick={handleDownloadPdf} data-testid="invoice-download-pdf">
             <Download className="mr-2 h-4 w-4" /> Download PDF
           </Button>
         </div>

@@ -3,8 +3,9 @@ import { useLocation, useSearch } from "wouter";
 import { useGetInvoice } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle2, Printer, ShoppingBag, ChevronRight } from "lucide-react";
+import { CheckCircle2, Printer, ShoppingBag, ChevronRight, Download } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { generateInvoicePdf, savePdf } from "@workspace/pdf";
 
 const ReceiptScreen = () => {
   const [, setLocation] = useLocation();
@@ -20,6 +21,12 @@ const ReceiptScreen = () => {
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleDownloadPdf = () => {
+    if (!invoice) return;
+    const doc = generateInvoicePdf(invoice as any);
+    savePdf(doc, `invoice-${invoice.invoiceNumber || invoiceId?.slice(0, 8) || "receipt"}`);
   };
 
   if (isLoading) {
@@ -85,19 +92,28 @@ const ReceiptScreen = () => {
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-2 gap-4">
-          <Button 
-            variant="outline" 
-            className="h-16 text-xl font-bold border-zinc-800 bg-zinc-900 hover:bg-zinc-800"
+        <div className="grid grid-cols-3 gap-4">
+          <Button
+            variant="outline"
+            className="h-16 text-base font-bold border-zinc-800 bg-zinc-900 hover:bg-zinc-800"
             onClick={handlePrint}
           >
-            <Printer className="mr-2 h-6 w-6" /> PRINT
+            <Printer className="mr-2 h-5 w-5" /> PRINT
           </Button>
-          <Button 
-            className="h-16 text-xl font-bold"
+          <Button
+            variant="outline"
+            className="h-16 text-base font-bold border-zinc-800 bg-zinc-900 hover:bg-zinc-800"
+            onClick={handleDownloadPdf}
+            disabled={!invoice}
+            data-testid="receipt-download-pdf"
+          >
+            <Download className="mr-2 h-5 w-5" /> PDF
+          </Button>
+          <Button
+            className="h-16 text-base font-bold"
             onClick={handleNewSale}
           >
-            NEW SALE <ChevronRight className="ml-2 h-6 w-6" />
+            NEW SALE <ChevronRight className="ml-2 h-5 w-5" />
           </Button>
         </div>
         

@@ -3,11 +3,13 @@ import { useGetSalesReport } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend 
 } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
-import { IndianRupee, ShoppingBag, FileText, TrendingUp } from "lucide-react";
+import { IndianRupee, ShoppingBag, FileText, TrendingUp, Download } from "lucide-react";
+import { generateReportPdf, savePdf } from "@workspace/pdf";
 
 export default function SalesReport() {
   const [dateFrom, setDateFrom] = useState(() => {
@@ -19,7 +21,37 @@ export default function SalesReport() {
 
   const { data, isLoading } = useGetSalesReport({ dateFrom, dateTo });
 
-  const report = data?.data;
+  const report = data?.data as any;
+  const totalRevenueDisplay = Number(report?.summary?.totalRevenue) || 0;
+  const totalInvoicesDisplay = Number(report?.summary?.totalInvoices) || 0;
+  const aovDisplay =
+    Number(report?.summary?.avgOrderValue) ||
+    (totalInvoicesDisplay ? Math.round(totalRevenueDisplay / totalInvoicesDisplay) : 0);
+  const channelData = (report?.byChannel ?? []).map((c: any) => ({
+    channel: c.channel ?? "-",
+    revenue: Number(c.revenue) || 0,
+    count: Number(c.count ?? c.invoices) || 0,
+  }));
+
+  const handleExportPdf = () => {
+    const doc = generateReportPdf({
+      title: "Sales Report",
+      subtitle: `Period: ${dateFrom} to ${dateTo}`,
+      period: `${dateFrom} → ${dateTo}`,
+      summary: [
+        { label: "Total Revenue", value: `Rs. ${totalRevenueDisplay.toLocaleString("en-IN")}` },
+        { label: "Total Invoices", value: String(totalInvoicesDisplay) },
+        { label: "Avg Order Value", value: `Rs. ${aovDisplay.toLocaleString("en-IN")}` },
+      ],
+      columns: ["Channel", "Revenue (Rs.)", "Invoices"],
+      rows: channelData.map((c: { channel: string; revenue: number; count: number }) => [
+        c.channel,
+        c.revenue,
+        c.count,
+      ]),
+    });
+    savePdf(doc, `sales-report-${dateFrom}_to_${dateTo}`);
+  };
 
   return (
     <div className="space-y-6">
@@ -49,6 +81,9 @@ export default function SalesReport() {
               onChange={(e) => setDateTo(e.target.value)} 
             />
           </div>
+          <Button variant="outline" size="sm" className="h-9" onClick={handleExportPdf} disabled={isLoading} data-testid="sales-export-pdf">
+            <Download className="mr-2 h-4 w-4" /> Export PDF
+          </Button>
         </div>
       </div>
 
@@ -60,7 +95,7 @@ export default function SalesReport() {
           </CardHeader>
           <CardContent>
             {isLoading ? <Skeleton className="h-7 w-24" /> : (
-              <div className="text-2xl font-bold">₹{report?.totalRevenue?.toLocaleString('en-IN') || 0}</div>
+              <div className="text-2xl font-bold">₹{totalRevenueDisplay.toLocaleString('en-IN')}</div>
             )}
             <p className="text-xs text-muted-foreground mt-1">Taxable amount + GST</p>
           </CardContent>
@@ -72,7 +107,7 @@ export default function SalesReport() {
           </CardHeader>
           <CardContent>
             {isLoading ? <Skeleton className="h-7 w-24" /> : (
-              <div className="text-2xl font-bold">{report?.totalInvoices || 0}</div>
+              <div className="text-2xl font-bold">{totalInvoicesDisplay}</div>
             )}
             <p className="text-xs text-muted-foreground mt-1">Across all channels</p>
           </CardContent>
@@ -84,7 +119,7 @@ export default function SalesReport() {
           </CardHeader>
           <CardContent>
             {isLoading ? <Skeleton className="h-7 w-24" /> : (
-              <div className="text-2xl font-bold">₹{Math.round(report?.totalRevenue / (report?.totalInvoices || 1)).toLocaleString('en-IN')}</div>
+              <div className="text-2xl font-bold">₹{aovDisplay.toLocaleString('en-IN')}</div>
             )}
             <p className="text-xs text-muted-foreground mt-1">Revenue per invoice</p>
           </CardContent>
@@ -99,7 +134,7 @@ export default function SalesReport() {
           <div className="h-[400px] w-full">
             {isLoading ? <Skeleton className="h-full w-full" /> : (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={report?.byChannel || []}>
+                <BarChart data={channelData}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="channel" />
                   <YAxis tickFormatter={(val) => `₹${val.toLocaleString('en-IN')}`} />
