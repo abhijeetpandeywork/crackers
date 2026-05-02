@@ -431,6 +431,15 @@ const sections: Array<{ name: string; checks: () => Promise<CheckResult[]> }> = 
               passed: disp.status === 200,
               detail: `status=${disp.status}`,
             });
+            // Read-back: confirm dispatch flipped status to "in_transit".
+            const afterDispatch = await http(`/api/v1/transfers/${tid}`, { headers });
+            const dispBody = afterDispatch.body as { data?: { status?: string } };
+            const dispStatus = dispBody?.data?.status;
+            out.push({
+              name: "Transfer status is 'in_transit' after dispatch",
+              passed: afterDispatch.status === 200 && dispStatus === "in_transit",
+              detail: `status=${dispStatus}`,
+            });
             const recv = await http(`/api/v1/transfers/${tid}/receive`, {
               method: "PUT",
               headers: { ...headers, "Content-Type": "application/json" },
@@ -442,6 +451,15 @@ const sections: Array<{ name: string; checks: () => Promise<CheckResult[]> }> = 
               name: "PUT /transfers/:id/receive returns 200",
               passed: recv.status === 200,
               detail: `status=${recv.status}`,
+            });
+            // Read-back: confirm receive flipped status to "received".
+            const afterReceive = await http(`/api/v1/transfers/${tid}`, { headers });
+            const recvBody = afterReceive.body as { data?: { status?: string } };
+            const recvStatus = recvBody?.data?.status;
+            out.push({
+              name: "Transfer status is 'received' after receive",
+              passed: afterReceive.status === 200 && recvStatus === "received",
+              detail: `status=${recvStatus}`,
             });
           }
 
