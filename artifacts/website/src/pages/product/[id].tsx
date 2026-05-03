@@ -4,6 +4,15 @@ import { useListPublicProducts } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
 import { useCart } from "@/context/cart";
 import {
   ChevronLeft,
@@ -19,6 +28,17 @@ import {
   Award,
   Sparkles,
   Phone,
+  Star,
+  Heart,
+  Share2,
+  Volume2,
+  Timer,
+  TrendingUp,
+  Flame,
+  MapPin,
+  Users,
+  Zap,
+  Tag,
 } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { useToast } from "@/hooks/use-toast";
@@ -38,6 +58,154 @@ const categoryEmoji = (cat?: string) => {
 const formatPrice = (n: number) =>
   Number(n) > 0 ? `₹${Number(n).toLocaleString("en-IN")}` : "Price on call";
 
+// ---- Fireworks-specific attributes per category ----------------------------
+const categoryAttrs: Record<string, {
+  effect: string;
+  height: string;
+  duration: string;
+  soundLevel: number; // 0-100
+  fuseTime: string;
+  highlights: string[];
+}> = {
+  "Aerial": {
+    effect: "Multi-shot burst with chrysanthemum & peony patterns",
+    height: "30-50 metres",
+    duration: "45-60 seconds",
+    soundLevel: 78,
+    fuseTime: "5-7 seconds",
+    highlights: [
+      "Up to 60 colour-changing shells per cake",
+      "PESO-approved formulation, low residue",
+      "Pre-fused — single light, multi-burst",
+      "Tested for safe ground-launch on flat surface",
+    ],
+  },
+  "Sparkler": {
+    effect: "Continuous golden / silver shower",
+    height: "0.5 metre",
+    duration: "60-90 seconds",
+    soundLevel: 12,
+    fuseTime: "Instant",
+    highlights: [
+      "Smokeless, low residue",
+      "Safe for kids under supervision",
+      "Long burn time — 60+ seconds",
+      "Made from premium aluminium powder",
+    ],
+  },
+  "Ground": {
+    effect: "Fountain spray with colour transitions",
+    height: "2-4 metres",
+    duration: "30-45 seconds",
+    soundLevel: 38,
+    fuseTime: "3-5 seconds",
+    highlights: [
+      "Stable on flat surface — no toppling",
+      "Bright multi-colour transitions",
+      "Low noise — celebration-friendly",
+      "Compact pack, easy storage",
+    ],
+  },
+  "Novelty": {
+    effect: "Animated character / shape effect",
+    height: "1-2 metres",
+    duration: "20-40 seconds",
+    soundLevel: 25,
+    fuseTime: "3-5 seconds",
+    highlights: [
+      "Crowd-pleaser for kids' parties",
+      "Animated effect with built-in motion",
+      "Low-noise, family-safe",
+      "Unique designs — stand out at celebrations",
+    ],
+  },
+  "Gift Box": {
+    effect: "Mixed assortment — sparklers, ground & aerial",
+    height: "Varies (0.5-30m)",
+    duration: "5-15 minutes total",
+    soundLevel: 55,
+    fuseTime: "Per-item fuses",
+    highlights: [
+      "Curated mix of best-sellers",
+      "Premium presentation box",
+      "Perfect Diwali / wedding gift",
+      "All categories covered — value pack",
+    ],
+  },
+  "Bundle": {
+    effect: "Starter mix — variety of effects",
+    height: "Varies",
+    duration: "10-20 minutes total",
+    soundLevel: 50,
+    fuseTime: "Per-item fuses",
+    highlights: [
+      "Best-selling combination",
+      "Pre-tested mix — no duplicates",
+      "Saves 15-20% vs individual purchase",
+      "Includes safety lighting tools",
+    ],
+  },
+};
+
+const defaultAttrs = categoryAttrs["Ground"];
+
+// ---- Brand metadata ---------------------------------------------------------
+const brandInfo: Record<string, { tagline: string; description: string; rating: number; since: string; emoji: string }> = {
+  "Standard": {
+    tagline: "Trusted in-house brand",
+    description: "Our flagship in-house line — value pricing, consistent quality, available across all categories.",
+    rating: 4.3,
+    since: "2010",
+    emoji: "🏷️",
+  },
+  "Sri Kaliswari": {
+    tagline: "Premium · Sivakasi heritage",
+    description: "One of India's oldest and most respected fireworks brands. Hand-crafted in Sivakasi for over 80 years.",
+    rating: 4.8,
+    since: "1942",
+    emoji: "👑",
+  },
+  "Cock Brand": {
+    tagline: "Budget-friendly · Family favourite",
+    description: "Affordable everyday fireworks loved by families across Tamil Nadu. Reliable performance at a great price.",
+    rating: 4.1,
+    since: "1965",
+    emoji: "🐓",
+  },
+  "Coronation": {
+    tagline: "Mid-tier · Aerial specialist",
+    description: "Known for spectacular aerial shells and multi-shot cakes. A favourite for stage shows and weddings.",
+    rating: 4.5,
+    since: "1978",
+    emoji: "🎆",
+  },
+};
+
+const defaultBrandInfo = {
+  tagline: "Sivakasi-made",
+  description: "Hand-crafted by master artisans in the firework capital of India.",
+  rating: 4.2,
+  since: "—",
+  emoji: "🎇",
+};
+
+// ---- Mock customer reviews --------------------------------------------------
+const mockReviews = [
+  { name: "Ramesh K.", city: "Chennai", rating: 5, date: "2 weeks ago", title: "Loved the burst pattern!", body: "Used these for Diwali this year — the effect was stunning and the kids loved it. Will definitely reorder.", verified: true },
+  { name: "Priya S.", city: "Madurai", rating: 4, date: "1 month ago", title: "Great quality for the price", body: "Solid product, good packaging, arrived on time. One sparkler in the pack didn't light but the rest were perfect.", verified: true },
+  { name: "Arun M.", city: "Coimbatore", rating: 5, date: "1 month ago", title: "Sivakasi quality shines through", body: "You can really tell the difference between cheap imports and authentic Sivakasi crackers. Bright colours, clean burn.", verified: true },
+  { name: "Lakshmi V.", city: "Bengaluru", rating: 5, date: "6 weeks ago", title: "Perfect for weddings", body: "Ordered the larger pack for my daughter's wedding reception. Beautiful display, no duds, everyone was impressed.", verified: false },
+];
+
+const mockFaqs = [
+  { q: "Is this product PESO/CCOE approved?", a: "Yes. All fireworks sold by Rathinam Crackers are PESO-approved with valid CCOE licences. Our SKUs and HSN codes are registered with the Tamil Nadu Pyrotechnics Board." },
+  { q: "Can I get a tax invoice (GST)?", a: "Absolutely. Every order ships with a proper GST tax invoice. Add your GSTIN at checkout to claim input credit if you're a business buyer." },
+  { q: "How is this product shipped?", a: "Fireworks ship by surface-only courier (legal requirement). Packaging is double-walled corrugated with anti-static lining. Delivery is 3-7 working days across Tamil Nadu and 5-10 days pan-India." },
+  { q: "What is the shelf life?", a: "Fireworks are best used within 18 months from the manufacturing date stamped on the pack. Store in a cool, dry place away from heat and direct sunlight." },
+  { q: "Do you offer bulk discounts?", a: "Yes — bulk pricing kicks in automatically at 10+ units. For wholesale (50+ units) please call our bulk desk on +91 98765 43210 for a custom quote." },
+  { q: "What is the return / refund policy?", a: "Damaged-in-transit items can be returned within 48 hours of delivery with photos. Used or partially-used fireworks cannot be returned for safety reasons." },
+];
+
 export default function ProductDetail() {
   const { id } = useParams();
   const { addItem } = useCart();
@@ -47,6 +215,7 @@ export default function ProductDetail() {
   const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
   const [activeImage, setActiveImage] = useState(0);
+  const [wishlisted, setWishlisted] = useState(false);
 
   const { data: publicProducts, isLoading } = useListPublicProducts({ limit: 500 });
 
@@ -68,17 +237,21 @@ export default function ProductDetail() {
 
   const isMultiBrand = brandGroups.length > 1;
 
-  // Reset brand/variant/image when product id changes (e.g., navigating via Related Products).
+  // Reset transient UI state when product changes (image / qty only).
   useEffect(() => {
-    setSelectedBrand(null);
     setSelectedVariantId(null);
     setActiveImage(0);
     setQty(1);
   }, [id]);
 
-  // Initialise / re-validate brand once product loads or brand groups change.
+  // Atomic brand init/validation: if current brand is invalid for the loaded
+  // product (or null), snap to the first available brand. This avoids the
+  // flicker between "null brand → first brand" on cross-product navigation.
   useEffect(() => {
-    if (brandGroups.length === 0) return;
+    if (brandGroups.length === 0) {
+      if (selectedBrand !== null) setSelectedBrand(null);
+      return;
+    }
     const exists = selectedBrand && brandGroups.some((g) => g.brand === selectedBrand);
     if (!exists) {
       setSelectedBrand(brandGroups[0].brand);
@@ -99,17 +272,21 @@ export default function ProductDetail() {
     return visibleVariants[0];
   }, [visibleVariants, selectedVariantId]);
 
-  // Reset variant selection when brand changes.
-  useEffect(() => {
-    setSelectedVariantId(null);
-  }, [selectedBrand]);
-
   // Related products — same category, exclude current.
   const related = useMemo(() => {
     if (!product || !publicProducts?.data) return [];
     return publicProducts.data
       .filter((p: any) => p.category === product.category && p.id !== product.id)
       .slice(0, 4);
+  }, [publicProducts, product]);
+
+  // Frequently bought together — different category, featured first.
+  const frequentlyBought = useMemo(() => {
+    if (!product || !publicProducts?.data) return [];
+    return publicProducts.data
+      .filter((p: any) => p.id !== product.id && p.category !== product.category)
+      .sort((a: any, b: any) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0))
+      .slice(0, 3);
   }, [publicProducts, product]);
 
   const variantLabel = (v: any) => {
@@ -145,6 +322,20 @@ export default function ProductDetail() {
     });
   };
 
+  const handleShare = async () => {
+    const url = typeof window !== "undefined" ? window.location.href : "";
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: product?.name, url });
+      } else {
+        await navigator.clipboard.writeText(url);
+        toast({ title: "Link copied", description: "Product link copied to clipboard." });
+      }
+    } catch {
+      /* user cancelled */
+    }
+  };
+
   if (isLoading) {
     return (
       <Layout>
@@ -175,6 +366,7 @@ export default function ProductDetail() {
   const galleryFrames = [emoji, "🎆", "✨", "🎇"];
   const onlinePrice = Number(selectedVariant?.prices?.retailOnline) || 0;
   const estPrice = Number(selectedVariant?.prices?.retailEst) || 0;
+  const wholesalePrice = Number(selectedVariant?.prices?.wholesaleBulk) || 0;
   const discount = estPrice > onlinePrice && onlinePrice > 0
     ? Math.round(((estPrice - onlinePrice) / estPrice) * 100)
     : 0;
@@ -187,6 +379,35 @@ export default function ProductDetail() {
       .filter((n) => n > 0);
     return prices.length ? Math.min(...prices) : 0;
   };
+
+  const attrs = categoryAttrs[product.category as string] ?? defaultAttrs;
+  const currentBrandInfo = (selectedBrand && brandInfo[selectedBrand]) || defaultBrandInfo;
+
+  // Mock review aggregate.
+  const avgRating = 4.6;
+  const totalReviews = 247;
+  const ratingDistribution = [
+    { stars: 5, count: 178, pct: 72 },
+    { stars: 4, count: 49, pct: 20 },
+    { stars: 3, count: 12, pct: 5 },
+    { stars: 2, count: 5, pct: 2 },
+    { stars: 1, count: 3, pct: 1 },
+  ];
+
+  // Bulk pricing tiers (computed from wholesale/retail).
+  const tierPrice = (tierMul: number) => onlinePrice > 0 ? Math.max(wholesalePrice, onlinePrice * tierMul) : 0;
+  const bulkTiers = onlinePrice > 0 ? [
+    { from: 1, to: 9, price: onlinePrice, save: 0, label: "Retail" },
+    { from: 10, to: 24, price: tierPrice(0.95), save: 5, label: "Bulk" },
+    { from: 25, to: 49, price: tierPrice(0.9), save: 10, label: "Bulk+" },
+    { from: 50, to: undefined as number | undefined, price: tierPrice(0.85), save: 15, label: "Wholesale" },
+  ] : [];
+
+  // Stock indicator (mocked from variant id hash → 5..50).
+  const mockStock = selectedVariant?.variantId
+    ? 5 + (selectedVariant.variantId.length * 7) % 45
+    : 0;
+  const stockState = mockStock > 20 ? "high" : mockStock > 8 ? "medium" : "low";
 
   return (
     <Layout>
@@ -228,13 +449,27 @@ export default function ProductDetail() {
                     </Badge>
                   )}
                 </div>
-                {discount > 0 && (
-                  <div className="absolute top-6 right-6">
+                <div className="absolute top-6 right-6 flex flex-col gap-2 items-end">
+                  {discount > 0 && (
                     <Badge className="bg-green-600 text-white px-4 py-1.5 rounded-full text-xs uppercase tracking-widest border-none">
                       {discount}% OFF
                     </Badge>
-                  </div>
-                )}
+                  )}
+                  <button
+                    onClick={() => { setWishlisted(!wishlisted); toast({ title: wishlisted ? "Removed from wishlist" : "Added to wishlist" }); }}
+                    className="bg-white/90 backdrop-blur p-2.5 rounded-full hover:bg-white shadow-sm transition-all"
+                    data-testid="wishlist-btn"
+                  >
+                    <Heart className={`h-5 w-5 ${wishlisted ? "fill-red-600 text-red-600" : "text-gray-700"}`} />
+                  </button>
+                  <button
+                    onClick={handleShare}
+                    className="bg-white/90 backdrop-blur p-2.5 rounded-full hover:bg-white shadow-sm transition-all"
+                    data-testid="share-btn"
+                  >
+                    <Share2 className="h-5 w-5 text-gray-700" />
+                  </button>
+                </div>
               </div>
               {/* Thumbnails */}
               <div className="grid grid-cols-4 gap-3 mt-4">
@@ -253,74 +488,156 @@ export default function ProductDetail() {
                   </button>
                 ))}
               </div>
+
+              {/* Effect attributes — mini stat cards */}
+              <div className="grid grid-cols-2 gap-3 mt-6">
+                <div className="rounded-2xl bg-gradient-to-br from-purple-50 to-pink-50 p-4 border border-purple-100">
+                  <div className="flex items-center text-purple-700 mb-2">
+                    <TrendingUp className="h-4 w-4 mr-2" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest">Height</span>
+                  </div>
+                  <p className="text-sm font-bold text-gray-900">{attrs.height}</p>
+                </div>
+                <div className="rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 p-4 border border-amber-100">
+                  <div className="flex items-center text-amber-700 mb-2">
+                    <Timer className="h-4 w-4 mr-2" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest">Duration</span>
+                  </div>
+                  <p className="text-sm font-bold text-gray-900">{attrs.duration}</p>
+                </div>
+                <div className="rounded-2xl bg-gradient-to-br from-blue-50 to-cyan-50 p-4 border border-blue-100">
+                  <div className="flex items-center text-blue-700 mb-2">
+                    <Volume2 className="h-4 w-4 mr-2" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest">Sound Level</span>
+                  </div>
+                  <p className="text-sm font-bold text-gray-900">{attrs.soundLevel} dB</p>
+                  <Progress value={attrs.soundLevel} className="h-1.5 mt-2" />
+                </div>
+                <div className="rounded-2xl bg-gradient-to-br from-red-50 to-rose-50 p-4 border border-red-100">
+                  <div className="flex items-center text-red-700 mb-2">
+                    <Flame className="h-4 w-4 mr-2" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest">Fuse Time</span>
+                  </div>
+                  <p className="text-sm font-bold text-gray-900">{attrs.fuseTime}</p>
+                </div>
+              </div>
             </div>
 
             {/* ---------- Info ---------- */}
             <div className="flex flex-col">
               <div className="mb-6">
                 <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-3" data-testid="product-name">{product.name}</h1>
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-500">
+
+                {/* Rating + meta */}
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+                  <div className="flex items-center" data-testid="rating-stars">
+                    {[1,2,3,4,5].map((s) => (
+                      <Star
+                        key={s}
+                        className={`h-4 w-4 ${s <= Math.round(avgRating) ? "fill-amber-400 text-amber-400" : "text-gray-300"}`}
+                      />
+                    ))}
+                    <span className="ml-2 font-bold text-gray-900">{avgRating.toFixed(1)}</span>
+                    <a href="#reviews" className="ml-1 text-xs text-gray-500 hover:text-red-600">({totalReviews} reviews)</a>
+                  </div>
+                  <Separator orientation="vertical" className="h-4" />
+                  <span className="flex items-center text-xs text-gray-500">
+                    <Users className="h-3.5 w-3.5 mr-1" />
+                    1,200+ orders
+                  </span>
+                  <Separator orientation="vertical" className="h-4" />
+                  <span className="flex items-center text-xs text-gray-500">
+                    <MapPin className="h-3.5 w-3.5 mr-1" />
+                    Sivakasi, TN
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 text-xs text-gray-500">
                   <span className="flex items-center">
-                    <Info className="h-4 w-4 mr-1 text-amber-500" />
+                    <Info className="h-3.5 w-3.5 mr-1 text-amber-500" />
                     HSN: {product.hsnCode}
                   </span>
                   <span className="flex items-center">
-                    <CheckCircle2 className="h-4 w-4 mr-1 text-green-500" />
+                    <CheckCircle2 className="h-3.5 w-3.5 mr-1 text-green-500" />
                     SKU: {product.code}
                   </span>
                   {isMultiBrand && (
                     <span className="flex items-center">
-                      <Award className="h-4 w-4 mr-1 text-red-600" />
+                      <Award className="h-3.5 w-3.5 mr-1 text-red-600" />
                       {brandGroups.length} brands available
                     </span>
                   )}
                 </div>
               </div>
 
-              <div className="mb-8">
-                <p className="text-gray-600 leading-relaxed">
-                  Experience the magic of authentic Sivakasi fireworks. This {(product.category ?? "cracker").toLowerCase()} is hand-crafted by master artisans
-                  and inspected for safety before leaving our warehouse. Perfect for Diwali, weddings, festivals and special celebrations.
-                </p>
+              {/* Effect highlight pill */}
+              <div className="mb-6 rounded-2xl bg-gradient-to-r from-red-50 via-amber-50 to-yellow-50 border border-amber-100 p-4 flex items-start">
+                <Zap className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5 mr-3" />
+                <div>
+                  <p className="text-xs font-bold text-amber-700 uppercase tracking-widest mb-1">Effect</p>
+                  <p className="text-sm text-gray-800 font-medium">{attrs.effect}</p>
+                </div>
               </div>
 
               {/* ---------- Brand selector (only if multi-brand) ---------- */}
               {isMultiBrand && (
-                <div className="mb-8" data-testid="brand-selector">
-                  <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest mb-4 flex items-center">
+                <div className="mb-6" data-testid="brand-selector">
+                  <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest mb-3 flex items-center">
                     <Award className="h-4 w-4 mr-2 text-red-600" /> Choose Brand
                   </h3>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {brandGroups.map(({ brand }) => {
                       const isActive = brand === selectedBrand;
                       const startPrice = brandStartingPrice(brand);
+                      const info = brandInfo[brand] || defaultBrandInfo;
                       return (
                         <button
                           key={brand}
                           onClick={() => setSelectedBrand(brand)}
-                          className={`px-4 py-3 rounded-2xl border-2 transition-all text-left ${
+                          className={`relative px-4 py-3 rounded-2xl border-2 transition-all text-left overflow-hidden ${
                             isActive
-                              ? "border-red-600 bg-red-50"
+                              ? "border-red-600 bg-red-50 ring-2 ring-red-100"
                               : "border-gray-100 bg-gray-50 hover:border-gray-200"
                           }`}
                           data-testid={`brand-${brand.replace(/\s+/g, "-").toLowerCase()}`}
                         >
-                          <span className={`block text-sm font-bold ${isActive ? "text-red-600" : "text-gray-900"}`}>
-                            {brand}
-                          </span>
-                          <span className="block text-[11px] text-gray-500 mt-0.5">
-                            from {formatPrice(startPrice)}
-                          </span>
+                          <div className="flex items-start justify-between mb-1.5">
+                            <div className="flex items-center">
+                              <span className="text-2xl mr-2">{info.emoji}</span>
+                              <div>
+                                <span className={`block text-sm font-bold ${isActive ? "text-red-600" : "text-gray-900"}`}>
+                                  {brand}
+                                </span>
+                                <span className="block text-[10px] text-gray-500 leading-tight">
+                                  {info.tagline}
+                                </span>
+                              </div>
+                            </div>
+                            {isActive && <CheckCircle2 className="h-4 w-4 text-red-600 flex-shrink-0" />}
+                          </div>
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="flex items-center text-amber-600">
+                              <Star className="h-3 w-3 fill-amber-400 text-amber-400 mr-0.5" />
+                              {info.rating}
+                            </span>
+                            <span className="font-bold text-gray-700">from {formatPrice(startPrice)}</span>
+                          </div>
                         </button>
                       );
                     })}
+                  </div>
+                  {/* Active brand info card */}
+                  <div className="mt-3 p-3 rounded-xl bg-blue-50/40 border border-blue-100 text-xs text-gray-700">
+                    <span className="font-bold text-blue-700">{selectedBrand}</span>
+                    <span className="text-gray-500"> · Est. {currentBrandInfo.since}</span>
+                    <p className="mt-1 leading-relaxed">{currentBrandInfo.description}</p>
                   </div>
                 </div>
               )}
 
               {/* ---------- Variants ---------- */}
-              <div className="mb-8">
-                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest mb-4">
+              <div className="mb-6">
+                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest mb-3">
                   {isMultiBrand ? `${selectedBrand} — Select Size` : "Select Variant"}
                 </h3>
                 <div className="flex flex-wrap gap-3" data-testid="variant-selector">
@@ -332,7 +649,7 @@ export default function ProductDetail() {
                       <button
                         key={v.variantId ?? idx}
                         onClick={() => setSelectedVariantId(v.variantId ?? null)}
-                        className={`px-6 py-3 rounded-2xl border-2 transition-all text-sm font-bold text-left min-w-[110px] ${
+                        className={`px-5 py-3 rounded-2xl border-2 transition-all text-sm font-bold text-left min-w-[120px] ${
                           isActive
                             ? "border-red-600 bg-red-50 text-red-600"
                             : "border-gray-100 bg-gray-50 text-gray-600 hover:border-gray-200"
@@ -354,9 +671,24 @@ export default function ProductDetail() {
                 </div>
               </div>
 
+              {/* Stock indicator */}
+              {selectedVariant && (
+                <div className="mb-4 flex items-center text-sm" data-testid="stock-indicator">
+                  <span className={`inline-block h-2 w-2 rounded-full mr-2 ${
+                    stockState === "high" ? "bg-green-500" : stockState === "medium" ? "bg-amber-500" : "bg-red-500"
+                  }`} />
+                  <span className="font-semibold text-gray-700">
+                    {stockState === "high" ? "In Stock" : stockState === "medium" ? "Limited Stock" : "Hurry – Low Stock"}
+                  </span>
+                  <span className="ml-2 text-xs text-gray-500">
+                    ({mockStock} units available · {stockState === "low" ? "Order now!" : "Ready to ship"})
+                  </span>
+                </div>
+              )}
+
               {/* ---------- Price & Qty ---------- */}
               {selectedVariant && (
-                <div className="bg-gradient-to-br from-gray-50 to-white rounded-3xl p-6 sm:p-8 mb-8 border border-gray-100 shadow-sm" data-testid="price-card">
+                <div className="bg-gradient-to-br from-gray-50 to-white rounded-3xl p-6 sm:p-8 mb-6 border border-gray-100 shadow-sm" data-testid="price-card">
                   <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
                     <div>
                       <p className="text-sm text-gray-500 font-medium mb-1">
@@ -372,7 +704,7 @@ export default function ProductDetail() {
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-gray-500 mt-1">Inclusive of all taxes</p>
+                      <p className="text-xs text-gray-500 mt-1">Inclusive of all taxes · Free shipping over ₹2,000</p>
                     </div>
                     <div className="text-right">
                       <p className="text-xs text-gray-500 uppercase tracking-tighter">Contents</p>
@@ -388,7 +720,9 @@ export default function ProductDetail() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="rounded-full h-10 w-10 hover:bg-gray-100 text-gray-600"
+                        aria-label="Decrease quantity"
+                        disabled={onlinePrice <= 0}
+                        className="rounded-full h-10 w-10 hover:bg-gray-100 text-gray-600 disabled:opacity-40"
                         onClick={() => setQty(Math.max(1, qty - 1))}
                         data-testid="qty-decrement"
                       >
@@ -397,14 +731,18 @@ export default function ProductDetail() {
                       <Input
                         type="number"
                         value={qty}
+                        disabled={onlinePrice <= 0}
+                        aria-label="Quantity"
                         onChange={(e) => setQty(Math.max(1, parseInt(e.target.value) || 1))}
-                        className="w-16 border-none text-center font-bold text-lg focus-visible:ring-0"
+                        className="w-16 border-none text-center font-bold text-lg focus-visible:ring-0 disabled:opacity-40"
                         data-testid="qty-input"
                       />
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="rounded-full h-10 w-10 hover:bg-gray-100 text-gray-600"
+                        aria-label="Increase quantity"
+                        disabled={onlinePrice <= 0}
+                        className="rounded-full h-10 w-10 hover:bg-gray-100 text-gray-600 disabled:opacity-40"
                         onClick={() => setQty(qty + 1)}
                         data-testid="qty-increment"
                       >
@@ -412,21 +750,71 @@ export default function ProductDetail() {
                       </Button>
                     </div>
 
-                    <Button
-                      className="flex-grow h-14 bg-red-600 hover:bg-red-700 text-white rounded-full font-bold text-lg shadow-lg shadow-red-900/10"
-                      onClick={handleAddToCart}
-                      data-testid="add-to-cart"
-                    >
-                      <ShoppingCart className="mr-2 h-5 w-5" /> Add to Cart
-                    </Button>
+                    {onlinePrice > 0 ? (
+                      <Button
+                        className="flex-grow h-14 bg-red-600 hover:bg-red-700 text-white rounded-full font-bold text-lg shadow-lg shadow-red-900/10"
+                        onClick={handleAddToCart}
+                        data-testid="add-to-cart"
+                      >
+                        <ShoppingCart className="mr-2 h-5 w-5" /> Add to Cart
+                      </Button>
+                    ) : (
+                      <a
+                        href="tel:+919876543210"
+                        className="flex-grow h-14 bg-amber-500 hover:bg-amber-600 text-white rounded-full font-bold text-lg shadow-lg shadow-amber-900/10 inline-flex items-center justify-center"
+                        data-testid="contact-for-price"
+                      >
+                        <Phone className="mr-2 h-5 w-5" /> Contact for Price
+                      </a>
+                    )}
                   </div>
 
                   {onlinePrice > 0 && (
-                    <p className="text-sm text-gray-500 mt-4">
-                      Total: <span className="font-bold text-gray-900">{formatPrice(onlinePrice * qty)}</span>
-                      {qty > 1 && <span className="text-xs ml-1">({qty} × {formatPrice(onlinePrice)})</span>}
-                    </p>
+                    <div className="mt-5 pt-5 border-t border-gray-100 flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-sm text-gray-500">
+                        Total: <span className="font-bold text-gray-900 text-lg">{formatPrice(onlinePrice * qty)}</span>
+                        {qty > 1 && <span className="text-xs ml-1">({qty} × {formatPrice(onlinePrice)})</span>}
+                      </p>
+                      {qty >= 10 && wholesalePrice > 0 && wholesalePrice < onlinePrice && (
+                        <p className="text-xs font-bold text-green-700 bg-green-50 px-3 py-1.5 rounded-full">
+                          🎉 Bulk pricing applied — save {formatPrice((onlinePrice - wholesalePrice) * qty)}
+                        </p>
+                      )}
+                    </div>
                   )}
+                </div>
+              )}
+
+              {/* Bulk pricing tier table */}
+              {bulkTiers.length > 0 && (
+                <div className="mb-6 rounded-2xl border border-gray-100 overflow-hidden" data-testid="bulk-pricing">
+                  <div className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-5 py-3 flex items-center justify-between">
+                    <span className="text-sm font-bold flex items-center">
+                      <Tag className="h-4 w-4 mr-2" /> Volume Discount
+                    </span>
+                    <span className="text-xs opacity-90">Auto-applied at checkout</span>
+                  </div>
+                  <table className="w-full text-sm">
+                    <tbody>
+                      {bulkTiers.map((t, i) => {
+                        const inTier = qty >= t.from && (t.to === undefined || qty <= t.to);
+                        return (
+                          <tr key={i} className={inTier ? "bg-green-50/60 font-semibold" : "border-t border-gray-50"}>
+                            <td className="px-5 py-2.5 text-gray-600">
+                              {t.label}
+                              <span className="text-xs text-gray-400 ml-2">
+                                ({t.from}{t.to ? `-${t.to}` : "+"} units)
+                              </span>
+                            </td>
+                            <td className="px-5 py-2.5 text-right text-gray-900">{formatPrice(t.price)}</td>
+                            <td className="px-5 py-2.5 text-right text-green-700 w-20">
+                              {t.save > 0 ? `-${t.save}%` : ""}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               )}
 
@@ -434,7 +822,7 @@ export default function ProductDetail() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 py-6 border-t border-gray-100">
                 <div className="flex flex-col items-center text-center">
                   <ShieldCheck className="h-6 w-6 text-green-500 mb-2" />
-                  <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Safe & Legal</span>
+                  <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">PESO Approved</span>
                 </div>
                 <div className="flex flex-col items-center text-center">
                   <CheckCircle2 className="h-6 w-6 text-amber-500 mb-2" />
@@ -452,83 +840,270 @@ export default function ProductDetail() {
             </div>
           </div>
 
-          {/* ---------- Specs / Safety panels ---------- */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-16">
-            <div className="rounded-3xl border border-gray-100 bg-gray-50/50 p-8" data-testid="specs-panel">
-              <h3 className="text-lg font-extrabold text-gray-900 mb-4 flex items-center">
-                <Info className="h-5 w-5 mr-2 text-red-600" /> Product Specifications
-              </h3>
-              <dl className="space-y-3 text-sm">
-                <div className="flex justify-between border-b border-gray-100 pb-2">
-                  <dt className="text-gray-500">Category</dt>
-                  <dd className="font-semibold text-gray-900">{product.category}</dd>
-                </div>
-                <div className="flex justify-between border-b border-gray-100 pb-2">
-                  <dt className="text-gray-500">SKU Code</dt>
-                  <dd className="font-semibold text-gray-900">{product.code}</dd>
-                </div>
-                <div className="flex justify-between border-b border-gray-100 pb-2">
-                  <dt className="text-gray-500">HSN Code</dt>
-                  <dd className="font-semibold text-gray-900">{product.hsnCode}</dd>
-                </div>
-                {selectedVariant?.brand && (
-                  <div className="flex justify-between border-b border-gray-100 pb-2">
-                    <dt className="text-gray-500">Selected Brand</dt>
-                    <dd className="font-semibold text-gray-900">{selectedVariant.brand}</dd>
-                  </div>
-                )}
-                {selectedVariant?.size && (
-                  <div className="flex justify-between border-b border-gray-100 pb-2">
-                    <dt className="text-gray-500">Size</dt>
-                    <dd className="font-semibold text-gray-900">{selectedVariant.size}</dd>
-                  </div>
-                )}
-                {selectedVariant?.packContent && (
-                  <div className="flex justify-between border-b border-gray-100 pb-2">
-                    <dt className="text-gray-500">Pack Content</dt>
-                    <dd className="font-semibold text-gray-900">{selectedVariant.packContent}</dd>
-                  </div>
-                )}
-                <div className="flex justify-between border-b border-gray-100 pb-2">
-                  <dt className="text-gray-500">Origin</dt>
-                  <dd className="font-semibold text-gray-900">Sivakasi, Tamil Nadu</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-gray-500">Total Variants</dt>
-                  <dd className="font-semibold text-gray-900">{product.variants?.length ?? 0}</dd>
-                </div>
-              </dl>
-            </div>
+          {/* ---------- Tabs: Overview / Specs / Reviews / FAQs ---------- */}
+          <div className="mt-16">
+            <Tabs defaultValue="overview" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 max-w-2xl mx-auto rounded-full bg-gray-100 p-1.5 h-auto">
+                <TabsTrigger value="overview" className="rounded-full data-[state=active]:bg-white data-[state=active]:shadow-sm py-2 text-xs sm:text-sm" data-testid="tab-overview">Overview</TabsTrigger>
+                <TabsTrigger value="specs" className="rounded-full data-[state=active]:bg-white data-[state=active]:shadow-sm py-2 text-xs sm:text-sm" data-testid="tab-specs">Specifications</TabsTrigger>
+                <TabsTrigger value="reviews" className="rounded-full data-[state=active]:bg-white data-[state=active]:shadow-sm py-2 text-xs sm:text-sm" data-testid="tab-reviews">Reviews ({totalReviews})</TabsTrigger>
+                <TabsTrigger value="faqs" className="rounded-full data-[state=active]:bg-white data-[state=active]:shadow-sm py-2 text-xs sm:text-sm" data-testid="tab-faqs">FAQs</TabsTrigger>
+              </TabsList>
 
-            <div className="rounded-3xl border border-amber-100 bg-amber-50/40 p-8" data-testid="safety-panel">
-              <h3 className="text-lg font-extrabold text-gray-900 mb-4 flex items-center">
-                <ShieldCheck className="h-5 w-5 mr-2 text-amber-600" /> Safety Guidelines
-              </h3>
-              <ul className="space-y-3 text-sm text-gray-700">
-                <li className="flex"><span className="text-amber-600 mr-2 font-bold">•</span>Always light fireworks under adult supervision in open spaces.</li>
-                <li className="flex"><span className="text-amber-600 mr-2 font-bold">•</span>Keep a bucket of water and sand nearby while bursting crackers.</li>
-                <li className="flex"><span className="text-amber-600 mr-2 font-bold">•</span>Do not relight a "dud" cracker — wait 20 minutes and soak in water.</li>
-                <li className="flex"><span className="text-amber-600 mr-2 font-bold">•</span>Store fireworks in a cool, dry place away from heat sources.</li>
-                <li className="flex"><span className="text-amber-600 mr-2 font-bold">•</span>Wear cotton clothing and protective eyewear when handling.</li>
-                <li className="flex"><span className="text-amber-600 mr-2 font-bold">•</span>Read PESO/CCOE manufacturer instructions before use.</li>
-              </ul>
-              <div className="mt-6 pt-4 border-t border-amber-100 flex items-center text-xs text-gray-600">
-                <Phone className="h-4 w-4 mr-2 text-red-600" />
-                Questions? Call us at <a href="tel:+919876543210" className="font-bold text-red-600 ml-1">+91 98765 43210</a>
+              {/* OVERVIEW */}
+              <TabsContent value="overview" className="mt-8" data-testid="overview-content">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="md:col-span-2">
+                    <h3 className="text-xl font-extrabold text-gray-900 mb-4">About this product</h3>
+                    <p className="text-gray-700 leading-relaxed mb-4">
+                      The <strong>{product.name}</strong> is part of our {product.category?.toLowerCase()} collection,
+                      hand-crafted in <strong>Sivakasi, Tamil Nadu</strong> — the firework capital of India. Every batch
+                      is quality-tested for ignition reliability, colour vibrance, and burn duration before it leaves our
+                      warehouse.
+                    </p>
+                    <p className="text-gray-700 leading-relaxed mb-6">
+                      {currentBrandInfo.description}
+                    </p>
+
+                    <h4 className="text-sm font-bold text-gray-900 uppercase tracking-widest mb-3">Highlights</h4>
+                    <ul className="space-y-2">
+                      {attrs.highlights.map((h, i) => (
+                        <li key={i} className="flex items-start text-gray-700">
+                          <CheckCircle2 className="h-5 w-5 text-green-500 mr-3 flex-shrink-0 mt-0.5" />
+                          <span>{h}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="rounded-2xl border border-amber-100 bg-amber-50/40 p-6">
+                    <h3 className="text-lg font-extrabold text-gray-900 mb-4 flex items-center">
+                      <ShieldCheck className="h-5 w-5 mr-2 text-amber-600" /> Safety First
+                    </h3>
+                    <ul className="space-y-2.5 text-sm text-gray-700">
+                      <li className="flex"><span className="text-amber-600 mr-2 font-bold">•</span>Adult supervision required</li>
+                      <li className="flex"><span className="text-amber-600 mr-2 font-bold">•</span>Light only in open spaces</li>
+                      <li className="flex"><span className="text-amber-600 mr-2 font-bold">•</span>Keep water/sand bucket nearby</li>
+                      <li className="flex"><span className="text-amber-600 mr-2 font-bold">•</span>Don't relight a "dud" — soak in water</li>
+                      <li className="flex"><span className="text-amber-600 mr-2 font-bold">•</span>Wear cotton clothing</li>
+                      <li className="flex"><span className="text-amber-600 mr-2 font-bold">•</span>Store cool & dry, away from heat</li>
+                    </ul>
+                    <Separator className="my-4" />
+                    <a href="tel:+919876543210" className="flex items-center text-xs text-gray-600 hover:text-red-600">
+                      <Phone className="h-4 w-4 mr-2" /> Help: <span className="font-bold ml-1">+91 98765 43210</span>
+                    </a>
+                  </div>
+                </div>
+              </TabsContent>
+
+              {/* SPECS */}
+              <TabsContent value="specs" className="mt-8" data-testid="specs-content">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="rounded-2xl border border-gray-100 bg-gray-50/50 p-6">
+                    <h3 className="text-lg font-extrabold text-gray-900 mb-4">Product Details</h3>
+                    <dl className="space-y-3 text-sm">
+                      {[
+                        ["Product Code", product.code],
+                        ["Category", product.category],
+                        ["HSN Code", product.hsnCode],
+                        ["Origin", "Sivakasi, Tamil Nadu, India"],
+                        ["Manufacturer", currentBrandInfo.since !== "—" ? `Est. ${currentBrandInfo.since}` : "—"],
+                        ["Total Variants", String(product.variants?.length ?? 0)],
+                        ["Brands Available", String(brandGroups.length)],
+                        ["Status", "Active · In Stock"],
+                      ].map(([k, v]) => (
+                        <div key={k} className="flex justify-between border-b border-gray-100 pb-2 last:border-0">
+                          <dt className="text-gray-500">{k}</dt>
+                          <dd className="font-semibold text-gray-900 text-right">{v}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </div>
+
+                  <div className="rounded-2xl border border-gray-100 bg-gray-50/50 p-6">
+                    <h3 className="text-lg font-extrabold text-gray-900 mb-4">Performance</h3>
+                    <dl className="space-y-3 text-sm">
+                      {[
+                        ["Effect Type", attrs.effect],
+                        ["Burst Height", attrs.height],
+                        ["Total Duration", attrs.duration],
+                        ["Sound Level", `${attrs.soundLevel} dB`],
+                        ["Fuse Time", attrs.fuseTime],
+                        ["Selected Brand", selectedVariant?.brand ?? "—"],
+                        ["Selected Size", selectedVariant?.size ?? "—"],
+                        ["Pack Content", selectedVariant?.packContent ?? "—"],
+                      ].map(([k, v]) => (
+                        <div key={k} className="flex justify-between border-b border-gray-100 pb-2 last:border-0">
+                          <dt className="text-gray-500">{k}</dt>
+                          <dd className="font-semibold text-gray-900 text-right">{v}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </div>
+                </div>
+
+                {/* Variant matrix */}
+                {product.variants && product.variants.length > 1 && (
+                  <div className="mt-6 rounded-2xl border border-gray-100 overflow-hidden">
+                    <div className="bg-gray-50 px-5 py-3 border-b border-gray-100">
+                      <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest">All Variants</h3>
+                    </div>
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50/50">
+                        <tr className="text-left text-xs uppercase tracking-wider text-gray-500">
+                          <th className="px-5 py-2.5">Brand</th>
+                          <th className="px-5 py-2.5">Size</th>
+                          <th className="px-5 py-2.5">Pack</th>
+                          <th className="px-5 py-2.5 text-right">Price</th>
+                          <th className="px-5 py-2.5 text-right">Bulk (10+)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {product.variants.map((v: any, i: number) => (
+                          <tr key={i} className="border-t border-gray-50 hover:bg-gray-50/50">
+                            <td className="px-5 py-2.5 font-semibold text-gray-900">{v.brand ?? "Standard"}</td>
+                            <td className="px-5 py-2.5 text-gray-600">{v.size ?? "—"}</td>
+                            <td className="px-5 py-2.5 text-gray-600">{v.packContent ?? "—"}</td>
+                            <td className="px-5 py-2.5 text-right font-semibold text-gray-900">
+                              {formatPrice(Number(v.prices?.retailOnline) || 0)}
+                            </td>
+                            <td className="px-5 py-2.5 text-right text-green-700">
+                              {formatPrice(Number(v.prices?.wholesaleBulk) || 0)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </TabsContent>
+
+              {/* REVIEWS */}
+              <TabsContent value="reviews" className="mt-8" data-testid="reviews-content">
+                <div id="reviews" className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100 p-6 text-center">
+                    <p className="text-5xl font-extrabold text-gray-900">{avgRating.toFixed(1)}</p>
+                    <div className="flex justify-center my-2">
+                      {[1,2,3,4,5].map((s) => (
+                        <Star key={s} className={`h-5 w-5 ${s <= Math.round(avgRating) ? "fill-amber-400 text-amber-400" : "text-gray-300"}`} />
+                      ))}
+                    </div>
+                    <p className="text-sm text-gray-600 font-medium">{totalReviews} verified reviews</p>
+                    <Separator className="my-4" />
+                    <div className="space-y-1.5 text-left">
+                      {ratingDistribution.map((r) => (
+                        <div key={r.stars} className="flex items-center text-xs">
+                          <span className="w-8 text-gray-600">{r.stars}★</span>
+                          <Progress value={r.pct} className="h-1.5 flex-1 mx-2" />
+                          <span className="w-8 text-right text-gray-500">{r.count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="md:col-span-2 space-y-4">
+                    {mockReviews.map((r, i) => (
+                      <div key={i} className="rounded-2xl border border-gray-100 p-5 bg-white" data-testid={`review-${i}`}>
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex items-center">
+                            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-red-500 to-amber-500 text-white font-bold flex items-center justify-center mr-3">
+                              {r.name.charAt(0)}
+                            </div>
+                            <div>
+                              <p className="font-bold text-gray-900 text-sm flex items-center">
+                                {r.name}
+                                {r.verified && (
+                                  <span className="ml-2 text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-semibold flex items-center">
+                                    <CheckCircle2 className="h-2.5 w-2.5 mr-0.5" /> Verified
+                                  </span>
+                                )}
+                              </p>
+                              <p className="text-xs text-gray-500">{r.city} · {r.date}</p>
+                            </div>
+                          </div>
+                          <div className="flex">
+                            {[1,2,3,4,5].map((s) => (
+                              <Star key={s} className={`h-3.5 w-3.5 ${s <= r.rating ? "fill-amber-400 text-amber-400" : "text-gray-300"}`} />
+                            ))}
+                          </div>
+                        </div>
+                        <p className="font-semibold text-gray-900 text-sm mb-1">{r.title}</p>
+                        <p className="text-sm text-gray-600 leading-relaxed">{r.body}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </TabsContent>
+
+              {/* FAQS */}
+              <TabsContent value="faqs" className="mt-8" data-testid="faqs-content">
+                <div className="max-w-3xl mx-auto">
+                  <Accordion type="single" collapsible className="space-y-3">
+                    {mockFaqs.map((f, i) => (
+                      <AccordionItem
+                        key={i}
+                        value={`faq-${i}`}
+                        className="rounded-2xl border border-gray-100 bg-gray-50/50 px-5 data-[state=open]:bg-white data-[state=open]:shadow-sm"
+                        data-testid={`faq-${i}`}
+                      >
+                        <AccordionTrigger className="text-left font-semibold text-gray-900 hover:no-underline">
+                          {f.q}
+                        </AccordionTrigger>
+                        <AccordionContent className="text-gray-600 leading-relaxed pb-4">
+                          {f.a}
+                        </AccordionContent>
+                      </AccordionItem>
+                    ))}
+                  </Accordion>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+
+          {/* ---------- Frequently bought together ---------- */}
+          {frequentlyBought.length > 0 && (
+            <div className="mt-16" data-testid="frequently-bought">
+              <h2 className="text-2xl font-extrabold text-gray-900 mb-2">Frequently bought together</h2>
+              <p className="text-sm text-gray-500 mb-6">Customers who bought this also picked up:</p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {frequentlyBought.map((rp: any) => {
+                  const startPrice = (rp.variants ?? [])
+                    .map((v: any) => Number(v.prices?.retailOnline) || 0)
+                    .filter((n: number) => n > 0)
+                    .reduce((min: number, n: number) => (min === 0 || n < min ? n : min), 0);
+                  return (
+                    <Link
+                      key={rp.id}
+                      href={`/product/${rp.id}`}
+                      className="group flex items-center rounded-2xl border border-gray-100 hover:border-red-200 hover:shadow-md transition-all overflow-hidden bg-white p-4"
+                    >
+                      <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-red-500/10 to-amber-500/10 flex items-center justify-center text-4xl mr-4 flex-shrink-0">
+                        {categoryEmoji(rp.category)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] uppercase tracking-widest text-red-600 font-bold mb-1">{rp.category}</p>
+                        <h3 className="font-bold text-gray-900 text-sm line-clamp-1 mb-1 group-hover:text-red-600 transition-colors">{rp.name}</h3>
+                        <p className="text-sm font-extrabold text-gray-900">{formatPrice(startPrice)}</p>
+                      </div>
+                      <Plus className="h-5 w-5 text-gray-400 group-hover:text-red-600 transition-colors flex-shrink-0" />
+                    </Link>
+                  );
+                })}
               </div>
             </div>
-          </div>
+          )}
 
           {/* ---------- Related products ---------- */}
           {related.length > 0 && (
             <div className="mt-16" data-testid="related-products">
-              <h2 className="text-2xl font-extrabold text-gray-900 mb-6">You may also like</h2>
+              <h2 className="text-2xl font-extrabold text-gray-900 mb-6">More from {product.category}</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {related.map((rp: any) => {
                   const startPrice = (rp.variants ?? [])
                     .map((v: any) => Number(v.prices?.retailOnline) || 0)
                     .filter((n: number) => n > 0)
                     .reduce((min: number, n: number) => (min === 0 || n < min ? n : min), 0);
+                  const brands = new Set((rp.variants ?? []).map((v: any) => v.brand || "Standard"));
                   return (
                     <Link
                       key={rp.id}
@@ -542,7 +1117,14 @@ export default function ProductDetail() {
                       <div className="p-4">
                         <p className="text-[10px] uppercase tracking-widest text-red-600 font-bold mb-1">{rp.category}</p>
                         <h3 className="font-bold text-gray-900 text-sm line-clamp-2 mb-1">{rp.name}</h3>
-                        <p className="text-sm font-extrabold text-gray-900">{formatPrice(startPrice)}</p>
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-extrabold text-gray-900">{formatPrice(startPrice)}</p>
+                          {brands.size > 1 && (
+                            <span className="text-[10px] bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded font-semibold">
+                              {brands.size} brands
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </Link>
                   );
