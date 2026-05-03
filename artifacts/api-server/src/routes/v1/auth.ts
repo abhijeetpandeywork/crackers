@@ -129,8 +129,106 @@ router.get("/auth/me", authenticate, async (req: AuthRequest, res) => {
   }
   res.json({
     success: true,
-    data: { id: user.id, name: user.name, username: user.username, role: user.role, locationIds: user.locationIds, maxDiscountPct: user.maxDiscountPct },
+    data: {
+      id: user.id, name: user.name, username: user.username, role: user.role,
+      email: user.email, phone: user.phone,
+      locationIds: user.locationIds, maxDiscountPct: user.maxDiscountPct,
+      hasPin: Boolean(user.pin),
+    },
   });
+});
+
+// Update own profile — name / email / phone only. Username and role stay
+// admin-managed so a user cannot self-promote or impersonate someone else.
+router.patch("/auth/me", authenticate, async (req: AuthRequest, res) => {
+  const body = req.body as { name?: unknown; email?: unknown; phone?: unknown };
+  const updates: Partial<typeof usersTable.$inferInsert> = { updatedAt: new Date() };
+  if (typeof body.name === "string") {
+    const name = body.name.trim();
+    if (name.length < 2 || name.length > 80) {
+      res.status(400).json({ success: false, error: { code: "BAD_REQUEST", message: "Name must be 2–80 characters" } });
+      return;
+    }
+    updates.name = name;
+  }
+  if (typeof body.email === "string") {
+    const email = body.email.trim();
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      res.status(400).json({ success: false, error: { code: "BAD_REQUEST", message: "Invalid email address" } });
+      return;
+    }
+    updates.email = email || null;
+  }
+  if (typeof body.phone === "string") {
+    const phone = body.phone.trim();
+    if (phone && !/^[+\d][\d\s-]{4,19}$/.test(phone)) {
+      res.status(400).json({ success: false, error: { code: "BAD_REQUEST", message: "Invalid phone number" } });
+      return;
+    }
+    updates.phone = phone || null;
+  }
+  const [user] = await db.update(usersTable).set(updates).where(eq(usersTable.id, req.user!.id)).returning({
+    id: usersTable.id, name: usersTable.name, username: usersTable.username, role: usersTable.role,
+    email: usersTable.email, phone: usersTable.phone,
+  });
+  res.json({ success: true, data: user });
+});
+
+// Change own password — must verify the current password first to prevent
+// session hijack from being escalated into account takeover.
+router.post("/auth/change-password", authenticate, async (req: AuthRequest, res) => {
+  const { currentPassword, newPassword } = req.body as { currentPassword?: string; newPassword?: string };
+  if (!currentPassword || !newPassword) {
+    res.status(400).json({ success: false, error: { code: "BAD_REQUEST", message: "currentPassword and newPassword are required" } });
+    return;
+  }
+  if (newPassword.length < 8 || newPassword.length > 128) {
+    res.status(400).json({ success: false, error: { code: "WEAK_PASSWORD", message: "New password must be 8–128 characters" } });
+    return;
+  }
+  const rows = await db.select().from(usersTable).where(eq(usersTable.id, req.user!.id)).limit(1);
+  const user = rows[0];
+  if (!user) {
+    res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "User not found" } });
+    return;
+  }
+  const ok = await verifyPassword(currentPassword, user.passwordHash);
+  if (!ok) {
+    res.status(400).json({ success: false, error: { code: "WRONG_PASSWORD", message: "Current password is incorrect" } });
+    return;
+  }
+  const passwordHash = await hashPassword(newPassword);
+  await db.update(usersTable).set({ passwordHash, updatedAt: new Date() }).where(eq(usersTable.id, user.id));
+  req.log?.info({ userId: user.id }, "password changed");
+  res.json({ success: true, data: { ok: true } });
+});
+
+// Change own POS PIN — also gated by the current login password so a stolen
+// terminal session can't be used to overwrite the PIN silently.
+router.post("/auth/change-pin", authenticate, async (req: AuthRequest, res) => {
+  const { currentPassword, newPin } = req.body as { currentPassword?: string; newPin?: string };
+  if (!currentPassword || !newPin) {
+    res.status(400).json({ success: false, error: { code: "BAD_REQUEST", message: "currentPassword and newPin are required" } });
+    return;
+  }
+  if (!/^\d{4,6}$/.test(newPin)) {
+    res.status(400).json({ success: false, error: { code: "BAD_PIN", message: "PIN must be 4–6 digits" } });
+    return;
+  }
+  const rows = await db.select().from(usersTable).where(eq(usersTable.id, req.user!.id)).limit(1);
+  const user = rows[0];
+  if (!user) {
+    res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "User not found" } });
+    return;
+  }
+  const ok = await verifyPassword(currentPassword, user.passwordHash);
+  if (!ok) {
+    res.status(400).json({ success: false, error: { code: "WRONG_PASSWORD", message: "Current password is incorrect" } });
+    return;
+  }
+  await db.update(usersTable).set({ pin: newPin, updatedAt: new Date() }).where(eq(usersTable.id, user.id));
+  req.log?.info({ userId: user.id }, "pin changed");
+  res.json({ success: true, data: { ok: true } });
 });
 
 export default router;
