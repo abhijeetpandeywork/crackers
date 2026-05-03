@@ -9,16 +9,14 @@ import {
   Settings2,
   LogOut,
   ChevronLeft,
-  HelpCircle
+  HelpCircle,
+  Menu,
 } from "lucide-react";
 import logoUrl from "@assets/rathinam_logo.png";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect } from "react";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
+import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-
-interface SidebarProps {
-  className?: string;
-}
 
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/" },
@@ -30,28 +28,25 @@ const navItems = [
   { icon: HelpCircle, label: "Help & Guide", href: "/help" },
 ];
 
-export function Sidebar({ className }: SidebarProps) {
-  const [location] = useLocation();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+interface SidebarBodyProps {
+  isCollapsed?: boolean;
+  onNavigate?: () => void;
+}
+
+function SidebarBody({ isCollapsed = false, onNavigate }: SidebarBodyProps) {
+  const [location, setLocation] = useLocation();
   const { toast } = useToast();
-  const [, setLocation] = useLocation();
 
   const handleLogout = () => {
     localStorage.removeItem("wh_token");
-    toast({
-      title: "Logged out",
-      description: "You have been logged out successfully",
-    });
+    toast({ title: "Logged out", description: "You have been logged out successfully" });
+    onNavigate?.();
     setLocation("/login");
   };
 
   return (
-    <div className={cn(
-      "relative flex flex-col h-screen border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-all duration-300",
-      isCollapsed ? "w-16" : "w-64",
-      className
-    )}>
-      <div className="flex items-center h-16 px-3 border-b border-sidebar-border bg-sidebar-accent/40">
+    <div className="flex flex-col h-full">
+      <div className="flex items-center h-16 px-3 border-b border-sidebar-border bg-sidebar-accent/40 shrink-0">
         <img src={logoUrl} alt="" className="h-9 w-9 rounded bg-white/95 p-0.5 object-contain shrink-0" />
         {!isCollapsed && (
           <div className="ml-2.5 flex flex-col leading-tight">
@@ -61,23 +56,28 @@ export function Sidebar({ className }: SidebarProps) {
         )}
       </div>
 
-      <nav className="flex-1 py-4 space-y-1">
+      <nav className="flex-1 py-4 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
           const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href));
           return (
-            <Link key={item.href} href={item.href} className={cn(
-              "flex items-center px-4 py-3 transition-colors hover:bg-sidebar-accent",
-              isActive ? "bg-sidebar-accent text-amber-300 border-r-4 border-amber-400" : "text-sidebar-foreground/85",
-              isCollapsed && "justify-center"
-            )}>
-              <item.icon className={cn("h-5 w-5", !isCollapsed && "mr-3")} />
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={onNavigate}
+              className={cn(
+                "flex items-center px-4 py-3 transition-colors hover:bg-sidebar-accent",
+                isActive ? "bg-sidebar-accent text-amber-300 border-r-4 border-amber-400" : "text-sidebar-foreground/85",
+                isCollapsed && "justify-center"
+              )}
+            >
+              <item.icon className={cn("h-5 w-5 shrink-0", !isCollapsed && "mr-3")} />
               {!isCollapsed && <span>{item.label}</span>}
             </Link>
           );
         })}
       </nav>
 
-      <div className="p-4 border-t border-sidebar-border">
+      <div className="p-4 border-t border-sidebar-border shrink-0">
         <button
           onClick={handleLogout}
           className={cn(
@@ -85,11 +85,30 @@ export function Sidebar({ className }: SidebarProps) {
             isCollapsed && "justify-center"
           )}
         >
-          <LogOut className={cn("h-5 w-5", !isCollapsed && "mr-3")} />
+          <LogOut className={cn("h-5 w-5 shrink-0", !isCollapsed && "mr-3")} />
           {!isCollapsed && <span>Logout</span>}
         </button>
       </div>
+    </div>
+  );
+}
 
+interface SidebarProps {
+  className?: string;
+}
+
+export function Sidebar({ className }: SidebarProps) {
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  return (
+    <div
+      className={cn(
+        "relative hidden md:flex flex-col h-screen border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-all duration-300",
+        isCollapsed ? "w-16" : "w-64",
+        className
+      )}
+    >
+      <SidebarBody isCollapsed={isCollapsed} />
       <Button
         variant="ghost"
         size="icon"
@@ -104,6 +123,7 @@ export function Sidebar({ className }: SidebarProps) {
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const isLoginPage = location === "/login";
 
   if (isLoginPage) {
@@ -113,9 +133,30 @@ export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen bg-background overflow-hidden">
       <Sidebar />
-      <main className="flex-1 overflow-y-auto p-4 md:p-8">
-        <div className="max-w-7xl mx-auto">
-          {children}
+      <main className="flex-1 overflow-y-auto min-w-0">
+        {/* Mobile top bar */}
+        <div className="md:hidden sticky top-0 z-30 h-14 flex items-center gap-2 px-3 border-b bg-sidebar text-sidebar-foreground">
+          <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="text-sidebar-foreground hover:bg-sidebar-accent">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="p-0 w-72 bg-sidebar text-sidebar-foreground border-sidebar-border">
+              <SheetTitle className="sr-only">Navigation</SheetTitle>
+              <SidebarBody onNavigate={() => setDrawerOpen(false)} />
+            </SheetContent>
+          </Sheet>
+          <img src={logoUrl} alt="" className="h-8 w-8 rounded bg-white/95 p-0.5 object-contain" />
+          <div className="flex flex-col leading-tight">
+            <span className="font-extrabold text-xs tracking-wide">RATHINAM</span>
+            <span className="text-[9px] font-semibold tracking-[0.18em] uppercase text-amber-300/90">Warehouse</span>
+          </div>
+        </div>
+        <div className="p-4 md:p-8">
+          <div className="max-w-7xl mx-auto">
+            {children}
+          </div>
         </div>
       </main>
     </div>

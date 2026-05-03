@@ -521,9 +521,9 @@ const SaleScreen = () => {
   const running = currentShift?.running ?? null;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#0d0d0d]">
+    <div className="flex flex-col md:flex-row h-screen md:overflow-hidden bg-[#0d0d0d]">
       {/* Left Panel: Products */}
-      <div className="w-[60%] flex flex-col border-r border-zinc-800">
+      <div className="w-full md:w-[60%] flex flex-col border-b md:border-b-0 md:border-r border-zinc-800 min-h-[60vh] md:min-h-0">
         {/* Shop / cashier / clock — always visible so the operator knows
             where they are. Each chip uses whitespace-nowrap so labels never
             split across two lines on narrow viewports; the row itself wraps. */}
@@ -747,7 +747,7 @@ const SaleScreen = () => {
       </div>
 
       {/* Right Panel: Cart */}
-      <div className="w-[40%] flex flex-col bg-zinc-950">
+      <div className="w-full md:w-[40%] flex flex-col bg-zinc-950 min-h-[60vh] md:min-h-0">
         <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h2 className="text-2xl font-black">CART</h2>
