@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { CheckCircle, Truck, ShieldCheck, ChevronLeft, MapPin, Plus, Receipt } from "lucide-react";
+import { CheckCircle, Truck, ShieldCheck, ChevronLeft, MapPin, Plus, Receipt, Download } from "lucide-react";
 import { Layout } from "@/components/layout";
 import {
   useListShopAddresses,
@@ -82,6 +82,9 @@ export default function Checkout() {
   const [notes, setNotes] = useState("");
   const [placedOrder, setPlacedOrder] = useState<any>(null);
 
+  // Estimated GST shown on checkout. Final GST is computed per-item server-side
+  // (using each product's HSN slab / override), so the placed-order total may
+  // differ slightly. The success screen and order detail show the actual figures.
   const gst = Math.round(subtotal * 0.18);
   const total = subtotal + gst;
 
@@ -153,30 +156,74 @@ export default function Checkout() {
   if (!isLoggedIn) return null;
 
   if (placedOrder) {
+    const token = (typeof localStorage !== "undefined") ? localStorage.getItem("shop_token") : null;
+    const downloadInvoice = async () => {
+      try {
+        const res = await fetch(`/api/v1/shop/orders/${placedOrder.id}/invoice.pdf`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = `${placedOrder.invoiceNo}.pdf`;
+        document.body.appendChild(a); a.click(); a.remove();
+        URL.revokeObjectURL(url);
+      } catch (e: any) {
+        toast({ title: "Could not download invoice", description: e?.message, variant: "destructive" });
+      }
+    };
+    const actualGst = Number(placedOrder.cgst ?? 0) + Number(placedOrder.sgst ?? 0) + Number(placedOrder.igst ?? 0);
     return (
       <Layout>
-        <div className="max-w-3xl mx-auto px-4 py-20 text-center">
-          <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-8 animate-bounce">
-            <CheckCircle className="h-12 w-12 text-green-600" />
-          </div>
-          <h1 className="text-4xl font-extrabold text-gray-900 mb-4">Order placed!</h1>
-          <p className="text-xl text-gray-600 mb-8">
-            Your order ID is <span className="font-bold text-primary">#{placedOrder.invoiceNo}</span>.
-          </p>
-          <div className="bg-amber-50 border border-amber-100 rounded-3xl p-8 mb-10 text-left">
-            <h3 className="font-bold text-amber-900 mb-2 flex items-center">
-              <Truck className="h-5 w-5 mr-2" /> What's next?
-            </h3>
-            <p className="text-amber-800 leading-relaxed">
-              We'll call you within 24 hours to confirm and arrange dispatch via licensed cracker logistics. Track progress in your account.
+        <div className="max-w-3xl mx-auto px-4 py-16">
+          <div className="text-center mb-10">
+            <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 animate-bounce">
+              <CheckCircle className="h-12 w-12 text-green-600" />
+            </div>
+            <h1 className="text-4xl font-extrabold text-gray-900 mb-2">Order placed!</h1>
+            <p className="text-lg text-gray-600">
+              Your order ID is <span className="font-bold text-primary">#{placedOrder.invoiceNo}</span>.
             </p>
           </div>
+
+          <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-bold text-lg flex items-center gap-2"><Receipt className="h-5 w-5 text-primary" /> Invoice summary</h2>
+              <Button size="sm" variant="outline" onClick={downloadInvoice} data-testid="success-download-invoice">
+                <Download className="h-4 w-4 mr-1" /> Download PDF
+              </Button>
+            </div>
+            <div className="space-y-2 text-sm">
+              {(placedOrder.items ?? []).map((it: any, i: number) => (
+                <div key={i} className="flex justify-between">
+                  <span className="text-gray-700">{it.qty} × {it.productName}{it.variantSize ? ` (${it.variantSize})` : ""}</span>
+                  <span className="font-medium">₹{Number(it.amount).toLocaleString("en-IN")}</span>
+                </div>
+              ))}
+              <div className="pt-3 mt-3 border-t space-y-1">
+                <div className="flex justify-between text-gray-600"><span>Subtotal</span><span>₹{Number(placedOrder.subtotal).toLocaleString("en-IN")}</span></div>
+                <div className="flex justify-between text-gray-600"><span>GST</span><span>₹{actualGst.toLocaleString("en-IN")}</span></div>
+                <div className="flex justify-between text-lg font-extrabold pt-2 border-t"><span>Total</span><span>₹{Number(placedOrder.total).toLocaleString("en-IN")}</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-amber-50 border border-amber-100 rounded-3xl p-6 mb-8">
+            <h3 className="font-bold text-amber-900 mb-1 flex items-center">
+              <Truck className="h-5 w-5 mr-2" /> What's next?
+            </h3>
+            <p className="text-amber-800 leading-relaxed text-sm">
+              We'll call you within 24 hours to confirm and arrange dispatch via licensed cracker logistics. Track progress and download a fresh invoice anytime from your account.
+            </p>
+          </div>
+
           <div className="flex flex-wrap justify-center gap-3">
             <Link href={`/account/orders/${placedOrder.id}`}>
-              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground h-14 px-10 rounded-full text-lg font-bold">View order</Button>
+              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground h-12 px-8 rounded-full font-bold" data-testid="success-view-order">View order</Button>
             </Link>
             <Link href="/catalogue">
-              <Button variant="outline" className="h-14 px-10 rounded-full text-lg font-bold">Continue shopping</Button>
+              <Button variant="outline" className="h-12 px-8 rounded-full font-bold">Continue shopping</Button>
             </Link>
           </div>
         </div>
@@ -323,8 +370,9 @@ export default function Checkout() {
                 <Separator className="mb-6" />
                 <div className="space-y-3 mb-8">
                   <div className="flex justify-between text-gray-600"><span>Subtotal</span><span className="font-medium">₹{subtotal.toLocaleString('en-IN')}</span></div>
-                  <div className="flex justify-between text-gray-600"><span>GST (18%)</span><span className="font-medium">₹{gst.toLocaleString('en-IN')}</span></div>
-                  <div className="flex justify-between text-xl font-extrabold text-gray-900 pt-3 border-t"><span>Total</span><span>₹{total.toLocaleString('en-IN')}</span></div>
+                  <div className="flex justify-between text-gray-600"><span>GST (est. 18%)</span><span className="font-medium">₹{gst.toLocaleString('en-IN')}</span></div>
+                  <div className="flex justify-between text-xl font-extrabold text-gray-900 pt-3 border-t"><span>Estimated total</span><span>₹{total.toLocaleString('en-IN')}</span></div>
+                  <p className="text-[11px] text-gray-400 leading-snug">Final GST is calculated per item at checkout based on each product's HSN slab.</p>
                 </div>
                 <Button
                   type="submit"

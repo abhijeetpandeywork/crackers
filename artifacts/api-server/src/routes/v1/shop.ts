@@ -17,6 +17,7 @@ import { resolvePrice, type PricingChannel } from "../../lib/pricing.js";
 import { appendLedger } from "../../lib/stockService.js";
 import { getTaxConfig, computeTax } from "../../lib/tax.js";
 import { sendEmail, sendWhatsapp } from "../../lib/notifier.js";
+import { buildInvoicePdf } from "../../lib/invoice-pdf.js";
 
 const router = Router();
 
@@ -496,6 +497,105 @@ router.post("/shop/orders", shopAuthenticate, async (req: ShopAuthRequest, res) 
   })();
 
   res.status(201).json({ success: true, data: invoice });
+});
+
+// ---------- INVOICE PDF + SHARE ----------
+async function loadShopInvoice(orderId: string, customerId: string) {
+  const rows = await db.select().from(invoicesTable)
+    .where(and(eq(invoicesTable.id, orderId), eq(invoicesTable.customerId, customerId)))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+router.get("/shop/orders/:id/invoice.pdf", shopAuthenticate, async (req: ShopAuthRequest, res) => {
+  const cid = req.customer!.id;
+  const id = req.params["id"] as string;
+  const inv = await loadShopInvoice(id, cid);
+  if (!inv) {
+    res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Order not found" } });
+    return;
+  }
+  const businessRow = (await db.select().from(settingsTable).where(eq(settingsTable.key, "company")).limit(1))[0];
+  const business = (businessRow?.value ?? { name: "Rathinam Crackers" }) as any;
+  try {
+    const pdf = await buildInvoicePdf({
+      invoice: {
+        invoiceNo: inv.invoiceNo,
+        createdAt: inv.createdAt as Date,
+        customerName: inv.customerName,
+        customerGstin: inv.customerGstin,
+        items: (inv.items ?? []) as any,
+        subtotal: inv.subtotal ?? "0",
+        discountAmount: inv.discountAmount ?? "0",
+        cgst: inv.cgst ?? "0",
+        sgst: inv.sgst ?? "0",
+        igst: inv.igst ?? "0",
+        total: inv.total ?? "0",
+        paymentMode: (inv.logisticsDetails as any)?.paymentMode ?? inv.paymentMode,
+        status: inv.status,
+        logisticsDetails: inv.logisticsDetails as any,
+      },
+      business,
+    });
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename="${inv.invoiceNo}.pdf"`);
+    res.send(pdf);
+  } catch (err: any) {
+    req.log?.error({ err }, "shop invoice pdf generation failed");
+    res.status(500).json({ success: false, error: { code: "PDF_FAILED", message: "Could not generate invoice PDF" } });
+  }
+});
+
+router.post("/shop/orders/:id/share-invoice", shopAuthenticate, async (req: ShopAuthRequest, res) => {
+  const cid = req.customer!.id;
+  const id = req.params["id"] as string;
+  const channel = req.body?.channel ?? "whatsapp";
+  if (channel !== "whatsapp" && channel !== "email") {
+    res.status(400).json({ success: false, error: { code: "BAD_REQUEST", message: "channel must be 'whatsapp' or 'email'" } });
+    return;
+  }
+  const inv = await loadShopInvoice(id, cid);
+  if (!inv) {
+    res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Order not found" } });
+    return;
+  }
+  const cust = (await db.select().from(customersTable).where(eq(customersTable.id, cid)).limit(1))[0];
+  if (!cust) {
+    res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Customer not found" } });
+    return;
+  }
+  const total = Number(inv.total ?? 0).toFixed(2);
+  const summary = `Hi ${cust.name},\n\nYour invoice ${inv.invoiceNo} for ₹${total} from Rathinam Crackers is ready.\n\nThanks!`;
+  if (channel === "email") {
+    if (!cust.email) {
+      res.status(400).json({ success: false, error: { code: "NO_EMAIL", message: "No email address on file" } });
+      return;
+    }
+    const r = await sendEmail({
+      eventType: "shop.invoice.share",
+      to: cust.email,
+      subject: `Invoice ${inv.invoiceNo} from Rathinam Crackers`,
+      text: summary,
+      html: `<p>${summary.replace(/\n/g, "<br/>")}</p>`,
+      recipientId: cust.id,
+      recipientType: "customer",
+    });
+    res.json({ success: r.ok, data: r });
+    return;
+  }
+  if (!cust.phone) {
+    res.status(400).json({ success: false, error: { code: "NO_PHONE", message: "No phone number on file" } });
+    return;
+  }
+  const phone = cust.phone.startsWith("+") ? cust.phone : `+91${cust.phone.replace(/\D/g, "")}`;
+  const r = await sendWhatsapp({
+    eventType: "shop.invoice.share",
+    to: phone,
+    body: summary,
+    recipientId: cust.id,
+    recipientType: "customer",
+  });
+  res.json({ success: r.ok, data: r });
 });
 
 export default router;
