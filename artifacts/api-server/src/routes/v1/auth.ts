@@ -1,7 +1,7 @@
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
-import { db, usersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, usersTable, locationsTable } from "@workspace/db";
+import { eq, and, inArray } from "drizzle-orm";
 import { hashPassword, verifyPassword, signAccessToken, signRefreshToken, verifyToken } from "../../lib/auth.js";
 import type { AuthRequest } from "../../middleware/authenticate.js";
 import { authenticate } from "../../middleware/authenticate.js";
@@ -98,6 +98,26 @@ router.post("/auth/logout", authenticate, async (req: AuthRequest, res) => {
     await db.update(usersTable).set({ refreshToken: null }).where(eq(usersTable.id, req.user.id));
   }
   res.json({ success: true, message: "Logged out" });
+});
+
+// POS bootstrap: list active cashier-eligible users + active shop locations so
+// the pin-login screen no longer hardcodes them. Public-ish (no auth) so the
+// terminal can show it on first paint, but only minimal, non-sensitive fields
+// are returned.
+// Public-ish, but limited to CASHIER role only — admin/manager accounts use
+// the standard login flow and shouldn't be enumerable from a public terminal.
+router.get("/auth/pos-bootstrap", async (_req, res) => {
+  const [users, locs] = await Promise.all([
+    db
+      .select({ id: usersTable.id, name: usersTable.name, username: usersTable.username, role: usersTable.role, locationIds: usersTable.locationIds })
+      .from(usersTable)
+      .where(and(eq(usersTable.isActive, true), eq(usersTable.role, "CASHIER"))),
+    db
+      .select({ id: locationsTable.id, name: locationsTable.name, type: locationsTable.type, city: locationsTable.city })
+      .from(locationsTable)
+      .where(and(eq(locationsTable.isActive, true), eq(locationsTable.type, "shop"))),
+  ]);
+  res.json({ success: true, data: { cashiers: users, shops: locs } });
 });
 
 router.get("/auth/me", authenticate, async (req: AuthRequest, res) => {

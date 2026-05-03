@@ -120,19 +120,44 @@ const SaleScreen = () => {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
 
-  // Resolve real location ID once on mount.
+  // Cashier / shop info captured at login.
+  const [cashierName] = useState<string>(() => localStorage.getItem("pos_user_name") ?? "");
+  const [cashierRole] = useState<string>(() => localStorage.getItem("pos_user_role") ?? "");
+  const [locationName, setLocationName] = useState<string>(() => localStorage.getItem("pos_location_name") ?? "");
+  // Live wall-clock so cashiers always know the till time.
+  const [now, setNow] = useState(() => new Date());
   useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Lock in the location chosen at pin-login. If somehow missing (older
+  // session), fall back to the user's first shop.
+  useEffect(() => {
+    const stored = localStorage.getItem("pos_location_id");
+    if (stored) { setActiveLocationId(stored); return; }
     const token = localStorage.getItem("pos_token");
-    if (!token) return;
+    if (!token) { setLocation("/"); return; }
     fetch("/api/v1/locations", { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
       .then((res) => {
         const locs = res?.data ?? [];
         const shop = locs.find((l: any) => l.type === "shop") ?? locs[0];
-        if (shop?.id) setActiveLocationId(shop.id);
+        if (shop?.id) {
+          setActiveLocationId(shop.id);
+          localStorage.setItem("pos_location_id", shop.id);
+          if (shop.name) { localStorage.setItem("pos_location_name", shop.name); setLocationName(shop.name); }
+        }
       })
       .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Logout clears every POS-scoped key so the next session starts fresh.
+  const handlePosLogout = useCallback(() => {
+    ["pos_token", "pos_user_id", "pos_user_name", "pos_user_role", "pos_location_id", "pos_location_name"].forEach((k) => localStorage.removeItem(k));
+    setLocation("/");
+  }, [setLocation]);
 
   // POS config (quick cash denominations + enabled payment methods) is admin-
   // editable in the ERP CMS. Falls back to the original defaults if the call fails.
@@ -198,13 +223,17 @@ const SaleScreen = () => {
   const products: Product[] = (productsData?.data ?? []) as Product[];
   const heldBills = heldBillsResponse?.data || [];
 
-  // Auto-open the shift-open dialog the first time we land here without a shift.
+  // Auto-open the shift dialog ONCE per session per location. The previous
+  // implementation kept openShiftDialog in deps and treated dismissal as
+  // implicit, which re-opened the modal in a loop on multi-shop accounts.
+  const dialogPrimedRef = useRef<string>("");
   useEffect(() => {
     if (shiftLoading || !activeLocationId) return;
-    if (!currentShift && !openShiftDialog) {
+    if (!currentShift && dialogPrimedRef.current !== activeLocationId) {
+      dialogPrimedRef.current = activeLocationId;
       setOpenShiftDialog(true);
     }
-  }, [shiftLoading, currentShift, activeLocationId, openShiftDialog]);
+  }, [shiftLoading, currentShift, activeLocationId]);
 
   // -------- Filters --------
   const filteredProducts = useMemo(() => {
@@ -368,11 +397,27 @@ const SaleScreen = () => {
   const handleOpenShift = () => {
     const oc = parseFloat(openingCash);
     if (!activeLocationId || isNaN(oc) || oc < 0) { toast({ title: "Enter opening cash", variant: "destructive" }); return; }
+    if (oc > 1_000_000) { toast({ title: "Opening cash too high", description: "Maximum is ₹10,00,000.", variant: "destructive" }); return; }
     openShift(
       { data: { locationId: activeLocationId, openingCash: oc } },
       {
         onSuccess: () => { setOpenShiftDialog(false); setOpeningCash(""); refetchShift(); toast({ title: "Shift opened", description: `Float ${inr(oc)}` }); },
-        onError: (err) => toast({ title: "Could not open shift", description: (err as any).message, variant: "destructive" }),
+        onError: (err: any) => {
+          // Backend now returns 409 when there's already an open shift. Adopt
+          // it and close the dialog rather than leaving the cashier stuck.
+          const code = err?.response?.data?.error?.code ?? err?.error?.code;
+          if (code === "SHIFT_ALREADY_OPEN" || code === "SHIFT_ALREADY_OPEN_ELSEWHERE") {
+            setOpenShiftDialog(false);
+            setOpeningCash("");
+            refetchShift();
+            toast({
+              title: code === "SHIFT_ALREADY_OPEN_ELSEWHERE" ? "Shift open elsewhere" : "Shift already open",
+              description: err?.response?.data?.error?.message ?? "Using the existing shift.",
+            });
+            return;
+          }
+          toast({ title: "Could not open shift", description: err?.response?.data?.error?.message ?? err?.message, variant: "destructive" });
+        },
       },
     );
   };
@@ -450,9 +495,32 @@ const SaleScreen = () => {
     <div className="flex h-screen overflow-hidden bg-[#0d0d0d]">
       {/* Left Panel: Products */}
       <div className="w-[60%] flex flex-col border-r border-zinc-800">
+        {/* Shop / cashier / clock — always visible so the operator knows where they are. */}
+        <div className="px-4 pt-3">
+          <div className="flex items-center gap-3 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2 text-xs">
+            <User className="h-4 w-4 text-amber-300" />
+            <span className="font-bold text-white">{cashierName || "Cashier"}</span>
+            {cashierRole && <span className="text-zinc-500">{cashierRole.replace(/_/g, " ").toLowerCase()}</span>}
+            <span className="text-zinc-600">|</span>
+            <span className="text-zinc-400">Shop</span>
+            <span className="font-bold text-white">{locationName || "—"}</span>
+            <span className="text-zinc-600">|</span>
+            <span className="text-zinc-400">{now.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</span>
+            <Button
+              size="sm" variant="ghost"
+              className="ml-auto h-7 text-xs text-zinc-400 hover:text-red-400"
+              onClick={handlePosLogout}
+              data-testid="pos-logout-btn"
+              title="Sign out of POS"
+            >
+              <LogOut className="h-3.5 w-3.5 mr-1" /> Logout
+            </Button>
+          </div>
+        </div>
+
         {/* Shift bar */}
         {currentShift && running && (
-          <div className="px-4 pt-3">
+          <div className="px-4 pt-2">
             <div className="flex items-center gap-3 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2 text-xs">
               <Wallet className="h-4 w-4 text-emerald-400" />
               <span className="text-zinc-400">Shift</span>
@@ -1002,10 +1070,22 @@ const SaleScreen = () => {
       )}
 
       {/* Open shift dialog */}
-      <Dialog open={openShiftDialog} onOpenChange={(v) => { if (!v && currentShift) setOpenShiftDialog(false); }}>
+      <Dialog open={openShiftDialog} onOpenChange={(v) => setOpenShiftDialog(v)}>
         <DialogContent className="bg-zinc-950 border-zinc-800 text-white">
-          <DialogHeader><DialogTitle className="text-2xl font-black">OPEN SHIFT</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black">OPEN SHIFT</DialogTitle>
+          </DialogHeader>
           <div className="space-y-3 pt-2">
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="rounded-md border border-zinc-800 bg-zinc-900/60 p-2">
+                <div className="text-zinc-500 uppercase">Cashier</div>
+                <div className="text-base font-semibold text-white">{cashierName || "—"}</div>
+              </div>
+              <div className="rounded-md border border-zinc-800 bg-zinc-900/60 p-2">
+                <div className="text-zinc-500 uppercase">Shop</div>
+                <div className="text-base font-semibold text-white">{locationName || activeLocationId || "—"}</div>
+              </div>
+            </div>
             <p className="text-sm text-zinc-400">Count the cash in the drawer and enter the opening float. This becomes the starting balance for the day.</p>
             <div>
               <label className="text-xs uppercase font-black text-zinc-500">Opening cash (₹)</label>
@@ -1016,9 +1096,13 @@ const SaleScreen = () => {
                 onKeyDown={(e) => { if (e.key === "Enter") handleOpenShift(); }}
                 data-testid="open-shift-cash"
               />
+              <p className="mt-1 text-[11px] text-zinc-500">Maximum ₹10,00,000.</p>
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex-row justify-between sm:justify-between gap-2">
+            <Button variant="ghost" className="text-zinc-400" onClick={handlePosLogout} data-testid="open-shift-logout">
+              Switch user
+            </Button>
             <Button onClick={handleOpenShift} disabled={openingShift || !openingCash} data-testid="open-shift-confirm">
               {openingShift ? "Opening..." : "OPEN SHIFT"}
             </Button>

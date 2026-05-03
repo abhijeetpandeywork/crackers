@@ -42,6 +42,7 @@ import ActivityReport from "@/pages/reports/activity";
 import UsersList from "@/pages/users/index";
 import LocationsList from "@/pages/locations/index";
 import Settings from "@/pages/settings/index";
+import RolesPage from "@/pages/system/roles";
 import SiteContent from "@/pages/site-content/index";
 import ReviewsModeration from "@/pages/reviews/index";
 import HelpIndex from "@/pages/help/index";
@@ -161,6 +162,9 @@ function Router() {
       </Route>
       <Route path="/reports/activity">
         {(params) => <ProtectedRoute component={ActivityReport} {...params} />}
+      </Route>
+      <Route path="/system/roles">
+        {(params) => <ProtectedRoute component={RolesPage} {...params} />}
       </Route>
       <Route path="/users">
         {(params) => <ProtectedRoute component={UsersList} {...params} />}

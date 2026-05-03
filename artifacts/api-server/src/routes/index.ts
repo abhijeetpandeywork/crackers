@@ -28,6 +28,7 @@ import reviewsRouter from "./v1/reviews.js";
 import shopRouter from "./v1/shop.js";
 import systemRouter from "./v1/system.js";
 import auditLogRouter from "./v1/auditLog.js";
+import rbacRouter from "./v1/rbac.js";
 
 const router: IRouter = Router();
 
@@ -60,5 +61,6 @@ router.use("/v1", reviewsRouter);
 router.use("/v1", shopRouter);
 router.use("/v1", systemRouter);
 router.use("/v1", auditLogRouter);
+router.use("/v1", rbacRouter);
 
 export default router;

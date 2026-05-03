@@ -9,6 +9,7 @@ import {
   settingsTable,
   customersTable,
   loyaltyLedgerTable,
+  usersTable,
   type HeldBillItemsPayload,
 } from "@workspace/db";
 import { eq, and, sql, inArray, desc, isNull } from "drizzle-orm";
@@ -133,6 +134,8 @@ router.get("/pos/products", authenticate, async (req, res) => {
 
 // -------- shifts --------
 
+const OPENING_CASH_MAX = 1_000_000;
+
 router.post("/pos/shift-open", authenticate, async (req: AuthRequest, res) => {
   const { locationId, openingCash, notes } = req.body as {
     locationId: string;
@@ -149,34 +152,82 @@ router.post("/pos/shift-open", authenticate, async (req: AuthRequest, res) => {
       .json({ success: false, error: { code: "VALIDATION", message: "locationId and non-negative openingCash required" } });
     return;
   }
-  const existing = await findOpenShift(req.user.id, locationId);
-  if (existing) {
-    const running = await computeShiftTotals(existing.id);
-    res.json({
-      success: true,
+  if (openingCash > OPENING_CASH_MAX) {
+    res.status(400).json({
+      success: false,
+      error: { code: "VALIDATION", message: `Opening cash must not exceed ₹${OPENING_CASH_MAX.toLocaleString("en-IN")}` },
+    });
+    return;
+  }
+
+  // Cashiers may only open shifts at locations they're assigned to.
+  // Privileged roles (admin/manager) can open at any location, e.g. for floor support.
+  const role = req.user.role ?? "";
+  const isPrivileged =
+    role === "SUPER_ADMIN" || role === "ADMIN" || role === "ERP_MANAGER" || role === "MANAGER";
+  if (!isPrivileged) {
+    const userRow = (
+      await db.select({ locationIds: usersTable.locationIds }).from(usersTable).where(eq(usersTable.id, req.user.id)).limit(1)
+    )[0];
+    const allowed = (userRow?.locationIds ?? []) as string[];
+    if (!allowed.includes(locationId)) {
+      res.status(403).json({
+        success: false,
+        error: { code: "LOCATION_NOT_ALLOWED", message: "You are not assigned to this location. Ask an admin to grant access." },
+      });
+      return;
+    }
+  }
+
+  // Wrap conflict-check + insert in a transaction so two simultaneous open
+  // requests can't both succeed and leave the cashier with overlapping shifts.
+  type ShiftRow = typeof posShiftsTable.$inferSelect;
+  type ConflictResult = { kind: "elsewhere" | "here"; shift: ShiftRow };
+  type OpenResult = { kind: "opened"; shift: ShiftRow };
+  const result = await db.transaction(async (tx): Promise<ConflictResult | OpenResult> => {
+    const anyOpenRows = await tx
+      .select()
+      .from(posShiftsTable)
+      .where(and(eq(posShiftsTable.userId, req.user!.id), isNull(posShiftsTable.closedAt)))
+      .limit(1);
+    const anyOpenRow = anyOpenRows[0];
+    if (anyOpenRow) {
+      return { kind: anyOpenRow.locationId === locationId ? "here" : "elsewhere", shift: anyOpenRow };
+    }
+    const [created] = await tx
+      .insert(posShiftsTable)
+      .values({
+        locationId,
+        userId: req.user!.id,
+        openingCash: String(openingCash),
+        notes: notes ?? null,
+      })
+      .returning();
+    return { kind: "opened", shift: created };
+  });
+  if (result.kind !== "opened") {
+    const running = await computeShiftTotals(result.shift.id);
+    const code = result.kind === "elsewhere" ? "SHIFT_ALREADY_OPEN_ELSEWHERE" : "SHIFT_ALREADY_OPEN";
+    const message = result.kind === "elsewhere"
+      ? "You already have an open shift at another location. Close it before opening a new one."
+      : "A shift is already open here.";
+    res.status(409).json({
+      success: false,
+      error: { code, message },
       data: {
-        ...existing,
-        openingCash: num(existing.openingCash),
-        running: { ...running, expectedCash: num(existing.openingCash) + running.cashSales },
+        ...result.shift,
+        openingCash: num(result.shift.openingCash),
+        running: { ...running, expectedCash: num(result.shift.openingCash) + running.cashSales },
       },
     });
     return;
   }
-  const [shift] = await db
-    .insert(posShiftsTable)
-    .values({
-      locationId,
-      userId: req.user.id,
-      openingCash: openingCash.toFixed(2),
-      status: "open",
-      notes: notes ?? null,
-    })
-    .returning();
+  const shift = result.shift;
   res.json({
     success: true,
     data: {
-      ...shift!,
-      openingCash: num(shift!.openingCash),
+      ...shift,
+      openingCash: num(shift.openingCash),
       running: { txnCount: 0, totalSales: 0, cashSales: 0, upiSales: 0, cardSales: 0, creditSales: 0, expectedCash: openingCash },
     },
   });
@@ -225,7 +276,7 @@ router.post("/pos/shift-close", authenticate, async (req: AuthRequest, res) => {
   }
   // Cashiers may only close their own shift. Managers/admins can close any.
   const role = req.user.role ?? "";
-  const isPrivileged = role === "SUPER_ADMIN" || role === "ADMIN" || role === "MANAGER";
+  const isPrivileged = role === "SUPER_ADMIN" || role === "ADMIN" || role === "ERP_MANAGER" || role === "MANAGER";
   if (shift.userId !== req.user.id && !isPrivileged) {
     res.status(403).json({ success: false, error: { code: "FORBIDDEN", message: "Cannot close another cashier's shift" } });
     return;
@@ -686,8 +737,5 @@ router.get("/pos/held", authenticate, async (req, res) => {
     }),
   });
 });
-
-// suppress lint for unused imports kept for future expansion
-void isNull;
 
 export default router;

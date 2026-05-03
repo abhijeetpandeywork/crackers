@@ -8,7 +8,10 @@ export const usersTable = pgTable("users", {
   username: text("username").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   pin: text("pin"),
-  role: text("role", { enum: ["SUPER_ADMIN","ERP_MANAGER","ACCOUNTANT","AGENT","WH_MANAGER","CASHIER"] }).notNull().default("CASHIER"),
+  // Free-text role name; resolved against the `roles` table for permission
+  // lookups. Built-in defaults: SUPER_ADMIN, ERP_MANAGER, ACCOUNTANT, AGENT,
+  // WH_MANAGER, CASHIER. Admins can mint additional roles at runtime.
+  role: text("role").notNull().default("CASHIER"),
   locationIds: jsonb("location_ids").$type<string[]>().default([]),
   email: text("email"),
   phone: text("phone"),

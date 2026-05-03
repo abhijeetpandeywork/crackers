@@ -1,8 +1,60 @@
-import { db, usersTable, locationsTable, productsTable, customersTable, suppliersTable, agentsTable, settingsTable, priceListsTable } from "@workspace/db";
+import { db, usersTable, locationsTable, productsTable, customersTable, suppliersTable, agentsTable, settingsTable, priceListsTable, rolesTable, permissionsTable, rolePermissionsTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
+
+const DEFAULT_PERMISSIONS: Array<{ key: string; description: string; category: string }> = [
+  // Users & access
+  { key: "users.read", description: "View users", category: "users" },
+  { key: "users.write", description: "Create / edit users", category: "users" },
+  { key: "rbac.manage", description: "Manage roles and permissions", category: "users" },
+  // Catalog
+  { key: "products.read", description: "View products", category: "catalog" },
+  { key: "products.write", description: "Create / edit products", category: "catalog" },
+  { key: "pricing.write", description: "Edit prices and price lists", category: "catalog" },
+  // Inventory
+  { key: "inventory.read", description: "View stock levels", category: "inventory" },
+  { key: "inventory.adjust", description: "Adjust stock and write damage / returns", category: "inventory" },
+  { key: "transfers.write", description: "Create stock transfers", category: "inventory" },
+  // Sales
+  { key: "pos.use", description: "Operate the POS terminal", category: "sales" },
+  { key: "pos.shift.open", description: "Open a cashier shift", category: "sales" },
+  { key: "pos.shift.close", description: "Close a cashier shift", category: "sales" },
+  { key: "pos.discount.override", description: "Override max-discount rules at checkout", category: "sales" },
+  { key: "invoices.write", description: "Create and edit invoices and estimates", category: "sales" },
+  // Finance
+  { key: "finance.read", description: "View financial reports", category: "finance" },
+  { key: "purchase.write", description: "Create purchase orders", category: "finance" },
+  // System
+  { key: "settings.write", description: "Edit company / system settings", category: "system" },
+  { key: "audit.read", description: "View the audit log", category: "system" },
+];
+
+const DEFAULT_ROLES: Array<{ name: string; description: string; permissions: string[] }> = [
+  { name: "SUPER_ADMIN", description: "Full system access (cannot be restricted)", permissions: DEFAULT_PERMISSIONS.map((p) => p.key) },
+  { name: "ERP_MANAGER", description: "Day-to-day operations manager", permissions: DEFAULT_PERMISSIONS.filter((p) => !["rbac.manage", "settings.write"].includes(p.key)).map((p) => p.key) },
+  { name: "ACCOUNTANT", description: "Finance & reporting", permissions: ["finance.read", "invoices.write", "purchase.write", "products.read", "inventory.read", "audit.read"] },
+  { name: "AGENT", description: "Field sales agent", permissions: ["products.read", "invoices.write", "inventory.read"] },
+  { name: "WH_MANAGER", description: "Warehouse manager", permissions: ["inventory.read", "inventory.adjust", "transfers.write", "products.read", "purchase.write"] },
+  { name: "CASHIER", description: "POS cashier", permissions: ["pos.use", "pos.shift.open", "pos.shift.close", "products.read", "invoices.write", "inventory.read"] },
+];
 
 async function seed() {
   console.log("Seeding database...");
+
+  // RBAC: ensure baseline roles + permissions exist before anything else.
+  for (const p of DEFAULT_PERMISSIONS) {
+    await db.insert(permissionsTable).values(p).onConflictDoNothing();
+  }
+
+  for (const r of DEFAULT_ROLES) {
+    const existing = (await db.select().from(rolesTable).where(eq(rolesTable.name, r.name)).limit(1))[0];
+    const role = existing ?? (await db.insert(rolesTable).values({ name: r.name, description: r.description, isSystem: true }).returning())[0];
+    // Reset perms to the default set so we stay current with new releases. Custom roles are untouched.
+    await db.delete(rolePermissionsTable).where(eq(rolePermissionsTable.roleId, role.id));
+    if (r.permissions.length) {
+      await db.insert(rolePermissionsTable).values(r.permissions.map((k) => ({ roleId: role.id, permissionKey: k }))).onConflictDoNothing();
+    }
+  }
 
   await db.insert(settingsTable).values([
     { key: "company", value: { companyName: "Rathinam Crackers", gstin: "33AABCR1234A1Z5", address: "123 Main Road, Sivakasi, Tamil Nadu - 626123", phone: "9876543210", email: "info@rathinamcrackers.com", defaultHSN: "36049000", financialYear: "2025-2026", bankDetails: "SBI - 1234567890 - SBIN0001234" } as any },
