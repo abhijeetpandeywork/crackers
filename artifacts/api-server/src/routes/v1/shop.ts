@@ -321,7 +321,7 @@ router.post("/shop/orders", shopAuthenticate, async (req: ShopAuthRequest, res) 
   const pricingSettings = (settingsRows[0]?.value ?? {}) as any;
   const threshold = Number(pricingSettings.wholesaleQtyThreshold ?? 10);
   const taxConfig = await getTaxConfig();
-  const channel: PricingChannel = "RETAIL";
+  const channel: PricingChannel = "ONLINE";
 
   const resolvedItems: any[] = [];
   const taxLines: { amount: number; product: { gstRate?: number | null; hsnCode?: string | null } }[] = [];
@@ -339,6 +339,10 @@ router.post("/shop/orders", shopAuthenticate, async (req: ShopAuthRequest, res) 
       return;
     }
     const priceResult = resolvePrice(variant, item.qty, channel, threshold);
+    if (!(priceResult.resolvedPrice > 0)) {
+      res.status(400).json({ success: false, error: { code: "PRICE_UNAVAILABLE", message: `Pricing for ${product.name} is unavailable. Please contact us before ordering.` } });
+      return;
+    }
     const lineAmount = priceResult.resolvedPrice * item.qty;
     resolvedItems.push({
       productId: item.productId,

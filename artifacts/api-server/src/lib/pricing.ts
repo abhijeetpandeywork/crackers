@@ -1,4 +1,5 @@
 import { type ProductVariant } from "@workspace/db";
+import { resolveBulkTier } from "./bulk-tiers.js";
 
 export type PricingChannel = "RETAIL" | "WHOLESALE" | "AGENT" | "ONLINE" | "POS";
 
@@ -47,11 +48,14 @@ export function resolvePrice(
   }
 
   if (channel === "ONLINE") {
+    const tier = resolveBulkTier(prices.retailOnline, prices.wholesaleBulk, qty);
     return {
-      resolvedPrice: prices.retailOnline,
-      tier: "retailOnline",
-      resolutionReason: "Online retail price",
-      bulkRateApplied: false,
+      resolvedPrice: tier.unitPrice,
+      tier: tier.label === "Retail" ? "retailOnline" : `online-${tier.label.toLowerCase()}`,
+      resolutionReason: tier.bulkRateApplied
+        ? `Online ${tier.label} tier (-${tier.discountPct}%): qty ${qty}`
+        : "Online retail price",
+      bulkRateApplied: tier.bulkRateApplied,
       thresholdUsed: wholesaleThreshold,
     };
   }

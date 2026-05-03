@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { resolveBulkTier } from '@/lib/bulk-tiers';
 
 export interface CartItem {
   productId: string;
@@ -7,6 +8,24 @@ export interface CartItem {
   variantLabel: string;
   qty: number;
   unitPrice: number;
+  retailOnline?: number;
+  wholesaleBulk?: number;
+  bulkTier?: string;
+  savePerUnit?: number;
+}
+
+function repriceItem(item: CartItem, qty: number): CartItem {
+  const r = Number(item.retailOnline ?? item.unitPrice) || 0;
+  const w = Number(item.wholesaleBulk ?? 0) || 0;
+  if (r <= 0) return { ...item, qty };
+  const tier = resolveBulkTier(r, w, qty);
+  return {
+    ...item,
+    qty,
+    unitPrice: tier.unitPrice || item.unitPrice,
+    bulkTier: tier.label,
+    savePerUnit: tier.savePerUnit,
+  };
 }
 
 interface CartContextType {
@@ -35,13 +54,17 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setItems(prev => {
       const existing = prev.find(i => i.productId === newItem.productId && i.variantId === newItem.variantId);
       if (existing) {
-        return prev.map(i => 
-          (i.productId === newItem.productId && i.variantId === newItem.variantId) 
-            ? { ...i, qty: i.qty + newItem.qty }
-            : i
-        );
+        return prev.map(i => {
+          if (i.productId !== newItem.productId || i.variantId !== newItem.variantId) return i;
+          const merged: CartItem = {
+            ...i,
+            retailOnline: newItem.retailOnline ?? i.retailOnline,
+            wholesaleBulk: newItem.wholesaleBulk ?? i.wholesaleBulk,
+          };
+          return repriceItem(merged, i.qty + newItem.qty);
+        });
       }
-      return [...prev, newItem];
+      return [...prev, repriceItem(newItem, newItem.qty)];
     });
   };
 
@@ -54,8 +77,8 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       removeItem(productId, variantId);
       return;
     }
-    setItems(prev => prev.map(i => 
-      (i.productId === productId && i.variantId === variantId) ? { ...i, qty } : i
+    setItems(prev => prev.map(i =>
+      (i.productId === productId && i.variantId === variantId) ? repriceItem(i, qty) : i
     ));
   };
 

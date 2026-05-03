@@ -24,6 +24,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { useCart } from "@/context/cart";
+import { resolveBulkTier, BULK_TIER_LADDER } from "@/lib/bulk-tiers";
 import { Seo, productLd, breadcrumbLd } from "@/lib/seo";
 import {
   ChevronLeft,
@@ -344,8 +345,9 @@ export default function ProductDetail() {
   const handleAddToCart = () => {
     if (!product || !selectedVariant) return;
 
-    const unitPrice = Number(selectedVariant.prices?.retailOnline) || 0;
-    if (unitPrice <= 0) {
+    const retailOnlinePrice = Number(selectedVariant.prices?.retailOnline) || 0;
+    const wholesaleBulkPrice = Number(selectedVariant.prices?.wholesaleBulk) || 0;
+    if (retailOnlinePrice <= 0) {
       toast({
         title: "Price unavailable",
         description: "Please call us on +91 98765 43210 to confirm pricing.",
@@ -354,13 +356,19 @@ export default function ProductDetail() {
       return;
     }
 
+    const tier = resolveBulkTier(retailOnlinePrice, wholesaleBulkPrice, qty);
+
     addItem({
       productId: product.id ?? "",
       variantId: selectedVariant.variantId ?? "",
       productName: product.name ?? "Product",
       variantLabel: variantLabel(selectedVariant),
       qty,
-      unitPrice,
+      unitPrice: tier.unitPrice,
+      retailOnline: retailOnlinePrice,
+      wholesaleBulk: wholesaleBulkPrice,
+      bulkTier: tier.label,
+      savePerUnit: tier.savePerUnit,
     });
 
     toast({
@@ -459,14 +467,14 @@ export default function ProductDetail() {
     }
   };
 
-  // Bulk pricing tiers (computed from wholesale/retail).
-  const tierPrice = (tierMul: number) => onlinePrice > 0 ? Math.max(wholesalePrice, onlinePrice * tierMul) : 0;
-  const bulkTiers = onlinePrice > 0 ? [
-    { from: 1, to: 9, price: onlinePrice, save: 0, label: "Retail" },
-    { from: 10, to: 24, price: tierPrice(0.95), save: 5, label: "Bulk" },
-    { from: 25, to: 49, price: tierPrice(0.9), save: 10, label: "Bulk+" },
-    { from: 50, to: undefined as number | undefined, price: tierPrice(0.85), save: 15, label: "Wholesale" },
-  ] : [];
+  // Bulk pricing tiers — single source of truth shared with cart + server.
+  const currentTier = resolveBulkTier(onlinePrice, wholesalePrice, qty);
+  const bulkTiers = onlinePrice > 0 && wholesalePrice > 0 && wholesalePrice < onlinePrice
+    ? BULK_TIER_LADDER.map((t) => {
+        const tierResult = resolveBulkTier(onlinePrice, wholesalePrice, t.from);
+        return { from: t.from, to: t.to, price: tierResult.unitPrice, save: t.discountPct, label: t.label };
+      })
+    : [];
 
   // Stock indicator (mocked from variant id hash → 5..50).
   const mockStock = selectedVariant?.variantId
@@ -882,12 +890,15 @@ export default function ProductDetail() {
                   {onlinePrice > 0 && (
                     <div className="mt-5 pt-5 border-t border-gray-100 flex flex-wrap items-center justify-between gap-2">
                       <p className="text-sm text-gray-500">
-                        Total: <span className="font-bold text-gray-900 text-lg">{formatPrice(onlinePrice * qty)}</span>
-                        {qty > 1 && <span className="text-xs ml-1">({qty} × {formatPrice(onlinePrice)})</span>}
+                        Total: <span className="font-bold text-gray-900 text-lg">{formatPrice(currentTier.unitPrice * qty)}</span>
+                        {qty > 1 && <span className="text-xs ml-1">({qty} × {formatPrice(currentTier.unitPrice)})</span>}
+                        {currentTier.bulkRateApplied && (
+                          <span className="text-xs ml-2 line-through text-gray-400">{formatPrice(onlinePrice * qty)}</span>
+                        )}
                       </p>
-                      {qty >= 10 && wholesalePrice > 0 && wholesalePrice < onlinePrice && (
+                      {currentTier.bulkRateApplied && (
                         <p className="text-xs font-bold text-green-700 bg-green-50 px-3 py-1.5 rounded-full">
-                          🎉 Bulk pricing applied — save {formatPrice((onlinePrice - wholesalePrice) * qty)}
+                          🎉 {currentTier.label} pricing applied — save {formatPrice(currentTier.savePerUnit * qty)}
                         </p>
                       )}
                     </div>
