@@ -1,9 +1,11 @@
 import { useRoute, Link } from "wouter";
+import { useMemo } from "react";
 import {
   useGetTransfer,
   useDispatchTransfer,
   useReceiveTransfer,
   useGetCompanySettings,
+  useListProducts,
   type Transfer,
   type TransferItem,
   type ReceiveTransferBody,
@@ -17,11 +19,12 @@ import {
 } from "@/components/ui/table";
 import {
   ArrowLeft, ArrowRightLeft, Send, PackageCheck, Truck, MapPin, FileText, Download, Printer,
-  FileEdit, ClipboardCheck, CircleDot, Circle,
+  FileEdit, ClipboardCheck, CircleDot, Circle, Package,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { generateTransferPdf, savePdf, type CompanyInfo } from "@workspace/pdf";
 import { resolveCompanyInfo } from "@/lib/company-info";
+import { formatVariantLabel } from "@/lib/variant-label";
 
 export default function TransferDetail() {
   const [, params] = useRoute("/transfers/:id");
@@ -32,12 +35,46 @@ export default function TransferDetail() {
     query: { enabled: !!id, queryKey: ["transfer", id] },
   });
   const { data: companyData } = useGetCompanySettings();
+  const { data: productsData } = useListProducts({ limit: 1000 });
   const dispatchM = useDispatchTransfer();
   const receiveM = useReceiveTransfer();
 
   const t: Transfer | undefined = data?.data;
   const items: TransferItem[] = t?.items ?? [];
   const company: CompanyInfo = resolveCompanyInfo(companyData);
+
+  // Build a productId -> product map so we can enrich each line item with
+  // human-readable variant label, HSN, and a value estimate. The transfer
+  // payload only persists {productId, variantId, qty}, so without this lookup
+  // the variant column would render a raw UUID.
+  const productMap = useMemo(() => {
+    const m = new Map<string, any>();
+    for (const p of productsData?.data ?? []) m.set(p.id ?? "", p);
+    return m;
+  }, [productsData]);
+
+  const enriched = useMemo(() => {
+    return items.map((i) => {
+      const p = productMap.get(i.productId ?? "");
+      const variants: any[] = p?.variants ?? [];
+      const v = variants.find((x) => x?.variantId === i.variantId);
+      const variantLabel = v ? formatVariantLabel(v, variants) : (i.variantId ?? "");
+      const purchase = Number(v?.prices?.purchase ?? 0);
+      const value = purchase * Number(i.qty ?? 0);
+      return {
+        ...i,
+        resolvedProductName: i.productName || p?.name || i.productId || "—",
+        variantLabel,
+        hsn: p?.hsnCode ?? "",
+        unitValue: purchase,
+        lineValue: value,
+      };
+    });
+  }, [items, productMap]);
+
+  const totalQty = enriched.reduce((s, i) => s + Number(i.qty ?? 0), 0);
+  const totalReceived = enriched.reduce((s, i) => s + Number(i.receivedQty ?? 0), 0);
+  const totalValue = enriched.reduce((s, i) => s + i.lineValue, 0);
 
   const statusBadge = (status: string | undefined) => {
     const label = (status ?? "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -272,9 +309,43 @@ export default function TransferDetail() {
         </CardContent>
       </Card>
 
+      <div className="grid gap-4 md:grid-cols-4 print:hidden">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
+              <Package className="h-3.5 w-3.5" /> Line Items
+            </CardTitle>
+          </CardHeader>
+          <CardContent><p className="text-2xl font-bold">{enriched.length}</p></CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-xs font-medium text-muted-foreground">Total Qty Sent</CardTitle></CardHeader>
+          <CardContent><p className="text-2xl font-bold">{totalQty.toLocaleString("en-IN")}</p></CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-xs font-medium text-muted-foreground">Total Qty Received</CardTitle></CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">{totalReceived.toLocaleString("en-IN")}</p>
+            {totalQty > 0 && totalReceived !== totalQty && t.status === "received" && (
+              <p className="text-xs text-amber-600 mt-1">
+                Variance: {(totalReceived - totalQty).toLocaleString("en-IN")}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-xs font-medium text-muted-foreground">Stock Value (at cost)</CardTitle></CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">
+              ₹{totalValue.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Line Items ({items.length})</CardTitle>
+          <CardTitle className="text-base">Line Items ({enriched.length})</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
@@ -282,28 +353,62 @@ export default function TransferDetail() {
               <TableRow>
                 <TableHead>Product</TableHead>
                 <TableHead>Variant</TableHead>
+                <TableHead>HSN</TableHead>
                 <TableHead>Batch</TableHead>
-                <TableHead className="text-right">Qty</TableHead>
-                <TableHead className="text-right">Received</TableHead>
+                <TableHead className="text-right">Qty Sent</TableHead>
+                <TableHead className="text-right">Qty Received</TableHead>
+                <TableHead className="text-right">Unit Cost</TableHead>
+                <TableHead className="text-right">Line Value</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {items.length === 0 ? (
+              {enriched.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                     No items on this transfer.
                   </TableCell>
                 </TableRow>
-              ) : items.map((i, idx) => (
-                <TableRow key={`${i.productId}-${i.variantId}-${idx}`}>
-                  <TableCell className="font-medium">{i.productName ?? i.productId}</TableCell>
-                  <TableCell>{i.variantId}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{i.batchNo ?? "—"}</TableCell>
-                  <TableCell className="text-right font-bold">{i.qty}</TableCell>
-                  <TableCell className="text-right">{i.receivedQty ?? 0}</TableCell>
-                </TableRow>
-              ))}
+              ) : enriched.map((i, idx) => {
+                const variance = Number(i.receivedQty ?? 0) - Number(i.qty ?? 0);
+                const showVariance = t.status === "received" && variance !== 0;
+                return (
+                  <TableRow key={`${i.productId}-${i.variantId}-${idx}`}>
+                    <TableCell className="font-medium">{i.resolvedProductName}</TableCell>
+                    <TableCell>{i.variantLabel}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{i.hsn || "—"}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{i.batchNo ?? "—"}</TableCell>
+                    <TableCell className="text-right font-bold">{Number(i.qty ?? 0).toLocaleString("en-IN")}</TableCell>
+                    <TableCell className="text-right">
+                      {Number(i.receivedQty ?? 0).toLocaleString("en-IN")}
+                      {showVariance && (
+                        <span className={`ml-2 text-xs ${variance < 0 ? "text-destructive" : "text-amber-600"}`}>
+                          ({variance > 0 ? "+" : ""}{variance})
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right text-sm">
+                      {i.unitValue > 0 ? `₹${i.unitValue.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—"}
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      {i.lineValue > 0 ? `₹${i.lineValue.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—"}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
+            {enriched.length > 0 && (
+              <tfoot>
+                <TableRow className="border-t-2 font-bold">
+                  <TableCell colSpan={4} className="text-right">Totals</TableCell>
+                  <TableCell className="text-right">{totalQty.toLocaleString("en-IN")}</TableCell>
+                  <TableCell className="text-right">{totalReceived.toLocaleString("en-IN")}</TableCell>
+                  <TableCell />
+                  <TableCell className="text-right">
+                    ₹{totalValue.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </TableCell>
+                </TableRow>
+              </tfoot>
+            )}
           </Table>
         </CardContent>
       </Card>
