@@ -8,6 +8,12 @@ import {
   setAutoHeal,
   getCheckById,
 } from "../../lib/system-health.js";
+import {
+  listBackups,
+  runBackup,
+  getLastBackupResult,
+  getBackupDir,
+} from "../../lib/system-backup.js";
 
 const router: IRouter = Router();
 
@@ -74,6 +80,31 @@ router.post(
     }
     const result = await runFix(id, "manual");
     res.json({ success: result.ok, data: result });
+  },
+);
+
+/** List available database backups (admins only). */
+router.get(
+  "/system/backups",
+  authenticate,
+  requireRole("SUPER_ADMIN", "ADMIN"),
+  async (_req, res) => {
+    const items = await listBackups();
+    res.json({
+      success: true,
+      data: { dir: getBackupDir(), last: getLastBackupResult(), items },
+    });
+  },
+);
+
+/** Trigger a fresh DB backup on demand (admins only). */
+router.post(
+  "/system/backup/run",
+  authenticate,
+  requireRole("SUPER_ADMIN", "ADMIN"),
+  async (_req, res) => {
+    const r = await runBackup();
+    res.status(r.ok ? 200 : 500).json({ success: r.ok, data: r });
   },
 );
 

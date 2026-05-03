@@ -11,7 +11,9 @@ import {
   transfersTable,
 } from "@workspace/db";
 import { sql, lt, eq, and } from "drizzle-orm";
+import bcrypt from "bcryptjs";
 import { logger } from "./logger.js";
+import { getMostRecentBackup, getLastBackupResult } from "./system-backup.js";
 
 export type Severity = "info" | "warn" | "error";
 
@@ -263,6 +265,93 @@ const checks: Check[] = [
         ok: count > 0,
         detail: `${count} admin/super-admin user(s)`,
         count,
+      };
+    },
+  },
+  {
+    id: "default_admin_password",
+    label: "No default admin password",
+    description:
+      "Verifies that no admin/super-admin still uses the seeded 'admin123' password — a critical attack vector if the system is reachable from the internet.",
+    severity: "error",
+    autoFixable: false,
+    run: async () => {
+      const admins = await db
+        .select({ id: usersTable.id, username: usersTable.username, passwordHash: usersTable.passwordHash })
+        .from(usersTable)
+        .where(sql`${usersTable.role} in ('SUPER_ADMIN','ADMIN')`);
+      const offenders: string[] = [];
+      for (const a of admins) {
+        if (!a.passwordHash) continue;
+        try {
+          if (await bcrypt.compare("admin123", a.passwordHash)) offenders.push(a.username);
+        } catch { /* ignore malformed hashes */ }
+      }
+      return {
+        ok: offenders.length === 0,
+        detail:
+          offenders.length === 0
+            ? "All admins use a custom password"
+            : `Default password still active for: ${offenders.join(", ")}`,
+        count: offenders.length,
+      };
+    },
+  },
+  {
+    id: "jwt_secret_strong",
+    label: "JWT signing secret is strong",
+    description:
+      "Confirms SESSION_SECRET is set, sufficiently long (>= 32 chars), and not one of the well-known defaults.",
+    severity: "error",
+    autoFixable: false,
+    run: async () => {
+      const s = process.env["SESSION_SECRET"] ?? "";
+      const weak = ["", "secret", "changeme", "rathinam-secret", "dev-secret", "test"];
+      const isWeak = weak.includes(s.toLowerCase()) || s.length < 32;
+      return {
+        ok: !isWeak,
+        detail: isWeak
+          ? `SESSION_SECRET is too weak (length=${s.length}). Generate at least 32 random chars.`
+          : `Strong (length=${s.length})`,
+        count: isWeak ? 1 : 0,
+      };
+    },
+  },
+  {
+    id: "recent_backup_present",
+    label: "Recent database backup exists",
+    description:
+      "Recoverability guard: a Postgres backup must exist on disk and be less than 25 hours old.",
+    severity: "warn",
+    autoFixable: true,
+    run: async () => {
+      const last = await getMostRecentBackup();
+      if (!last) {
+        return { ok: false, detail: "No backup files found yet.", count: 1 };
+      }
+      const ageHours = (Date.now() - new Date(last.createdAt).getTime()) / 3600_000;
+      if (ageHours > 25) {
+        return {
+          ok: false,
+          detail: `Most recent backup (${last.file}) is ${ageHours.toFixed(1)}h old — overdue.`,
+          count: 1,
+        };
+      }
+      const last2 = getLastBackupResult();
+      const tail = last2 && !last2.ok ? ` Last attempt: ${last2.message}` : "";
+      return {
+        ok: true,
+        detail: `Latest: ${last.file} (${(last.sizeBytes / 1024).toFixed(1)} KB, ${ageHours.toFixed(1)}h old).${tail}`,
+        count: 0,
+      };
+    },
+    fix: async () => {
+      const { runBackup } = await import("./system-backup.js");
+      const r = await runBackup();
+      return {
+        ok: r.ok,
+        message: r.message,
+        affected: r.ok ? 1 : 0,
       };
     },
   },

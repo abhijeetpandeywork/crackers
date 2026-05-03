@@ -1,6 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { startSystemHealthScheduler } from "./lib/system-health";
+import { startBackupScheduler } from "./lib/system-backup";
 
 const rawPort = process.env["PORT"];
 
@@ -23,6 +24,8 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
-  // Self-monitor: sweep data-integrity checks every minute.
+  // Self-monitor: sweep data-integrity & security checks every minute.
   startSystemHealthScheduler(60_000);
+  // Recoverability: nightly Postgres dump, retain last 7.
+  startBackupScheduler();
 });

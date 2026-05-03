@@ -1,4 +1,5 @@
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { hashPassword, verifyPassword, signAccessToken, signRefreshToken, verifyToken } from "../../lib/auth.js";
@@ -7,7 +8,20 @@ import { authenticate } from "../../middleware/authenticate.js";
 
 const router = Router();
 
-router.post("/auth/login", async (req, res) => {
+// Tight per-IP brute-force guard for credential endpoints. 10 attempts per
+// 15 minutes, then 429. Cuts off password-spraying without locking out
+// legitimate cashiers who mistype once or twice.
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  // Don't count successful logins toward the limit — only failures.
+  skipSuccessfulRequests: true,
+  message: { success: false, error: { code: "RATE_LIMITED", message: "Too many login attempts. Try again in 15 minutes." } },
+});
+
+router.post("/auth/login", authLimiter, async (req, res) => {
   const { username, password } = req.body as { username: string; password: string };
   if (!username || !password) {
     res.status(400).json({ success: false, error: { code: "BAD_REQUEST", message: "username and password required" } });
@@ -36,7 +50,7 @@ router.post("/auth/login", async (req, res) => {
   });
 });
 
-router.post("/auth/pin-login", async (req, res) => {
+router.post("/auth/pin-login", authLimiter, async (req, res) => {
   const { username, pin } = req.body as { username: string; pin: string; locationId: string };
   if (!username || !pin) {
     res.status(400).json({ success: false, error: { code: "BAD_REQUEST", message: "username and pin required" } });
