@@ -40,6 +40,209 @@ const actionColor: Record<string, string> = {
 
 type UserOption = { id: string; name: string };
 
+type Primitive = string | number | boolean | null | undefined;
+
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+function flatten(value: unknown, prefix = ""): Record<string, Primitive> {
+  const out: Record<string, Primitive> = {};
+  if (isPlainObject(value)) {
+    const keys = Object.keys(value);
+    if (keys.length === 0) {
+      out[prefix || "(empty)"] = "{}";
+      return out;
+    }
+    for (const k of keys) {
+      const next = prefix ? `${prefix}.${k}` : k;
+      Object.assign(out, flatten(value[k], next));
+    }
+  } else if (Array.isArray(value)) {
+    if (value.length === 0) {
+      out[prefix || "(empty)"] = "(none)";
+      return out;
+    }
+    value.forEach((item, i) => {
+      const next = `${prefix}[${i}]`;
+      Object.assign(out, flatten(item, next));
+    });
+  } else {
+    out[prefix] = value as Primitive;
+  }
+  return out;
+}
+
+function formatValue(v: unknown): string {
+  if (v === undefined) return "—";
+  if (v === null) return "(empty)";
+  if (typeof v === "string") return v === "" ? '""' : v;
+  if (typeof v === "boolean") return v ? "yes" : "no";
+  if (Array.isArray(v)) {
+    if (v.length === 0) return "(none)";
+    try {
+      return JSON.stringify(v);
+    } catch {
+      return String(v);
+    }
+  }
+  if (typeof v === "object") {
+    try {
+      return JSON.stringify(v);
+    } catch {
+      return String(v);
+    }
+  }
+  return String(v);
+}
+
+function humanizeKey(key: string): string {
+  return key
+    .split(".")
+    .map((part) =>
+      part.replace(/\[(\d+)\]/g, (_, n) => ` #${Number(n) + 1}`),
+    )
+    .map((part) =>
+      part
+        .replace(/([a-z])([A-Z])/g, "$1 $2")
+        .replace(/_/g, " ")
+        .replace(/^./, (c) => c.toUpperCase())
+        .trim(),
+    )
+    .join(" › ");
+}
+
+function deepEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (typeof a !== typeof b) return false;
+  if (Array.isArray(a) && Array.isArray(b)) {
+    if (a.length !== b.length) return false;
+    return a.every((v, i) => deepEqual(v, b[i]));
+  }
+  if (isPlainObject(a) && isPlainObject(b)) {
+    const ak = Object.keys(a);
+    const bk = Object.keys(b);
+    if (ak.length !== bk.length) return false;
+    return ak.every((k) => deepEqual(a[k], b[k]));
+  }
+  return false;
+}
+
+type DiffEntry = { key: string; before: unknown; after: unknown; kind: "added" | "removed" | "changed" };
+
+function computeDiff(before: unknown, after: unknown): DiffEntry[] {
+  const beforeFlat = isPlainObject(before) || Array.isArray(before) ? flatten(before) : {};
+  const afterFlat = isPlainObject(after) || Array.isArray(after) ? flatten(after) : {};
+  const allKeys = new Set([...Object.keys(beforeFlat), ...Object.keys(afterFlat)]);
+  const entries: DiffEntry[] = [];
+  for (const k of allKeys) {
+    const b = beforeFlat[k];
+    const a = afterFlat[k];
+    const inBefore = k in beforeFlat;
+    const inAfter = k in afterFlat;
+    if (inBefore && !inAfter) entries.push({ key: k, before: b, after: undefined, kind: "removed" });
+    else if (!inBefore && inAfter) entries.push({ key: k, before: undefined, after: a, kind: "added" });
+    else if (!deepEqual(b, a)) entries.push({ key: k, before: b, after: a, kind: "changed" });
+  }
+  return entries.sort((x, y) => x.key.localeCompare(y.key));
+}
+
+function FriendlyDiff({
+  action,
+  before,
+  after,
+  showRaw,
+  onToggleRaw,
+}: {
+  action: string;
+  before: unknown;
+  after: unknown;
+  showRaw: boolean;
+  onToggleRaw: () => void;
+}) {
+  const diff = useMemo(() => computeDiff(before, after), [before, after]);
+  const isCreate = action === "CREATE" || (before == null && after != null);
+  const isDelete = action === "DELETE" || (after == null && before != null);
+
+  const renderRows = () => {
+    if (isCreate) {
+      const flat = isPlainObject(after) || Array.isArray(after) ? flatten(after) : {};
+      const keys = Object.keys(flat).sort();
+      if (keys.length === 0) return <div className="text-sm text-muted-foreground">New record created.</div>;
+      return (
+        <div className="rounded border bg-background divide-y">
+          {keys.map((k) => (
+            <div key={k} className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-2 p-2 text-sm">
+              <div className="font-medium text-muted-foreground">{humanizeKey(k)}</div>
+              <div className="text-green-700 dark:text-green-300 break-all">{formatValue(flat[k])}</div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+    if (isDelete) {
+      const flat = isPlainObject(before) || Array.isArray(before) ? flatten(before) : {};
+      const keys = Object.keys(flat).sort();
+      if (keys.length === 0) return <div className="text-sm text-muted-foreground">Record was deleted.</div>;
+      return (
+        <div className="rounded border bg-background divide-y">
+          {keys.map((k) => (
+            <div key={k} className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-2 p-2 text-sm">
+              <div className="font-medium text-muted-foreground">{humanizeKey(k)}</div>
+              <div className="text-red-700 dark:text-red-300 break-all line-through">{formatValue(flat[k])}</div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+    if (diff.length === 0) {
+      return <div className="text-sm text-muted-foreground">No field-level changes detected.</div>;
+    }
+    return (
+      <div className="rounded border bg-background divide-y" data-testid="activity-diff">
+        {diff.map((d) => (
+          <div key={d.key} className="grid grid-cols-1 md:grid-cols-[220px_1fr_auto_1fr] gap-2 p-2 text-sm items-start">
+            <div className="font-medium text-muted-foreground">{humanizeKey(d.key)}</div>
+            <div className="text-red-700 dark:text-red-300 break-all">
+              {d.kind === "added" ? <span className="text-muted-foreground">—</span> : formatValue(d.before)}
+            </div>
+            <div className="text-muted-foreground hidden md:block">→</div>
+            <div className="text-green-700 dark:text-green-300 break-all">
+              {d.kind === "removed" ? <span className="text-muted-foreground">—</span> : formatValue(d.after)}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <div className="text-xs text-muted-foreground">
+          {isCreate ? "Created with these values" : isDelete ? "Deleted record" : `${diff.length} field${diff.length === 1 ? "" : "s"} changed`}
+        </div>
+        <Button variant="ghost" size="sm" onClick={onToggleRaw} data-testid="activity-toggle-raw">
+          {showRaw ? "Hide full JSON" : "Show full JSON"}
+        </Button>
+      </div>
+      {renderRows()}
+      {showRaw && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs font-mono pt-2">
+          <div>
+            <div className="font-semibold mb-1">Before</div>
+            <pre className="overflow-auto max-h-72 bg-background p-2 rounded border">{JSON.stringify(before, null, 2)}</pre>
+          </div>
+          <div>
+            <div className="font-semibold mb-1">After</div>
+            <pre className="overflow-auto max-h-72 bg-background p-2 rounded border">{JSON.stringify(after, null, 2)}</pre>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ActivityReport() {
   const [entityType, setEntityType] = useState<string>("all");
   const [action, setAction] = useState<string>("all");
@@ -52,6 +255,7 @@ export default function ActivityReport() {
   const [users, setUsers] = useState<UserOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [showRaw, setShowRaw] = useState<Record<string, boolean>>({});
 
   const reload = async () => {
     setLoading(true);
@@ -208,16 +412,15 @@ export default function ActivityReport() {
                 {expanded === row.id && (
                   <TableRow key={row.id + "-diff"}>
                     <TableCell colSpan={5} className="bg-muted/40">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs font-mono">
-                        <div>
-                          <div className="font-semibold mb-1">Before</div>
-                          <pre className="overflow-auto max-h-72 bg-background p-2 rounded border">{JSON.stringify(row.before, null, 2)}</pre>
-                        </div>
-                        <div>
-                          <div className="font-semibold mb-1">After</div>
-                          <pre className="overflow-auto max-h-72 bg-background p-2 rounded border">{JSON.stringify(row.after, null, 2)}</pre>
-                        </div>
-                      </div>
+                      <FriendlyDiff
+                        action={row.action}
+                        before={row.before}
+                        after={row.after}
+                        showRaw={!!showRaw[row.id]}
+                        onToggleRaw={() =>
+                          setShowRaw((prev) => ({ ...prev, [row.id]: !prev[row.id] }))
+                        }
+                      />
                     </TableCell>
                   </TableRow>
                 )}
