@@ -521,20 +521,26 @@ const SaleScreen = () => {
     <div className="flex h-screen overflow-hidden bg-[#0d0d0d]">
       {/* Left Panel: Products */}
       <div className="w-[60%] flex flex-col border-r border-zinc-800">
-        {/* Shop / cashier / clock — always visible so the operator knows where they are. */}
+        {/* Shop / cashier / clock — always visible so the operator knows
+            where they are. Each chip uses whitespace-nowrap so labels never
+            split across two lines on narrow viewports; the row itself wraps. */}
         <div className="px-4 pt-3">
-          <div className="flex items-center gap-3 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2 text-xs">
-            <User className="h-4 w-4 text-amber-300" />
-            <span className="font-bold text-white">{cashierName || "Cashier"}</span>
-            {cashierRole && <span className="text-zinc-500">{cashierRole.replace(/_/g, " ").toLowerCase()}</span>}
-            <span className="text-zinc-600">|</span>
-            <span className="text-zinc-400">Shop</span>
-            <span className="font-bold text-white">{locationName || "—"}</span>
-            <span className="text-zinc-600">|</span>
-            <span className="text-zinc-400">{now.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</span>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2 text-xs">
+            <User className="h-4 w-4 text-amber-300 shrink-0" />
+            <div className="flex items-center gap-1.5 whitespace-nowrap">
+              <span className="font-bold text-white">{cashierName || "Cashier"}</span>
+              {cashierRole && <span className="text-zinc-500">{cashierRole.replace(/_/g, " ").toLowerCase()}</span>}
+            </div>
+            <span className="text-zinc-700">•</span>
+            <div className="flex items-center gap-1.5 whitespace-nowrap">
+              <span className="text-zinc-400">Shop</span>
+              <span className="font-bold text-white">{locationName || "—"}</span>
+            </div>
+            <span className="text-zinc-700">•</span>
+            <span className="text-zinc-400 whitespace-nowrap">{now.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</span>
             <Button
               size="sm" variant="ghost"
-              className="ml-auto h-7 text-xs text-zinc-400 hover:text-red-400"
+              className="ml-auto h-7 px-2 text-xs text-zinc-400 hover:text-red-400 whitespace-nowrap shrink-0"
               onClick={handlePosLogout}
               data-testid="pos-logout-btn"
               title="Sign out of POS"
@@ -545,43 +551,47 @@ const SaleScreen = () => {
         </div>
 
         {/* Shift bar — Float = cash put in the till at shift open; Sales =
-            all invoices billed in this shift (any payment mode); Cash Drawer
-            = Float + cash sales only (the physical cash you should have on
-            hand right now). UPI/Card sales never affect the drawer. */}
+            all invoices billed in this shift (any payment mode); Drawer =
+            Float + cash sales only (physical cash you should have on hand).
+            UPI/Card sales never affect the drawer. Each chip is nowrap so
+            labels never break across two lines on narrow viewports; the row
+            itself wraps if there isn't enough horizontal space. */}
         {currentShift && running && (
           <div className="px-4 pt-2">
-            <div className="flex items-center gap-3 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2 text-xs">
-              <Wallet className="h-4 w-4 text-emerald-400" />
-              <span className="text-zinc-400" title="Unique ID for this cashier shift">Shift</span>
-              <span className="font-bold text-white">{String(currentShift.id).slice(0, 8)}</span>
-              <span className="text-zinc-600">|</span>
-              <span
-                className="text-zinc-400 cursor-help"
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2 text-xs">
+              <Wallet className="h-4 w-4 text-emerald-400 shrink-0" />
+              <div className="flex items-center gap-1.5 whitespace-nowrap" title="Unique ID for this cashier shift">
+                <span className="text-zinc-400">Shift</span>
+                <span className="font-bold text-white">{String(currentShift.id).slice(0, 8)}</span>
+              </div>
+              <span className="text-zinc-700">•</span>
+              <div
+                className="flex items-center gap-1.5 whitespace-nowrap cursor-help"
                 title="Opening Float — the cash you put in the till when this shift was opened. Stays fixed for the whole shift."
               >
-                Opening Float
-              </span>
-              <span className="font-bold">{inr(Number(currentShift.openingCash) || 0)}</span>
-              <span className="text-zinc-600">|</span>
-              <span
-                className="text-zinc-400 cursor-help"
+                <span className="text-zinc-400">Float</span>
+                <span className="font-bold">{inr(Number(currentShift.openingCash) || 0)}</span>
+              </div>
+              <span className="text-zinc-700">•</span>
+              <div
+                className="flex items-center gap-1.5 whitespace-nowrap cursor-help"
                 title={`Total Sales billed this shift (all payment modes).\nCash ${inr(running.cashSales || 0)} • UPI ${inr(running.upiSales || 0)} • Card ${inr(running.cardSales || 0)}${running.creditSales ? ` • Credit ${inr(running.creditSales)}` : ""}`}
               >
-                Sales
-              </span>
-              <span className="font-bold text-amber-300">{inr(running.totalSales || 0)}</span>
-              <span className="text-zinc-500">({running.txnCount || 0} txn)</span>
-              <span className="text-zinc-600">|</span>
-              <span
-                className="text-zinc-400 cursor-help"
+                <span className="text-zinc-400">Sales</span>
+                <span className="font-bold text-amber-300">{inr(running.totalSales || 0)}</span>
+                <span className="text-zinc-500">({running.txnCount || 0} txn)</span>
+              </div>
+              <span className="text-zinc-700">•</span>
+              <div
+                className="flex items-center gap-1.5 whitespace-nowrap cursor-help"
                 title={`Cash Drawer — physical cash that should be in the till right now.\nOpening Float ${inr(Number(currentShift.openingCash) || 0)} + Cash Sales ${inr(running.cashSales || 0)} = ${inr(running.expectedCash || 0)}.\nUPI / Card sales do not affect the drawer.`}
               >
-                Cash Drawer
-              </span>
-              <span className="font-bold text-emerald-400">{inr(running.expectedCash || 0)}</span>
+                <span className="text-zinc-400">Drawer</span>
+                <span className="font-bold text-emerald-400">{inr(running.expectedCash || 0)}</span>
+              </div>
               <Button
                 size="sm" variant="ghost"
-                className="ml-auto h-7 text-xs text-blue-400 hover:text-blue-300"
+                className="ml-auto h-7 px-2 text-xs text-blue-400 hover:text-blue-300 whitespace-nowrap shrink-0"
                 onClick={() => setReprintOpen(true)}
                 data-testid="pos-reprint-btn"
               >
