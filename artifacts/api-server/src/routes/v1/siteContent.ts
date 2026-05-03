@@ -9,6 +9,9 @@ const router = Router();
 const SITE_CONTENT_KEY = "siteContent";
 
 const DEFAULT_SITE_CONTENT = {
+  // Occasions are CMS-driven. Each entry: { key, label, emoji, tag, color }.
+  // `key` must be URL-safe (lowercase, no spaces) — it is used as the
+  // ?occasion=KEY filter on the catalogue and as the tag stored on products.
   occasions: [
     { key: "diwali",    label: "Diwali",    emoji: "🪔",  tag: "Festival",  color: "from-amber-400 via-orange-500 to-red-600" },
     { key: "wedding",   label: "Weddings",  emoji: "💐",  tag: "Bulk",      color: "from-pink-400 via-rose-500 to-red-500" },
@@ -118,8 +121,34 @@ const DEFAULT_SITE_CONTENT = {
     name: "Rathinam Crackers",
     tagline: "Premium Sivakasi Fireworks since 1985",
     establishedYear: 1985,
-    promoBarText: "Diwali Offers Live · Free GST Invoice · Pan-India Delivery",
+    promoBarText: "Festive Offers Live · Free GST Invoice · Pan-India Delivery",
     bulkWhatsAppMessage: "Hi, I'd like a bulk quote",
+  },
+  // Festival countdown shown on the homepage hero. Fully editable from CMS.
+  // targetDate is ISO yyyy-mm-dd; if blank the countdown block is hidden.
+  festival: {
+    name: "Diwali",
+    targetDate: "",
+    countdownLabel: "Festive season starts in",
+    enabled: true,
+  },
+  // Newsletter band (final CTA section).
+  newsletter: {
+    heading: "Get festive deals in your inbox",
+    body: "Early access, festival packs and special bundles — once a month, never spammy. Unsubscribe anytime.",
+  },
+  // Bulk / weddings / corporate band.
+  bulkCta: {
+    eyebrow: "For weddings, events & corporates",
+    title: "Planning something big?",
+    body: "Wedding sangeet, temple festival, corporate gifting or a society celebration — our bulk team will design a custom pack and price for you.",
+    perks: "Wholesale rates auto-applied · GST B2B invoices · Doorstep delivery",
+  },
+  // Copy shown above the "Shop by occasion" grid on the homepage.
+  occasionSection: {
+    eyebrow: "Curated for every celebration",
+    title: "Shop by occasion",
+    subtitle: "From festivals to weddings — find the right pack for the moment you are celebrating.",
   },
   cta: {
     heroPrimary:   { label: "Shop the collection",   href: "/catalogue" },

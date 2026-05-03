@@ -205,6 +205,8 @@ export interface Product {
   onlineDisplay?: boolean;
   status?: ProductStatus;
   variants?: ProductVariant[];
+  /** CMS occasion keys this product is tagged with (e.g. ["diwali","wedding"]). */
+  occasions?: string[];
   imageUrl?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -224,6 +226,7 @@ export interface CreateProductBody {
   hsnCode?: string;
   onlineDisplay?: boolean;
   variants: ProductVariant[];
+  occasions?: string[];
 }
 
 export interface UpdateProductBody {
@@ -234,6 +237,7 @@ export interface UpdateProductBody {
   onlineDisplay?: boolean;
   status?: string;
   variants?: ProductVariant[];
+  occasions?: string[];
 }
 
 export type PriceResolutionData = {
@@ -1852,6 +1856,10 @@ export type ListProductsParams = {
   category?: string;
   status?: string;
   onlineDisplay?: boolean;
+  /**
+   * Filter to products tagged with this occasion key.
+   */
+  occasion?: string;
   search?: string;
   page?: number;
   limit?: number;
@@ -1860,6 +1868,10 @@ export type ListProductsParams = {
 export type ListPublicProductsParams = {
   category?: string;
   featured?: boolean;
+  /**
+   * Filter to products tagged with this occasion key.
+   */
+  occasion?: string;
   search?: string;
   page?: number;
   limit?: number;

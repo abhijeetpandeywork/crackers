@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation, useParams } from "wouter";
-import { useGetProduct, useUpdateProduct, useCreateProduct, useListBrands, type ProductVariant, type CreateProductBody, type Brand } from "@workspace/api-client-react";
+import { useGetProduct, useUpdateProduct, useCreateProduct, useListBrands, useGetSiteContent, type ProductVariant, type CreateProductBody, type Brand } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,7 +25,7 @@ export default function ProductDetail() {
   const updateMutation = useUpdateProduct();
   const createMutation = useCreateProduct();
   
-  const [formData, setFormData] = useState<CreateProductBody & { status: string }>({
+  const [formData, setFormData] = useState<CreateProductBody & { status: string; occasions: string[] }>({
     code: "",
     name: "",
     category: "Ground",
@@ -34,11 +34,23 @@ export default function ProductDetail() {
     onlineDisplay: true,
     status: "Active",
     variants: [] as ProductVariant[],
+    occasions: [],
   });
   const [defaultBrand, setDefaultBrand] = useState<string>("Standard");
 
   const { data: brandsResp } = useListBrands();
   const brands: Brand[] = (brandsResp?.data ?? []) as Brand[];
+
+  // Occasion catalogue is CMS-driven (Site Content → Occasions).
+  const { data: siteContentResp } = useGetSiteContent();
+  const cmsOccasions = (((siteContentResp?.data ?? {}) as Record<string, unknown>)["occasions"] ?? []) as Array<{ key: string; label: string; emoji?: string }>;
+  const toggleOccasion = (key: string) => {
+    setFormData((p) => {
+      const set = new Set(p.occasions ?? []);
+      if (set.has(key)) set.delete(key); else set.add(key);
+      return { ...p, occasions: Array.from(set) };
+    });
+  };
   const activeBrands = brands.filter((b) => b.isActive !== false);
   const brandNames = activeBrands.map((b) => b.name ?? "").filter(Boolean) as string[];
   // Always include the currently-selected brand even if inactive/missing.
@@ -54,7 +66,8 @@ export default function ProductDetail() {
         hsnCode: product.hsnCode || "",
         onlineDisplay: product.onlineDisplay ?? true,
         status: (product.status as string) || "Active",
-        variants: product.variants || []
+        variants: product.variants || [],
+        occasions: ((product as { occasions?: string[] }).occasions ?? []),
       });
       const firstBrand = product.variants?.find(v => v.brand)?.brand;
       if (firstBrand) setDefaultBrand(firstBrand);
@@ -263,6 +276,41 @@ export default function ProductDetail() {
                   checked={formData.onlineDisplay} 
                   onCheckedChange={v => setFormData(p => ({...p, onlineDisplay: v}))} 
                 />
+              </div>
+
+              <div className="space-y-2" data-testid="product-occasions">
+                <Label>Occasions</Label>
+                <p className="text-xs text-muted-foreground">
+                  Tag this product with the celebrations it suits — customers can filter by these on the website.
+                  Manage the list under <strong>Website Content → Occasions</strong>.
+                </p>
+                {cmsOccasions.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic">
+                    No occasions defined yet. Add some in Website Content first.
+                  </p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {cmsOccasions.map((o) => {
+                      const selected = (formData.occasions ?? []).includes(o.key);
+                      return (
+                        <button
+                          key={o.key}
+                          type="button"
+                          data-testid={`occasion-toggle-${o.key}`}
+                          onClick={() => toggleOccasion(o.key)}
+                          className={`inline-flex items-center gap-1 px-3 h-8 rounded-full border text-xs font-medium transition ${
+                            selected
+                              ? "bg-primary text-primary-foreground border-primary"
+                              : "bg-background hover:bg-accent border-input"
+                          }`}
+                        >
+                          {o.emoji && <span>{o.emoji}</span>}
+                          {o.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

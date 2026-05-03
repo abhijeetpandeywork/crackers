@@ -26,12 +26,17 @@ const minPrice = (p: Product): number => {
   return prices.length === 0 ? 0 : Math.min(...prices);
 };
 
-function useDiwaliCountdown() {
+// CMS-driven countdown. `targetIso` is yyyy-mm-dd from siteContent.festival.targetDate;
+// if missing/invalid we fall back to "next Nov 1" so the block never shows zeroes
+// for legacy content. The caller decides whether to render at all.
+function useFestivalCountdown(targetIso: string | undefined) {
   const target = useMemo(() => {
+    const parsed = targetIso ? new Date(`${targetIso}T00:00:00`) : null;
+    if (parsed && !Number.isNaN(parsed.getTime())) return parsed;
     const now = new Date();
     const year = now.getMonth() >= 11 ? now.getFullYear() + 1 : now.getFullYear();
     return new Date(`${year}-11-01T00:00:00`);
-  }, []);
+  }, [targetIso]);
   const [now, setNow] = useState<Date>(new Date());
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
@@ -42,7 +47,7 @@ function useDiwaliCountdown() {
   const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
   const minutes = Math.floor((diff / (1000 * 60)) % 60);
   const seconds = Math.floor((diff / 1000) % 60);
-  return { days, hours, minutes, seconds, target };
+  return { days, hours, minutes, seconds, target, expired: diff <= 0 };
 }
 
 const HOW_ICONS: Record<string, typeof Sparkles> = { Sparkles, Gift, Truck, Award, ShieldCheck, Heart, Clock, BadgeCheck };
@@ -119,7 +124,12 @@ export default function Home() {
   const WHY_US = (c.whyUs?.length ? c.whyUs : DEFAULT_WHY_US) as Array<{ icon: string; title: string; desc: string; iconBg?: string }>;
   const FAQS = (c.homeFaqs?.length ? c.homeFaqs : DEFAULT_FAQS) as Array<{ q: string; a: string }>;
   const products: Product[] = (featuredData?.data ?? []) as Product[];
-  const { days, hours, minutes, seconds } = useDiwaliCountdown();
+  const festival = (c.festival ?? {}) as { name?: string; targetDate?: string; countdownLabel?: string; enabled?: boolean };
+  const occasionSection = (c.occasionSection ?? {}) as { eyebrow?: string; title?: string; subtitle?: string };
+  const newsletter = (c.newsletter ?? {}) as { heading?: string; body?: string };
+  const bulkCta = (c.bulkCta ?? {}) as { eyebrow?: string; title?: string; body?: string; perks?: string };
+  const { days, hours, minutes, seconds, expired } = useFestivalCountdown(festival.targetDate);
+  const showCountdown = festival.enabled !== false && !expired && !!festival.targetDate;
   const [active, setActive] = useState(0);
   useEffect(() => {
     if (TESTIMONIALS.length === 0) return;
@@ -171,13 +181,13 @@ export default function Home() {
         <div className="relative z-10 text-center px-4 max-w-5xl">
           <div className="inline-flex items-center gap-2 bg-amber-500/15 border border-amber-400/30 backdrop-blur px-4 py-1.5 rounded-full mb-6">
             <Sparkles className="h-3.5 w-3.5 text-amber-300" />
-            <span className="text-amber-200 text-xs font-semibold tracking-widest uppercase">{c.brand?.promoBarText ?? "Diwali collection · Live now"}</span>
+            <span className="text-amber-200 text-xs font-semibold tracking-widest uppercase">{c.brand?.promoBarText ?? "Festive collection · Live now"}</span>
           </div>
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold text-white mb-6 tracking-tight leading-[1.05]">
             Celebrate with <span className="bg-gradient-to-r from-amber-300 via-amber-400 to-orange-400 bg-clip-text text-transparent">{c.brand?.name ?? "Rathinam Crackers"}</span>
           </h1>
           <p className="text-lg md:text-2xl text-amber-100/90 mb-10 max-w-3xl mx-auto font-medium">
-            {c.brand?.tagline ?? "Premium Sivakasi Fireworks since 1985."} Three generations of cracker craftsmanship — making every festival extraordinary with safety and brilliance.
+            {c.brand?.tagline ?? "Premium Sivakasi Fireworks since 1985."} Three generations of cracker craftsmanship — making every celebration extraordinary with safety and brilliance.
           </p>
           {(() => {
             const wa = (c.contact?.whatsapp ?? "").replace(/[^0-9]/g, "");
@@ -221,26 +231,30 @@ export default function Home() {
             );
           })()}
 
-          {/* Countdown */}
-          <div className="inline-flex flex-col items-center gap-2 bg-black/30 backdrop-blur border border-white/10 rounded-2xl px-6 py-4">
-            <span className="text-amber-200/80 text-xs uppercase tracking-[0.25em]">Diwali season starts in</span>
-            <div className="flex items-center gap-2 sm:gap-4">
-              {[
-                { v: days, l: "Days" },
-                { v: hours, l: "Hrs" },
-                { v: minutes, l: "Min" },
-                { v: seconds, l: "Sec" },
-              ].map((b, i) => (
-                <div key={b.l} className="flex items-center">
-                  <div className="text-center min-w-[52px]">
-                    <div className="text-2xl sm:text-3xl font-bold text-white tabular-nums">{String(b.v).padStart(2, "0")}</div>
-                    <div className="text-[10px] uppercase tracking-widest text-amber-300/80">{b.l}</div>
+          {/* Countdown — only renders if a festival.targetDate is set in CMS and not yet passed. */}
+          {showCountdown && (
+            <div className="inline-flex flex-col items-center gap-2 bg-black/30 backdrop-blur border border-white/10 rounded-2xl px-6 py-4">
+              <span className="text-amber-200/80 text-xs uppercase tracking-[0.25em]">
+                {festival.countdownLabel ?? `${festival.name ?? "Festive"} season starts in`}
+              </span>
+              <div className="flex items-center gap-2 sm:gap-4">
+                {[
+                  { v: days, l: "Days" },
+                  { v: hours, l: "Hrs" },
+                  { v: minutes, l: "Min" },
+                  { v: seconds, l: "Sec" },
+                ].map((b, i) => (
+                  <div key={b.l} className="flex items-center">
+                    <div className="text-center min-w-[52px]">
+                      <div className="text-2xl sm:text-3xl font-bold text-white tabular-nums">{String(b.v).padStart(2, "0")}</div>
+                      <div className="text-[10px] uppercase tracking-widest text-amber-300/80">{b.l}</div>
+                    </div>
+                    {i < 3 && <span className="text-amber-300/40 text-2xl mx-1">:</span>}
                   </div>
-                  {i < 3 && <span className="text-amber-300/40 text-2xl mx-1">:</span>}
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </section>
 
@@ -263,9 +277,9 @@ export default function Home() {
       <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <span className="text-xs font-bold uppercase tracking-[0.25em] text-primary">Curated for every celebration</span>
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mt-3">Shop by occasion</h2>
-            <p className="text-gray-600 mt-3 max-w-2xl mx-auto">From the brightness of Diwali to the warmth of weddings — find the right pack for the moment you are celebrating.</p>
+            <span className="text-xs font-bold uppercase tracking-[0.25em] text-primary">{occasionSection.eyebrow ?? "Curated for every celebration"}</span>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mt-3">{occasionSection.title ?? "Shop by occasion"}</h2>
+            <p className="text-gray-600 mt-3 max-w-2xl mx-auto">{occasionSection.subtitle ?? "From festivals to weddings — find the right pack for the moment you are celebrating."}</p>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             {OCCASIONS.map((o) => (
@@ -538,12 +552,12 @@ export default function Home() {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-2 gap-10 items-center text-white">
             <div>
-              <span className="text-xs font-bold uppercase tracking-[0.25em] text-amber-200">For weddings, events &amp; corporates</span>
-              <h2 className="text-3xl md:text-4xl font-extrabold mt-3 mb-4 leading-tight">Planning something big?</h2>
+              <span className="text-xs font-bold uppercase tracking-[0.25em] text-amber-200">{bulkCta.eyebrow ?? "For weddings, events & corporates"}</span>
+              <h2 className="text-3xl md:text-4xl font-extrabold mt-3 mb-4 leading-tight">{bulkCta.title ?? "Planning something big?"}</h2>
               <p className="text-white/90 text-lg leading-relaxed mb-2">
-                Wedding sangeet, temple festival, corporate Diwali gifting or a society celebration — our bulk team will design a custom pack and price for you.
+                {bulkCta.body ?? "Wedding sangeet, temple festival, corporate gifting or a society celebration — our bulk team will design a custom pack and price for you."}
               </p>
-              <p className="text-amber-100 text-sm">Wholesale rates auto-applied · GST B2B invoices · Doorstep delivery</p>
+              <p className="text-amber-100 text-sm">{bulkCta.perks ?? "Wholesale rates auto-applied · GST B2B invoices · Doorstep delivery"}</p>
             </div>
             <div className="flex flex-col sm:flex-row gap-4 md:justify-end">
               {(() => {
@@ -609,8 +623,8 @@ export default function Home() {
       <section className="py-16 bg-gradient-to-br from-[#1a0a00] via-[#3a0c00] to-[#5a1500] text-white">
         <div className="max-w-4xl mx-auto px-4 text-center">
           <Mail className="h-10 w-10 text-amber-400 mx-auto mb-4" />
-          <h2 className="text-3xl md:text-4xl font-extrabold mb-3">Get Diwali deals in your inbox</h2>
-          <p className="text-amber-100/80 mb-8 max-w-xl mx-auto">Early access, festival packs and special bundles — once a month, never spammy. Unsubscribe anytime.</p>
+          <h2 className="text-3xl md:text-4xl font-extrabold mb-3">{newsletter.heading ?? "Get festive deals in your inbox"}</h2>
+          <p className="text-amber-100/80 mb-8 max-w-xl mx-auto">{newsletter.body ?? "Early access, festival packs and special bundles — once a month, never spammy. Unsubscribe anytime."}</p>
           <form
             onSubmit={(e) => { e.preventDefault(); alert("Thanks! We'll keep you posted."); }}
             className="flex flex-col sm:flex-row gap-3 max-w-lg mx-auto"

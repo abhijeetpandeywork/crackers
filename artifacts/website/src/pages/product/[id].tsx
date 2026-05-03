@@ -139,7 +139,7 @@ const categoryAttrs: Record<string, {
     highlights: [
       "Curated mix of best-sellers",
       "Premium presentation box",
-      "Perfect Diwali / wedding gift",
+      "Perfect for celebrations & gifting",
       "All categories covered — value pack",
     ],
   },

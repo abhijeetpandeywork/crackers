@@ -1,26 +1,36 @@
 import { useState } from "react";
 import { useLocation, Link } from "wouter";
-import { useListPublicProducts } from "@workspace/api-client-react";
+import { useListPublicProducts, useGetPublicSiteContent } from "@workspace/api-client-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Loader2 } from "lucide-react";
+import { Search, Loader2, X } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { Seo, breadcrumbLd } from "@/lib/seo";
 
+type OccasionDef = { key: string; label: string; emoji?: string };
+
 export default function Catalogue() {
   const [searchParams] = useLocation();
-  const initialCategory = new URLSearchParams(window.location.search).get("category") || "All";
-  
+  const qs = new URLSearchParams(window.location.search);
+  const initialCategory = qs.get("category") || "All";
+  const initialOccasion = qs.get("occasion") || "";
+
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState(initialCategory);
+  const [occasion, setOccasion] = useState<string>(initialOccasion);
   const [page, setPage] = useState(1);
+
+  const { data: siteResp } = useGetPublicSiteContent();
+  const cmsOccasions = (((siteResp?.data ?? {}) as Record<string, unknown>)["occasions"] ?? []) as OccasionDef[];
+  const occasionLabel = cmsOccasions.find((o) => o.key === occasion)?.label;
 
   const { data, isLoading } = useListPublicProducts({
     search: search || undefined,
     category: category === "All" ? undefined : category,
+    occasion: occasion || undefined,
     page,
-    limit: 12
+    limit: 12,
   });
 
   const products = data?.data || [];
@@ -39,9 +49,9 @@ export default function Catalogue() {
   return (
     <Layout>
       <Seo
-        title={category && category !== "All" ? `${category} Crackers — Catalogue` : "Cracker Catalogue — Sparklers, Sky Shots, Gift Boxes"}
-        description={`Shop ${category && category !== "All" ? category.toLowerCase() + " crackers" : "sparklers, ground chakkars, sky shots, aerial cakes, rockets and gift boxes"} from Sivakasi. PESO-licensed, GST invoices, pan-India shipping.`}
-        path={`/catalogue${category && category !== "All" ? `?category=${encodeURIComponent(category)}` : ""}`}
+        title={occasionLabel ? `${occasionLabel} Crackers — Catalogue` : category && category !== "All" ? `${category} Crackers — Catalogue` : "Cracker Catalogue — Sparklers, Sky Shots, Gift Boxes"}
+        description={`Shop ${occasionLabel ? `${occasionLabel.toLowerCase()} crackers` : category && category !== "All" ? category.toLowerCase() + " crackers" : "sparklers, ground chakkars, sky shots, aerial cakes, rockets and gift boxes"} from Sivakasi. PESO-licensed, GST invoices, pan-India shipping.`}
+        path={`/catalogue${occasion ? `?occasion=${encodeURIComponent(occasion)}` : category && category !== "All" ? `?category=${encodeURIComponent(category)}` : ""}`}
         jsonLd={[breadcrumbLd([{ name: "Home", path: "/" }, { name: "Catalogue", path: "/catalogue" }])]}
       />
       <div className="bg-gray-50 min-h-screen pb-20">
@@ -79,6 +89,41 @@ export default function Catalogue() {
                 </TabsList>
               </Tabs>
             </div>
+
+            {/* Occasion filter chips — sourced from CMS so the merchant decides which occasions exist. */}
+            {cmsOccasions.length > 0 && (
+              <div className="mt-3 flex flex-wrap items-center gap-2" data-testid="occasion-filter">
+                <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 mr-1">Occasion:</span>
+                <button
+                  type="button"
+                  onClick={() => { setOccasion(""); setPage(1); }}
+                  className={`text-xs font-semibold px-3 h-8 rounded-full border transition ${occasion === "" ? "bg-primary text-white border-primary" : "bg-white text-gray-700 border-gray-200 hover:border-primary/40"}`}
+                >
+                  All
+                </button>
+                {cmsOccasions.map((o) => (
+                  <button
+                    key={o.key}
+                    type="button"
+                    data-testid={`occasion-${o.key}`}
+                    onClick={() => { setOccasion(o.key); setPage(1); }}
+                    className={`text-xs font-semibold px-3 h-8 rounded-full border transition flex items-center gap-1 ${occasion === o.key ? "bg-primary text-white border-primary" : "bg-white text-gray-700 border-gray-200 hover:border-primary/40"}`}
+                  >
+                    {o.emoji && <span className="text-sm leading-none">{o.emoji}</span>}
+                    {o.label}
+                  </button>
+                ))}
+                {occasion && (
+                  <button
+                    type="button"
+                    onClick={() => { setOccasion(""); setPage(1); }}
+                    className="text-xs text-gray-500 hover:text-primary inline-flex items-center gap-1 ml-1"
+                  >
+                    <X className="h-3 w-3" /> Clear
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

@@ -1,4 +1,7 @@
 import { pgTable, text, timestamp, boolean, jsonb, integer } from "drizzle-orm/pg-core";
+// occasions: string[] of CMS occasion keys (e.g. ["diwali","wedding"]).
+// Empty / null means "no occasion tag" — product still appears in unfiltered lists.
+import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -15,6 +18,7 @@ export const productsTable = pgTable("products", {
   status: text("status", { enum: ["Active","Discontinued"] }).notNull().default("Active"),
   // variants stored as JSON: [{variantId, size, packContent, unit, prices:{purchase,wholesaleBulk,retailOnline,retailEst,agent}}]
   variants: jsonb("variants").$type<ProductVariant[]>().notNull().default([]),
+  occasions: text("occasions").array().notNull().default(sql`ARRAY[]::text[]`),
   reorderLevel: integer("reorder_level").default(10),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

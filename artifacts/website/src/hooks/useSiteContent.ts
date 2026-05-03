@@ -67,7 +67,7 @@ const FALLBACK: SiteContent = {
     name: "Rathinam Crackers",
     tagline: "Premium Sivakasi Fireworks since 1985",
     establishedYear: 1985,
-    promoBarText: "Diwali Offers Live · Free GST Invoice · Pan-India Delivery",
+    promoBarText: "Festive Offers Live · Free GST Invoice · Pan-India Delivery",
     bulkWhatsAppMessage: "Hi, I'd like a bulk quote",
   },
   cta: {

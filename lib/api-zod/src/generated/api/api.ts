@@ -191,6 +191,10 @@ export const ListProductsQueryParams = zod.object({
   category: zod.coerce.string().optional(),
   status: zod.coerce.string().optional(),
   onlineDisplay: zod.coerce.boolean().optional(),
+  occasion: zod.coerce
+    .string()
+    .optional()
+    .describe("Filter to products tagged with this occasion key."),
   search: zod.coerce.string().optional(),
   page: zod.coerce.number().default(listProductsQueryPageDefault),
   limit: zod.coerce.number().default(listProductsQueryLimitDefault),
@@ -243,6 +247,12 @@ export const ListProductsResponse = zod.object({
             }),
           )
           .optional(),
+        occasions: zod
+          .array(zod.string())
+          .optional()
+          .describe(
+            'CMS occasion keys this product is tagged with (e.g. [\"diwali\",\"wedding\"]).',
+          ),
         imageUrl: zod.string().optional(),
         createdAt: zod.string().optional(),
         updatedAt: zod.string().optional(),
@@ -292,6 +302,7 @@ export const CreateProductBody = zod.object({
         .optional(),
     }),
   ),
+  occasions: zod.array(zod.string()).optional(),
 });
 
 /**
@@ -300,6 +311,10 @@ export const CreateProductBody = zod.object({
 export const ListPublicProductsQueryParams = zod.object({
   category: zod.coerce.string().optional(),
   featured: zod.coerce.boolean().optional(),
+  occasion: zod.coerce
+    .string()
+    .optional()
+    .describe("Filter to products tagged with this occasion key."),
   search: zod.coerce.string().optional(),
   page: zod.coerce.number().optional(),
   limit: zod.coerce.number().optional(),
@@ -352,6 +367,12 @@ export const ListPublicProductsResponse = zod.object({
             }),
           )
           .optional(),
+        occasions: zod
+          .array(zod.string())
+          .optional()
+          .describe(
+            'CMS occasion keys this product is tagged with (e.g. [\"diwali\",\"wedding\"]).',
+          ),
         imageUrl: zod.string().optional(),
         createdAt: zod.string().optional(),
         updatedAt: zod.string().optional(),
@@ -411,6 +432,12 @@ export const GetProductResponse = zod.object({
       }),
     )
     .optional(),
+  occasions: zod
+    .array(zod.string())
+    .optional()
+    .describe(
+      'CMS occasion keys this product is tagged with (e.g. [\"diwali\",\"wedding\"]).',
+    ),
   imageUrl: zod.string().optional(),
   createdAt: zod.string().optional(),
   updatedAt: zod.string().optional(),
@@ -455,6 +482,7 @@ export const UpdateProductBody = zod.object({
       }),
     )
     .optional(),
+  occasions: zod.array(zod.string()).optional(),
 });
 
 export const UpdateProductResponse = zod.object({
@@ -493,6 +521,12 @@ export const UpdateProductResponse = zod.object({
       }),
     )
     .optional(),
+  occasions: zod
+    .array(zod.string())
+    .optional()
+    .describe(
+      'CMS occasion keys this product is tagged with (e.g. [\"diwali\",\"wedding\"]).',
+    ),
   imageUrl: zod.string().optional(),
   createdAt: zod.string().optional(),
   updatedAt: zod.string().optional(),

@@ -312,6 +312,8 @@ export default function SiteContent() {
             <TabsTrigger value="promo">Promo</TabsTrigger>
             <TabsTrigger value="policies">Policies</TabsTrigger>
             <TabsTrigger value="pos">POS</TabsTrigger>
+            <TabsTrigger value="occasions">Occasions</TabsTrigger>
+            <TabsTrigger value="festival">Festival</TabsTrigger>
             <TabsTrigger value="faqs">FAQs</TabsTrigger>
             <TabsTrigger value="how">How it works</TabsTrigger>
             <TabsTrigger value="why">Why us</TabsTrigger>
@@ -487,6 +489,139 @@ export default function SiteContent() {
               value={get<boolean>(draft, "pos.showCouponBox", true) !== false}
               onChange={(v) => setPath("pos.showCouponBox", v)}
             />
+          </TabsContent>
+
+          {/* OCCASIONS -------------------------------------------- */}
+          <TabsContent value="occasions" className="space-y-4 pt-4">
+            <p className="text-xs text-muted-foreground">
+              Occasions appear as tiles on the homepage and as filter chips on the catalogue.
+              The <code className="font-mono">key</code> must be lowercase, no spaces — it is used as
+              <code className="font-mono"> ?occasion=KEY</code> in URLs and as the tag stored on each product.
+              Use any short emoji as the icon. <code className="font-mono">color</code> is a Tailwind gradient
+              (e.g. <em>from-amber-400 via-orange-500 to-red-600</em>).
+            </p>
+            <ArrayEditor
+              testId="occasions-editor"
+              value={get<Array<{ key: string; label: string; emoji: string; tag: string; color: string }>>(draft, "occasions", [])}
+              onChange={(next) => setPath("occasions", next)}
+              fields={[
+                { key: "key", label: "Key (url-safe, e.g. diwali)" },
+                { key: "label", label: "Label (shown to customers)" },
+                { key: "emoji", label: "Emoji" },
+                { key: "tag", label: "Tag (e.g. Festival, Bulk)" },
+                { key: "color", label: "Tailwind gradient classes" },
+              ]}
+              empty={{ key: "", label: "", emoji: "🎉", tag: "", color: "from-amber-400 via-orange-500 to-red-600" }}
+            />
+            <p className="text-xs text-muted-foreground">
+              After saving, tag each product with one or more occasions on the
+              <strong> Products → Edit </strong> page.
+            </p>
+          </TabsContent>
+
+          {/* FESTIVAL COUNTDOWN + NEWSLETTER + BULK CTA ----------- */}
+          <TabsContent value="festival" className="space-y-6 pt-4">
+            <div className="space-y-4 border rounded-md p-4 bg-muted/30">
+              <h3 className="text-sm font-semibold">Hero countdown</h3>
+              <p className="text-xs text-muted-foreground">
+                The countdown only appears on the homepage if a target date is set and is still in the future.
+                Leave the date blank to hide it.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <Field label="Festival name" testId="festival-name">
+                  <TextField
+                    value={get<string>(draft, "festival.name", "")}
+                    onChange={(v) => setPath("festival.name", v)}
+                    placeholder="Diwali, Karthigai, New Year…"
+                  />
+                </Field>
+                <Field label="Target date (yyyy-mm-dd)" testId="festival-date">
+                  <TextField
+                    type="date"
+                    value={get<string>(draft, "festival.targetDate", "")}
+                    onChange={(v) => setPath("festival.targetDate", v)}
+                    placeholder="2025-11-01"
+                  />
+                </Field>
+                <Field label="Countdown label" helper="e.g. 'Diwali season starts in'" testId="festival-label">
+                  <TextField
+                    value={get<string>(draft, "festival.countdownLabel", "")}
+                    onChange={(v) => setPath("festival.countdownLabel", v)}
+                  />
+                </Field>
+                <ToggleField
+                  label="Show countdown on homepage"
+                  value={get<boolean>(draft, "festival.enabled", true)}
+                  onChange={(v) => setPath("festival.enabled", v)}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-4 border rounded-md p-4 bg-muted/30">
+              <h3 className="text-sm font-semibold">Occasion section copy</h3>
+              <Field label="Eyebrow">
+                <TextField
+                  value={get<string>(draft, "occasionSection.eyebrow", "")}
+                  onChange={(v) => setPath("occasionSection.eyebrow", v)}
+                />
+              </Field>
+              <Field label="Title">
+                <TextField
+                  value={get<string>(draft, "occasionSection.title", "")}
+                  onChange={(v) => setPath("occasionSection.title", v)}
+                />
+              </Field>
+              <Field label="Subtitle">
+                <Textarea
+                  value={get<string>(draft, "occasionSection.subtitle", "")}
+                  onChange={(e) => setPath("occasionSection.subtitle", e.target.value)}
+                />
+              </Field>
+            </div>
+
+            <div className="space-y-4 border rounded-md p-4 bg-muted/30">
+              <h3 className="text-sm font-semibold">Newsletter band</h3>
+              <Field label="Heading">
+                <TextField
+                  value={get<string>(draft, "newsletter.heading", "")}
+                  onChange={(v) => setPath("newsletter.heading", v)}
+                />
+              </Field>
+              <Field label="Body">
+                <Textarea
+                  value={get<string>(draft, "newsletter.body", "")}
+                  onChange={(e) => setPath("newsletter.body", e.target.value)}
+                />
+              </Field>
+            </div>
+
+            <div className="space-y-4 border rounded-md p-4 bg-muted/30">
+              <h3 className="text-sm font-semibold">Bulk / weddings CTA band</h3>
+              <Field label="Eyebrow">
+                <TextField
+                  value={get<string>(draft, "bulkCta.eyebrow", "")}
+                  onChange={(v) => setPath("bulkCta.eyebrow", v)}
+                />
+              </Field>
+              <Field label="Title">
+                <TextField
+                  value={get<string>(draft, "bulkCta.title", "")}
+                  onChange={(v) => setPath("bulkCta.title", v)}
+                />
+              </Field>
+              <Field label="Body">
+                <Textarea
+                  value={get<string>(draft, "bulkCta.body", "")}
+                  onChange={(e) => setPath("bulkCta.body", e.target.value)}
+                />
+              </Field>
+              <Field label="Perks line">
+                <TextField
+                  value={get<string>(draft, "bulkCta.perks", "")}
+                  onChange={(v) => setPath("bulkCta.perks", v)}
+                />
+              </Field>
+            </div>
           </TabsContent>
 
           {/* FAQs ------------------------------------------------- */}

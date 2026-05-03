@@ -14,7 +14,7 @@ export function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const c = useSiteContent();
-  const promo = c.brand?.promoBarText ?? "Diwali Offers Live · Free GST Invoice · Pan-India Delivery";
+  const promo = c.brand?.promoBarText ?? "Festive Offers Live · Free GST Invoice · Pan-India Delivery";
   const phone = c.contact?.phone ?? "";
 
   const navLinks = [

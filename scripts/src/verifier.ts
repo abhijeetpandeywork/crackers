@@ -782,6 +782,42 @@ const sections: Array<{ name: string; checks: () => Promise<CheckResult[]> }> = 
         passed: cp.status === 200 || cp.status === 404,
         detail: `status=${cp.status}`,
       });
+
+      // Occasion filter — end-to-end smoke test.
+      // Tag a product with a rare occasion key and verify ?occasion=KEY filters to it.
+      const adminToken = await login("admin", "admin123");
+      const authHeaders = { Authorization: `Bearer ${adminToken}`, "Content-Type": "application/json" };
+      const all = await http("/api/v1/products?limit=1&onlineDisplay=true", { headers: authHeaders });
+      const someProduct = (all.body as { data?: Array<{ id?: string; occasions?: string[] }> })?.data?.[0];
+      if (adminToken && someProduct?.id) {
+        const tag = "verify-occasion";
+        const original = someProduct.occasions ?? [];
+        await http(`/api/v1/products/${someProduct.id}`, {
+          method: "PUT",
+          headers: authHeaders,
+          body: JSON.stringify({ occasions: [...original, tag] }),
+        });
+        const filtered = await http(`/api/v1/products/public?occasion=${tag}&limit=20`);
+        const items = (filtered.body as { data?: Array<{ id: string }> })?.data ?? [];
+        const found = items.some((p) => p.id === someProduct.id);
+        out.push({
+          name: "Public products filter by ?occasion= (CMS occasion tag)",
+          passed: filtered.status === 200 && found && items.length >= 1,
+          detail: `status=${filtered.status} found=${found} count=${items.length}`,
+        });
+        // Restore.
+        await http(`/api/v1/products/${someProduct.id}`, {
+          method: "PUT",
+          headers: authHeaders,
+          body: JSON.stringify({ occasions: original }),
+        });
+      } else {
+        out.push({
+          name: "Public products filter by ?occasion= (CMS occasion tag)",
+          passed: false,
+          detail: "no online product available to tag",
+        });
+      }
       return out;
     },
   },

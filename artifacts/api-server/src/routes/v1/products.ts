@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, productsTable } from "@workspace/db";
-import { eq, ilike, and, sql } from "drizzle-orm";
+import { eq, ilike, and, sql, arrayContains } from "drizzle-orm";
 import { authenticate, type AuthRequest } from "../../middleware/authenticate.js";
 import { resolvePrice, type PricingChannel } from "../../lib/pricing.js";
 import { auditWrite } from "../../lib/audit.js";
@@ -8,7 +8,7 @@ import { auditWrite } from "../../lib/audit.js";
 const router = Router();
 
 router.get("/products", authenticate, async (req, res) => {
-  const { category, status, search, page = "1", limit = "20", onlineDisplay } = req.query as Record<string, string>;
+  const { category, status, search, page = "1", limit = "20", onlineDisplay, occasion } = req.query as Record<string, string>;
   const pg = Math.max(1, parseInt(page));
   const lim = Math.min(100, parseInt(limit));
   const offset = (pg - 1) * lim;
@@ -17,6 +17,7 @@ router.get("/products", authenticate, async (req, res) => {
   if (category) conditions.push(eq(productsTable.category, category as any));
   if (status) conditions.push(eq(productsTable.status, status as any));
   if (onlineDisplay === "true") conditions.push(eq(productsTable.onlineDisplay, true));
+  if (occasion) conditions.push(arrayContains(productsTable.occasions, [occasion]));
   if (search) conditions.push(ilike(productsTable.name, `%${search}%`));
 
   const where = conditions.length > 0 ? and(...conditions) : undefined;
@@ -30,7 +31,7 @@ router.get("/products", authenticate, async (req, res) => {
 });
 
 router.get("/products/public", async (req, res) => {
-  const { category, featured, search, page = "1", limit = "20" } = req.query as Record<string, string>;
+  const { category, featured, search, page = "1", limit = "20", occasion } = req.query as Record<string, string>;
   const pg = Math.max(1, parseInt(page));
   const lim = Math.min(100, parseInt(limit));
   const offset = (pg - 1) * lim;
@@ -38,6 +39,7 @@ router.get("/products/public", async (req, res) => {
   const conditions = [eq(productsTable.onlineDisplay, true), eq(productsTable.status, "Active")];
   if (category) conditions.push(eq(productsTable.category, category as any));
   if (featured === "true") conditions.push(eq(productsTable.featured, true));
+  if (occasion) conditions.push(arrayContains(productsTable.occasions, [occasion]));
   if (search) conditions.push(ilike(productsTable.name, `%${search}%`));
 
   const where = and(...conditions);

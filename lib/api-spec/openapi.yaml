@@ -265,6 +265,11 @@ paths:
           in: query
           schema:
             type: boolean
+        - name: occasion
+          in: query
+          schema:
+            type: string
+          description: Filter to products tagged with this occasion key.
         - name: search
           in: query
           schema:
@@ -320,6 +325,11 @@ paths:
           in: query
           schema:
             type: boolean
+        - name: occasion
+          in: query
+          schema:
+            type: string
+          description: Filter to products tagged with this occasion key.
         - name: search
           in: query
           schema:
@@ -3367,6 +3377,11 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ProductVariant"
+        occasions:
+          type: array
+          items:
+            type: string
+          description: CMS occasion keys this product is tagged with (e.g. ["diwali","wedding"]).
         imageUrl:
           type: string
         createdAt:
@@ -3406,6 +3421,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ProductVariant"
+        occasions:
+          type: array
+          items:
+            type: string
 
     UpdateProductBody:
       type: object
@@ -3426,6 +3445,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ProductVariant"
+        occasions:
+          type: array
+          items:
+            type: string
 
     PriceResolution:
       type: object
