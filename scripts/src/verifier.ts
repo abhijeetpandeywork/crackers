@@ -918,6 +918,234 @@ const sections: Array<{ name: string; checks: () => Promise<CheckResult[]> }> = 
       return out;
     },
   },
+  {
+    name: "11. Audit-log coverage (users, locations, suppliers, agents)",
+    checks: async () => {
+      const out: CheckResult[] = [];
+      const tok = await login("admin", "admin123");
+      if (!tok) {
+        out.push({ name: "Audit-coverage checks (skipped — no token)", passed: false });
+        return out;
+      }
+      const headers = { Authorization: `Bearer ${tok}`, "Content-Type": "application/json" };
+
+      const auditTotal = async (entityType: string): Promise<number> => {
+        const r = await http(`/api/v1/audit-log?entityType=${entityType}&limit=1`, { headers });
+        return Number((r.body as { meta?: { total?: number } })?.meta?.total ?? -1);
+      };
+
+      const stamp = Date.now();
+
+      // Some routes return the bare row (`{ id }`), others return the
+      // standard envelope (`{ success, data: { id } }`). Read either shape
+      // without resorting to `any`.
+      type IdResponse = { id?: string; data?: { id?: string } };
+      const extractId = (body: unknown): string | undefined => {
+        const b = (body ?? {}) as IdResponse;
+        return b.data?.id ?? b.id;
+      };
+
+      // -- locations: POST + PUT + DELETE --
+      {
+        const before = await auditTotal("location");
+        const created = await http("/api/v1/locations", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ name: `verify-loc-${stamp}`, type: "warehouse", address: "Verifier Address" }),
+        });
+        const lid = extractId(created.body);
+        const afterCreate = await auditTotal("location");
+        out.push({
+          name: "POST /locations records a 'location' audit-log row",
+          passed: created.status === 201 && !!lid && before >= 0 && afterCreate === before + 1,
+          detail: `status=${created.status} before=${before} after=${afterCreate}`,
+        });
+        if (lid) {
+          const updated = await http(`/api/v1/locations/${lid}`, {
+            method: "PUT",
+            headers,
+            body: JSON.stringify({ name: `verify-loc-${stamp}-edit` }),
+          });
+          const afterUpdate = await auditTotal("location");
+          out.push({
+            name: "PUT /locations/:id records a 'location' audit-log row",
+            passed: updated.status === 200 && afterUpdate === afterCreate + 1,
+            detail: `status=${updated.status} before=${afterCreate} after=${afterUpdate}`,
+          });
+          const deleted = await http(`/api/v1/locations/${lid}`, { method: "DELETE", headers });
+          const afterDelete = await auditTotal("location");
+          out.push({
+            name: "DELETE /locations/:id records a 'location' audit-log row",
+            passed: deleted.status === 200 && afterDelete === afterUpdate + 1,
+            detail: `status=${deleted.status} before=${afterUpdate} after=${afterDelete}`,
+          });
+        }
+      }
+
+      // -- suppliers: POST + PUT + DELETE --
+      {
+        const before = await auditTotal("supplier");
+        const created = await http("/api/v1/suppliers", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ name: `verify-sup-${stamp}`, phone: `9${String(stamp).slice(-9)}` }),
+        });
+        const sid = extractId(created.body);
+        const afterCreate = await auditTotal("supplier");
+        out.push({
+          name: "POST /suppliers records a 'supplier' audit-log row",
+          passed: created.status === 201 && !!sid && before >= 0 && afterCreate === before + 1,
+          detail: `status=${created.status} before=${before} after=${afterCreate}`,
+        });
+        if (sid) {
+          const updated = await http(`/api/v1/suppliers/${sid}`, {
+            method: "PUT",
+            headers,
+            body: JSON.stringify({ name: `verify-sup-${stamp}-edit` }),
+          });
+          const afterUpdate = await auditTotal("supplier");
+          out.push({
+            name: "PUT /suppliers/:id records a 'supplier' audit-log row",
+            passed: updated.status === 200 && afterUpdate === afterCreate + 1,
+            detail: `status=${updated.status} before=${afterCreate} after=${afterUpdate}`,
+          });
+          const deleted = await http(`/api/v1/suppliers/${sid}`, { method: "DELETE", headers });
+          const afterDelete = await auditTotal("supplier");
+          out.push({
+            name: "DELETE /suppliers/:id records a 'supplier' audit-log row",
+            passed: deleted.status === 200 && afterDelete === afterUpdate + 1,
+            detail: `status=${deleted.status} before=${afterUpdate} after=${afterDelete}`,
+          });
+        }
+      }
+
+      // -- agents: POST + PUT + DELETE --
+      {
+        const before = await auditTotal("agent");
+        const created = await http("/api/v1/agents", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ name: `verify-agent-${stamp}`, phone: `8${String(stamp).slice(-9)}` }),
+        });
+        const aid = extractId(created.body);
+        const afterCreate = await auditTotal("agent");
+        out.push({
+          name: "POST /agents records an 'agent' audit-log row",
+          passed: created.status === 201 && !!aid && before >= 0 && afterCreate === before + 1,
+          detail: `status=${created.status} before=${before} after=${afterCreate}`,
+        });
+        if (aid) {
+          const updated = await http(`/api/v1/agents/${aid}`, {
+            method: "PUT",
+            headers,
+            body: JSON.stringify({ name: `verify-agent-${stamp}-edit` }),
+          });
+          const afterUpdate = await auditTotal("agent");
+          out.push({
+            name: "PUT /agents/:id records an 'agent' audit-log row",
+            passed: updated.status === 200 && afterUpdate === afterCreate + 1,
+            detail: `status=${updated.status} before=${afterCreate} after=${afterUpdate}`,
+          });
+          const deleted = await http(`/api/v1/agents/${aid}`, { method: "DELETE", headers });
+          const afterDelete = await auditTotal("agent");
+          out.push({
+            name: "DELETE /agents/:id records an 'agent' audit-log row",
+            passed: deleted.status === 200 && afterDelete === afterUpdate + 1,
+            detail: `status=${deleted.status} before=${afterUpdate} after=${afterDelete}`,
+          });
+        }
+      }
+
+      // -- users: POST + PATCH + DELETE --
+      {
+        const before = await auditTotal("user");
+        const created = await http("/api/v1/users", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            name: `Verify User ${stamp}`,
+            username: `verify_${stamp}`,
+            password: "verify1234",
+            role: "CASHIER",
+          }),
+        });
+        const uid = extractId(created.body);
+        const afterCreate = await auditTotal("user");
+        out.push({
+          name: "POST /users records a 'user' audit-log row",
+          passed: created.status === 201 && !!uid && before >= 0 && afterCreate === before + 1,
+          detail: `status=${created.status} before=${before} after=${afterCreate}`,
+        });
+        if (uid) {
+          const updated = await http(`/api/v1/users/${uid}`, {
+            method: "PATCH",
+            headers,
+            body: JSON.stringify({ name: `Verify User ${stamp} (edited)` }),
+          });
+          const afterUpdate = await auditTotal("user");
+          out.push({
+            name: "PATCH /users/:id records a 'user' audit-log row",
+            passed: updated.status === 200 && afterUpdate === afterCreate + 1,
+            detail: `status=${updated.status} before=${afterCreate} after=${afterUpdate}`,
+          });
+          const deleted = await http(`/api/v1/users/${uid}`, { method: "DELETE", headers });
+          const afterDelete = await auditTotal("user");
+          out.push({
+            name: "DELETE /users/:id records a 'user' audit-log row",
+            passed: deleted.status === 200 && afterDelete === afterUpdate + 1,
+            detail: `status=${deleted.status} before=${afterUpdate} after=${afterDelete}`,
+          });
+        }
+      }
+
+      // -- RBAC: a non-admin (CASHIER) must not be able to write to any of
+      //    these admin surfaces. We assert 403 across POST/PUT/DELETE for
+      //    every entity so the audit-coverage gain doesn't get masked by an
+      //    open write path.
+      const cashierTok = await login("cashier", "admin123");
+      if (cashierTok) {
+        const ch = { Authorization: `Bearer ${cashierTok}`, "Content-Type": "application/json" };
+        const dummyId = "00000000-0000-0000-0000-000000000000";
+        type RbacProbe = { label: string; method: "POST" | "PUT" | "DELETE"; path: string; body?: unknown };
+        const probes: RbacProbe[] = [
+          { label: "POST /locations", method: "POST", path: "/api/v1/locations", body: { name: "x", type: "warehouse", address: "x" } },
+          { label: "PUT /locations/:id", method: "PUT", path: `/api/v1/locations/${dummyId}`, body: { name: "x" } },
+          { label: "DELETE /locations/:id", method: "DELETE", path: `/api/v1/locations/${dummyId}` },
+          { label: "POST /suppliers", method: "POST", path: "/api/v1/suppliers", body: { name: "x", phone: "9000000000" } },
+          { label: "PUT /suppliers/:id", method: "PUT", path: `/api/v1/suppliers/${dummyId}`, body: { name: "x" } },
+          { label: "DELETE /suppliers/:id", method: "DELETE", path: `/api/v1/suppliers/${dummyId}` },
+          { label: "POST /agents", method: "POST", path: "/api/v1/agents", body: { name: "x", phone: "9000000001" } },
+          { label: "PUT /agents/:id", method: "PUT", path: `/api/v1/agents/${dummyId}`, body: { name: "x" } },
+          { label: "DELETE /agents/:id", method: "DELETE", path: `/api/v1/agents/${dummyId}` },
+        ];
+        for (const p of probes) {
+          const r = await http(p.path, {
+            method: p.method,
+            headers: ch,
+            ...(p.body ? { body: JSON.stringify(p.body) } : {}),
+          });
+          out.push({
+            name: `${p.label} as non-admin (CASHIER) returns 403 (RBAC)`,
+            passed: r.status === 403,
+            detail: `status=${r.status}`,
+          });
+        }
+      }
+
+      // -- entity-types listing surfaces all four --
+      const types = await http("/api/v1/audit-log/entity-types", { headers });
+      const typeList = ((types.body as { data?: string[] })?.data ?? []) as string[];
+      const required = ["user", "location", "supplier", "agent"] as const;
+      const missing = required.filter((t) => !typeList.includes(t));
+      out.push({
+        name: "Audit-log entity-types includes user/location/supplier/agent",
+        passed: missing.length === 0,
+        detail: missing.length === 0 ? `types=${typeList.join(",")}` : `missing=${missing.join(",")}`,
+      });
+
+      return out;
+    },
+  },
 ];
 
 async function main() {

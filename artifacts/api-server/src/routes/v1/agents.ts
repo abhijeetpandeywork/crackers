@@ -1,9 +1,13 @@
 import { Router } from "express";
 import { db, agentsTable, invoicesTable } from "@workspace/db";
 import { eq, ilike, and, sql, gte, lte, desc } from "drizzle-orm";
-import { authenticate } from "../../middleware/authenticate.js";
+import { authenticate, requireRole, type AuthRequest } from "../../middleware/authenticate.js";
+import { auditWrite } from "../../lib/audit.js";
 
 const router = Router();
+
+const requireWrite = requireRole("SUPER_ADMIN", "ADMIN", "ERP_MANAGER");
+const requireDelete = requireRole("SUPER_ADMIN", "ADMIN");
 
 router.get("/agents", authenticate, async (req, res) => {
   const { search, page = "1", limit = "20" } = req.query as Record<string, string>;
@@ -21,8 +25,9 @@ router.get("/agents", authenticate, async (req, res) => {
   res.json({ success: true, data: rows, meta: { page: pg, limit: lim, total, pages: Math.ceil(total / lim) } });
 });
 
-router.post("/agents", authenticate, async (req, res) => {
+router.post("/agents", authenticate, requireWrite, async (req: AuthRequest, res) => {
   const [agent] = await db.insert(agentsTable).values({ ...req.body, id: crypto.randomUUID() }).returning();
+  await auditWrite(req, { action: "CREATE", entityType: "agent", entityId: agent?.id, after: agent });
   res.status(201).json(agent);
 });
 
@@ -32,10 +37,29 @@ router.get("/agents/:id", authenticate, async (req, res) => {
   res.json(rows[0]);
 });
 
-router.put("/agents/:id", authenticate, async (req, res) => {
-  const [agent] = await db.update(agentsTable).set(req.body).where(eq(agentsTable.id, req.params["id"] as string)).returning();
+router.put("/agents/:id", authenticate, requireWrite, async (req: AuthRequest, res) => {
+  const id = req.params["id"] as string;
+  const before = (await db.select().from(agentsTable).where(eq(agentsTable.id, id)).limit(1))[0] ?? null;
+  const [agent] = await db.update(agentsTable).set(req.body).where(eq(agentsTable.id, id)).returning();
   if (!agent) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Agent not found" } }); return; }
+  await auditWrite(req, { action: "UPDATE", entityType: "agent", entityId: id, before, after: agent });
   res.json(agent);
+});
+
+router.delete("/agents/:id", authenticate, requireDelete, async (req: AuthRequest, res) => {
+  const id = req.params["id"] as string;
+  try {
+    const [agent] = await db.delete(agentsTable).where(eq(agentsTable.id, id)).returning();
+    if (!agent) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Agent not found" } }); return; }
+    await auditWrite(req, { action: "DELETE", entityType: "agent", entityId: id, before: agent });
+    res.json({ success: true, data: { id } });
+  } catch (err: any) {
+    if (err?.code === "23503") {
+      res.status(409).json({ success: false, error: { code: "IN_USE", message: "Agent is referenced by other records" } });
+      return;
+    }
+    throw err;
+  }
 });
 
 router.get("/agents/:id/commission", authenticate, async (req, res) => {
