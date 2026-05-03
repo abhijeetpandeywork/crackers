@@ -224,7 +224,15 @@ router.get("/invoices/gst-report", authenticate, async (req, res) => {
 router.get("/invoices/:id", authenticate, async (req, res) => {
   const rows = await db.select().from(invoicesTable).where(eq(invoicesTable.id, req.params["id"] as string)).limit(1);
   if (!rows[0]) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Invoice not found" } }); return; }
-  res.json(rows[0]);
+  const inv = rows[0];
+  let customerName: string | null = null;
+  let customerPhone: string | null = null;
+  if (inv.customerId) {
+    const c = (await db.select().from(customersTable).where(eq(customersTable.id, inv.customerId)).limit(1))[0];
+    customerName = c?.name ?? null;
+    customerPhone = c?.phone ?? null;
+  }
+  res.json({ ...inv, customerName, customerPhone });
 });
 
 router.post("/invoices/:id/share", authenticate, async (_req, res) => {

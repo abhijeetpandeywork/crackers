@@ -31,6 +31,7 @@ interface CartContextType {
   discount: number;
   total: number;
   taxRate: number;
+  pricingLoaded: boolean;
   coupon: CouponData | null;
   applyCoupon: (coupon: CouponData | null) => void;
   customer: any | null;
@@ -100,8 +101,11 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Tax rate must come from server pricing settings, not be hardcoded — the
   // POS sale endpoint validates `tenderSum === server-computed total`, so a
   // mismatch (e.g. 18% vs 12%) makes every checkout fail with TENDER_MISMATCH.
-  const { data: pricingResp } = useGetPricingSettings();
-  const taxRate = Number((pricingResp as any)?.taxRate ?? (pricingResp as any)?.data?.taxRate ?? 0.12);
+  // Tax rate fallback MUST match the server's fallback (`0.18` in
+  // api-server/src/routes/v1/pos.ts) — a divergence would re-introduce the
+  // TENDER_MISMATCH bug whenever the settings fetch is slow or fails.
+  const { data: pricingResp, isSuccess: pricingLoaded } = useGetPricingSettings();
+  const taxRate = Number((pricingResp as any)?.taxRate ?? (pricingResp as any)?.data?.taxRate ?? 0.18);
 
   const taxableAmount = subtotal - discount;
   const gst = taxableAmount * taxRate;
@@ -110,7 +114,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   return (
     <CartContext.Provider value={{ 
       items, addItem, removeItem, updateQty, clearCart, loadHeldBill,
-      subtotal, gst, discount, total, taxRate, 
+      subtotal, gst, discount, total, taxRate, pricingLoaded, 
       coupon, applyCoupon: setCoupon,
       customer, setCustomer
     }}>

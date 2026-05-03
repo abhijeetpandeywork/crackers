@@ -11,6 +11,7 @@ import {
   useGetCurrentShift,
   useGetRecentPosSales,
   useListCustomers,
+  useCreateCustomer,
 } from "@workspace/api-client-react";
 import { useCart, type CouponData, type CartItem } from "@/context/cart";
 import { Input } from "@/components/ui/input";
@@ -56,6 +57,10 @@ const SaleScreen = () => {
   const [activeLocationId, setActiveLocationId] = useState<string>("");
   const [customerSearch, setCustomerSearch] = useState("");
   const [customerOpen, setCustomerOpen] = useState(false);
+  const [newCustOpen, setNewCustOpen] = useState(false);
+  const [newCustName, setNewCustName] = useState("");
+  const [newCustPhone, setNewCustPhone] = useState("");
+  const createCustomerMut = useCreateCustomer();
   const [heldBillsOpen, setHeldBillsOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [scannerSettingsOpen, setScannerSettingsOpen] = useState(false);
@@ -102,7 +107,7 @@ const SaleScreen = () => {
 
   const {
     items, addItem, removeItem, updateQty, clearCart, loadHeldBill,
-    subtotal, gst, discount, total: cartTotal, taxRate,
+    subtotal, gst, discount, total: cartTotal, taxRate, pricingLoaded,
     coupon, applyCoupon, customer, setCustomer,
   } = useCart();
 
@@ -708,7 +713,11 @@ const SaleScreen = () => {
                 </div>
                 <div className="max-h-64 overflow-y-auto">
                   {customerSearch.length < 2 && <p className="text-xs text-zinc-500 p-3">Type at least 2 characters</p>}
-                  {customerSearch.length >= 2 && (customersData?.data ?? []).length === 0 && <p className="text-xs text-zinc-500 p-3">No matches. Leave blank for walk-in.</p>}
+                  {customerSearch.length >= 2 && (customersData?.data ?? []).length === 0 && (
+                    <div className="p-3 space-y-2">
+                      <p className="text-xs text-zinc-500">No matches. Walk-in customer is fine, or add a new one.</p>
+                    </div>
+                  )}
                   {(customersData?.data ?? []).map((c) => (
                     <button key={c.id} onClick={() => { setCustomer(c); setCustomerSearch(""); setCustomerOpen(false); }}
                       className="w-full text-left p-3 hover:bg-zinc-900 border-b border-zinc-900" data-testid={`customer-option-${c.id}`}>
@@ -716,6 +725,24 @@ const SaleScreen = () => {
                       <p className="text-xs text-zinc-500">{c.phone} {c.customerType ? `• ${c.customerType}` : ""}</p>
                     </button>
                   ))}
+                </div>
+                <div className="p-2 border-t border-zinc-800 flex gap-2">
+                  <Button variant="outline" size="sm" className="flex-1 h-9 border-zinc-800"
+                    onClick={() => { setCustomer(null); setCustomerSearch(""); setCustomerOpen(false); }}
+                    data-testid="customer-walkin">
+                    <UserX className="h-4 w-4 mr-2" /> Walk-in
+                  </Button>
+                  <Button variant="default" size="sm" className="flex-1 h-9"
+                    onClick={() => {
+                      const initial = customerSearch.trim();
+                      if (/^\d{6,}$/.test(initial)) { setNewCustPhone(initial); setNewCustName(""); }
+                      else { setNewCustName(initial); setNewCustPhone(""); }
+                      setCustomerOpen(false);
+                      setNewCustOpen(true);
+                    }}
+                    data-testid="customer-add-new">
+                    <Plus className="h-4 w-4 mr-2" /> New customer
+                  </Button>
                 </div>
               </PopoverContent>
             </Popover>
@@ -829,7 +856,7 @@ const SaleScreen = () => {
 
           <Button
             className="w-full h-16 text-xl font-black rounded-xl shadow-lg shadow-primary/20"
-            disabled={items.length === 0 || remainingDue > 0.5 || checkingOut || !currentShift}
+            disabled={items.length === 0 || remainingDue > 0.5 || checkingOut || !currentShift || !pricingLoaded}
             onClick={handleCheckout}
             data-testid="pos-checkout-btn"
           >
@@ -891,6 +918,66 @@ const SaleScreen = () => {
               data-testid="pos-delivery-save"
             >
               Save address
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* New customer dialog */}
+      <Dialog open={newCustOpen} onOpenChange={setNewCustOpen}>
+        <DialogContent className="bg-zinc-950 border-zinc-800 text-white">
+          <DialogHeader><DialogTitle className="text-2xl font-black">NEW CUSTOMER</DialogTitle></DialogHeader>
+          <div className="space-y-3 pt-2">
+            <div>
+              <label className="text-xs text-zinc-400">Name</label>
+              <Input value={newCustName} onChange={(e) => setNewCustName(e.target.value)} placeholder="Customer name" className="bg-zinc-900 border-zinc-800" data-testid="new-cust-name" />
+            </div>
+            <div>
+              <label className="text-xs text-zinc-400">Phone</label>
+              <Input value={newCustPhone} onChange={(e) => setNewCustPhone(e.target.value)} placeholder="10-digit phone" className="bg-zinc-900 border-zinc-800" data-testid="new-cust-phone" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" className="border-zinc-800" onClick={() => setNewCustOpen(false)}>Cancel</Button>
+            <Button
+              data-testid="new-cust-save"
+              disabled={createCustomerMut.isPending || !newCustName.trim() || !/^\d{6,}$/.test(newCustPhone.trim())}
+              onClick={async () => {
+                try {
+                  const res: any = await createCustomerMut.mutateAsync({
+                    data: {
+                      name: newCustName.trim(),
+                      phone: newCustPhone.trim(),
+                      customerType: "retail",
+                    },
+                  });
+                  const created = (res?.data ?? res) as { id?: string; name?: string; phone?: string } | null;
+                  if (created?.id) {
+                    setCustomer(created);
+                  }
+                  toast({ title: "Customer added", description: created?.name ?? newCustName });
+                  setNewCustOpen(false);
+                  setNewCustName("");
+                  setNewCustPhone("");
+                  setCustomerSearch("");
+                } catch (err: any) {
+                  // Duplicate phone: server returns 409 with the existing customer in `data`.
+                  // Attach it so the cashier isn't blocked by a pre-existing record.
+                  const existing = err?.data?.data ?? err?.body?.data ?? null;
+                  if (err?.status === 409 && existing?.id) {
+                    setCustomer(existing);
+                    toast({ title: "Customer already on file", description: existing.name ?? newCustName });
+                    setNewCustOpen(false);
+                    setNewCustName("");
+                    setNewCustPhone("");
+                    setCustomerSearch("");
+                    return;
+                  }
+                  toast({ title: "Failed to add customer", description: err?.message ?? "Please try again", variant: "destructive" });
+                }
+              }}
+            >
+              {createCustomerMut.isPending ? "Saving…" : "Save customer"}
             </Button>
           </DialogFooter>
         </DialogContent>

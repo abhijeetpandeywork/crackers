@@ -27,9 +27,37 @@ router.get("/customers", authenticate, async (req, res) => {
 });
 
 router.post("/customers", authenticate, async (req: AuthRequest, res) => {
-  const [customer] = await db.insert(customersTable).values({ ...req.body, id: crypto.randomUUID() }).returning();
-  await auditWrite(req, { action: "CREATE", entityType: "customer", entityId: customer?.id, after: customer });
-  res.status(201).json(customer);
+  const phone = typeof req.body?.phone === "string" ? req.body.phone.trim() : "";
+  if (phone) {
+    const existing = (await db.select().from(customersTable).where(eq(customersTable.phone, phone)).limit(1))[0];
+    if (existing) {
+      // Phone is unique. Surface the duplicate as a 409 with the existing
+      // record so callers (e.g. POS quick-add) can attach the existing
+      // customer instead of erroring out the cashier mid-checkout.
+      res.status(409).json({
+        success: false,
+        error: { code: "DUPLICATE_PHONE", message: "A customer with this phone already exists" },
+        data: existing,
+      });
+      return;
+    }
+  }
+  try {
+    const [customer] = await db.insert(customersTable).values({ ...req.body, phone, id: crypto.randomUUID() }).returning();
+    await auditWrite(req, { action: "CREATE", entityType: "customer", entityId: customer?.id, after: customer });
+    res.status(201).json(customer);
+  } catch (err: any) {
+    if (err?.code === "23505") {
+      const existing = (await db.select().from(customersTable).where(eq(customersTable.phone, phone)).limit(1))[0];
+      res.status(409).json({
+        success: false,
+        error: { code: "DUPLICATE_PHONE", message: "A customer with this phone already exists" },
+        data: existing ?? null,
+      });
+      return;
+    }
+    throw err;
+  }
 });
 
 router.get("/customers/:id", authenticate, async (req, res) => {
