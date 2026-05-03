@@ -6,6 +6,10 @@ This project is a comprehensive, full-stack business management platform for Rat
 
 Key capabilities include a 5-tier pricing engine, an immutable stock ledger system, GST invoicing, a coupon engine, loyalty points, agent commissions, customer credit management, barcode support, and various financial reports. The platform integrates multiple applications such as an ERP Admin Panel, a POS Interface, a Warehouse Dashboard, and an E-commerce Website, all built on a unified API contract.
 
+**CMS / dynamic config (admin-editable):** the website (promo bar text, brand name/tagline/year, hero CTAs, contact phone/whatsapp/email/address/GSTIN, social links, floating WhatsApp button, policies) and POS (quick-cash denominations, enabled payment methods) are all driven by the `siteContent` jsonb in `settings`. Edit at ERP → Website Content. POS reads `pos.quickCash` and `pos.paymentMethods` from the same public endpoint and re-renders accordingly.
+
+**Server-enforced safety rails on POS sales:** non-positive/non-finite item quantities are rejected (400 VALIDATION); manual-discount % is capped per role (Admin 100%, Manager `pricing.maxManagerDiscountPct` default 50%, Cashier `pricing.maxCashierDiscountPct` default 10%) and over-cap requests return 403 DISCOUNT_LIMIT — preventing API-level bypass of the UI.
+
 The business vision is to provide a highly efficient and auditable system that supports both internal operations and external customer engagement, enhancing overall productivity and customer satisfaction in a specialized market.
 
 ## User Preferences

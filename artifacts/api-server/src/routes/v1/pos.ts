@@ -305,6 +305,18 @@ router.post("/pos/sale", authenticate, async (req: AuthRequest, res) => {
     return;
   }
 
+  // Reject any non-positive or non-finite quantities. Without this a malicious
+  // client could send qty=-1 to "refund" stock and reduce the bill.
+  for (const it of items) {
+    if (!it || typeof it.qty !== "number" || !Number.isFinite(it.qty) || it.qty <= 0) {
+      res.status(400).json({
+        success: false,
+        error: { code: "VALIDATION", message: "Each item must have a positive quantity" },
+      });
+      return;
+    }
+  }
+
   const settingsRows = await db.select().from(settingsTable).where(eq(settingsTable.key, "pricing")).limit(1);
   const pricingSettings = (settingsRows[0]?.value ?? {}) as any;
   const threshold = Number(pricingSettings.wholesaleQtyThreshold ?? 10);
@@ -334,7 +346,28 @@ router.post("/pos/sale", authenticate, async (req: AuthRequest, res) => {
   }
 
   const subtotal = resolvedItems.reduce((s, i) => s + i.amount, 0);
-  const manualDiscount = Math.max(0, num(orderDiscount));
+
+  // Cap discount by user role. Without this a cashier could ring up a 99%
+  // discount via the API and bypass the UI's manual-discount field.
+  const role = (req.user?.role ?? "CASHIER").toUpperCase();
+  const discountCapPct = (() => {
+    if (role === "SUPER_ADMIN" || role === "ADMIN") return 100;
+    if (role === "ERP_MANAGER" || role === "MANAGER") return Number(pricingSettings.maxManagerDiscountPct ?? 50);
+    return Number(pricingSettings.maxCashierDiscountPct ?? 10);
+  })();
+  const maxAllowedDiscount = subtotal * (discountCapPct / 100);
+  const requestedDiscount = Math.max(0, num(orderDiscount));
+  if (requestedDiscount > maxAllowedDiscount + 0.01) {
+    res.status(403).json({
+      success: false,
+      error: {
+        code: "DISCOUNT_LIMIT",
+        message: `Your role (${role}) can apply at most ${discountCapPct}% discount (₹${maxAllowedDiscount.toFixed(2)} on this bill)`,
+      },
+    });
+    return;
+  }
+  const manualDiscount = Math.min(requestedDiscount, maxAllowedDiscount);
   const taxable = Math.max(0, subtotal - manualDiscount);
   const cgst = taxable * (taxRate / 2);
   const sgst = taxable * (taxRate / 2);

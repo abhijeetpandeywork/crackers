@@ -34,6 +34,9 @@ const pricingSchema = z.object({
   // taxRate kept as a fraction (0.18) for the pricing engine; derived from
   // defaultGstRate when not supplied explicitly.
   taxRate: z.number().min(0).max(1).optional(),
+  // Server-enforced caps so a malicious POS client can't bypass the UI.
+  maxCashierDiscountPct: z.number().min(0).max(100).optional().default(10),
+  maxManagerDiscountPct: z.number().min(0).max(100).optional().default(50),
 });
 
 const companyDefaults = {
@@ -57,6 +60,8 @@ const pricingDefaults = {
   loyaltyRedemptionRate: 1,
   defaultPriceListId: null,
   taxRate: 0.18,
+  maxCashierDiscountPct: 10,
+  maxManagerDiscountPct: 50,
 };
 
 // --- Routes ----------------------------------------------------------------

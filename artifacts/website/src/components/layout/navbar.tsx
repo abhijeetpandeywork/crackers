@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ShoppingCart, Menu, X, Phone, Sparkles, User, LogOut, Package, Heart, MapPin, ChevronDown } from "lucide-react";
 import { useState } from "react";
 import logoUrl from "@assets/rathinam_logo.png";
+import { useSiteContent, telHref, whatsAppHref } from "@/hooks/useSiteContent";
 
 export function Navbar() {
   const { totalItems } = useCart();
@@ -12,6 +13,9 @@ export function Navbar() {
   const [location, navigate] = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+  const c = useSiteContent();
+  const promo = c.brand?.promoBarText ?? "Diwali Offers Live · Free GST Invoice · Pan-India Delivery";
+  const phone = c.contact?.phone ?? "";
 
   const navLinks = [
     { href: "/", label: "Home" },
@@ -26,12 +30,14 @@ export function Navbar() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <Sparkles className="h-3.5 w-3.5 text-amber-200 animate-pulse" />
-            <span className="font-medium tracking-wide">Diwali Offers Live · Free GST Invoice · Pan-India Delivery</span>
+            <span className="font-medium tracking-wide">{promo}</span>
           </div>
-          <a href="tel:+919876543210" className="hidden sm:flex items-center gap-1.5 hover:text-amber-200 transition-colors">
-            <Phone className="h-3.5 w-3.5" />
-            <span className="font-semibold">+91 98765 43210</span>
-          </a>
+          {phone && (
+            <a href={telHref(c)} className="hidden sm:flex items-center gap-1.5 hover:text-amber-200 transition-colors">
+              <Phone className="h-3.5 w-3.5" />
+              <span className="font-semibold">{phone}</span>
+            </a>
+          )}
         </div>
       </div>
 
@@ -59,7 +65,7 @@ export function Navbar() {
                 </Link>
               ))}
               <a
-                href="https://wa.me/919876543210?text=Hi%20Rathinam%20Crackers%2C%20I%27d%20like%20to%20enquire%20about%20bulk%20orders"
+                href={whatsAppHref(c, "Hi Rathinam Crackers, I'd like to enquire about bulk orders")}
                 target="_blank"
                 rel="noreferrer"
                 className="text-sm font-medium text-green-600 hover:text-green-700 transition-colors"
@@ -150,7 +156,7 @@ export function Navbar() {
               </Link>
             ))}
             <a
-              href="https://wa.me/919876543210"
+              href={whatsAppHref(c)}
               target="_blank"
               rel="noreferrer"
               className="block px-3 py-2 rounded-md text-base font-medium text-green-700 hover:bg-green-50"

@@ -1,5 +1,6 @@
 import { Navbar } from "./navbar";
 import { Footer } from "./footer";
+import { FloatingWhatsApp } from "./floating-whatsapp";
 import { ReactNode } from "react";
 
 export function Layout({ children }: { children: ReactNode }) {
@@ -10,6 +11,7 @@ export function Layout({ children }: { children: ReactNode }) {
         {children}
       </main>
       <Footer />
+      <FloatingWhatsApp />
     </div>
   );
 }

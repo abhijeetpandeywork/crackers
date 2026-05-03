@@ -171,26 +171,55 @@ export default function Home() {
         <div className="relative z-10 text-center px-4 max-w-5xl">
           <div className="inline-flex items-center gap-2 bg-amber-500/15 border border-amber-400/30 backdrop-blur px-4 py-1.5 rounded-full mb-6">
             <Sparkles className="h-3.5 w-3.5 text-amber-300" />
-            <span className="text-amber-200 text-xs font-semibold tracking-widest uppercase">Diwali 2026 collection · Live now</span>
+            <span className="text-amber-200 text-xs font-semibold tracking-widest uppercase">{c.brand?.promoBarText ?? "Diwali collection · Live now"}</span>
           </div>
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold text-white mb-6 tracking-tight leading-[1.05]">
-            Celebrate with <span className="bg-gradient-to-r from-amber-300 via-amber-400 to-orange-400 bg-clip-text text-transparent">Rathinam Crackers</span>
+            Celebrate with <span className="bg-gradient-to-r from-amber-300 via-amber-400 to-orange-400 bg-clip-text text-transparent">{c.brand?.name ?? "Rathinam Crackers"}</span>
           </h1>
           <p className="text-lg md:text-2xl text-amber-100/90 mb-10 max-w-3xl mx-auto font-medium">
-            Premium Sivakasi Fireworks since 1985. Three generations of cracker craftsmanship — making every festival extraordinary with safety and brilliance.
+            {c.brand?.tagline ?? "Premium Sivakasi Fireworks since 1985."} Three generations of cracker craftsmanship — making every festival extraordinary with safety and brilliance.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-10">
-            <Link href="/catalogue">
-              <Button size="lg" className="bg-amber-500 hover:bg-amber-600 text-[hsl(197,65%,12%)] font-bold text-lg px-10 h-14 rounded-full shadow-xl shadow-amber-900/30">
-                Shop the collection <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
-            <a href="https://wa.me/919876543210?text=Hi%2C%20I%27d%20like%20a%20bulk%20quote" target="_blank" rel="noreferrer">
-              <Button size="lg" variant="outline" className="border-white/30 bg-white/10 backdrop-blur text-white hover:bg-white/20 hover:text-white font-bold text-lg px-8 h-14 rounded-full">
-                <MessageCircle className="mr-2 h-5 w-5 text-green-400" /> Bulk &amp; Weddings
-              </Button>
-            </a>
-          </div>
+          {(() => {
+            const wa = (c.contact?.whatsapp ?? "").replace(/[^0-9]/g, "");
+            const waMsg = encodeURIComponent(c.brand?.bulkWhatsAppMessage ?? "Hi, I'd like a bulk quote");
+            const primary = c.cta?.heroPrimary ?? { label: "Shop the collection", href: "/catalogue" };
+            const secondary = c.cta?.heroSecondary ?? { label: "Bulk & Weddings", href: "wa" };
+            // Protocol whitelist (defense against `javascript:` injected via CMS).
+            const safe = (h: string | undefined, fb: string) => {
+              const s = String(h ?? "").trim();
+              if (s.startsWith("/") || s.startsWith("#")) return s;
+              if (/^(https?|tel|mailto):/i.test(s)) return s;
+              return fb;
+            };
+            const primaryHref = safe(primary.href, "/catalogue");
+            const rawSecondary = secondary.href === "wa" || !secondary.href
+              ? (wa ? `https://wa.me/${wa}?text=${waMsg}` : "#")
+              : secondary.href;
+            const secondaryHref = safe(rawSecondary, "#");
+            const isExternal = (h: string) => /^https?:|^tel:|^mailto:/.test(h);
+            return (
+              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-10">
+                {isExternal(primaryHref) ? (
+                  <a href={primaryHref} target="_blank" rel="noreferrer">
+                    <Button size="lg" className="bg-amber-500 hover:bg-amber-600 text-[hsl(197,65%,12%)] font-bold text-lg px-10 h-14 rounded-full shadow-xl shadow-amber-900/30">
+                      {primary.label ?? "Shop"} <ArrowRight className="ml-2 h-5 w-5" />
+                    </Button>
+                  </a>
+                ) : (
+                  <Link href={primaryHref}>
+                    <Button size="lg" className="bg-amber-500 hover:bg-amber-600 text-[hsl(197,65%,12%)] font-bold text-lg px-10 h-14 rounded-full shadow-xl shadow-amber-900/30">
+                      {primary.label ?? "Shop"} <ArrowRight className="ml-2 h-5 w-5" />
+                    </Button>
+                  </Link>
+                )}
+                <a href={secondaryHref} target="_blank" rel="noreferrer">
+                  <Button size="lg" variant="outline" className="border-white/30 bg-white/10 backdrop-blur text-white hover:bg-white/20 hover:text-white font-bold text-lg px-8 h-14 rounded-full">
+                    <MessageCircle className="mr-2 h-5 w-5 text-green-400" /> {secondary.label ?? "Bulk & Weddings"}
+                  </Button>
+                </a>
+              </div>
+            );
+          })()}
 
           {/* Countdown */}
           <div className="inline-flex flex-col items-center gap-2 bg-black/30 backdrop-blur border border-white/10 rounded-2xl px-6 py-4">
@@ -517,16 +546,29 @@ export default function Home() {
               <p className="text-amber-100 text-sm">Wholesale rates auto-applied · GST B2B invoices · Doorstep delivery</p>
             </div>
             <div className="flex flex-col sm:flex-row gap-4 md:justify-end">
-              <a href="https://wa.me/919876543210?text=Hi%2C%20I%27d%20like%20a%20bulk%20quote" target="_blank" rel="noreferrer">
-                <Button size="lg" className="bg-white text-primary hover:bg-amber-300 font-bold text-lg px-8 h-14 rounded-full w-full sm:w-auto">
-                  <MessageCircle className="mr-2 h-5 w-5 text-green-600" /> WhatsApp us
-                </Button>
-              </a>
-              <a href="tel:+919876543210">
-                <Button size="lg" variant="outline" className="border-white/40 bg-white/10 backdrop-blur text-white hover:bg-white/20 hover:text-white font-bold text-lg px-8 h-14 rounded-full w-full sm:w-auto">
-                  <Phone className="mr-2 h-5 w-5" /> Call our team
-                </Button>
-              </a>
+              {(() => {
+                const wa = (c.contact?.whatsapp ?? "").replace(/[^0-9]/g, "");
+                const waMsg = encodeURIComponent(c.brand?.bulkWhatsAppMessage ?? "Hi, I'd like a bulk quote");
+                const phone = (c.contact?.phone ?? "").replace(/[^0-9+]/g, "");
+                return (
+                  <>
+                    {wa && (
+                      <a href={`https://wa.me/${wa}?text=${waMsg}`} target="_blank" rel="noreferrer">
+                        <Button size="lg" className="bg-white text-primary hover:bg-amber-300 font-bold text-lg px-8 h-14 rounded-full w-full sm:w-auto">
+                          <MessageCircle className="mr-2 h-5 w-5 text-green-600" /> {c.cta?.bulkWhatsAppLabel ?? "WhatsApp us"}
+                        </Button>
+                      </a>
+                    )}
+                    {phone && (
+                      <a href={`tel:${phone}`}>
+                        <Button size="lg" variant="outline" className="border-white/40 bg-white/10 backdrop-blur text-white hover:bg-white/20 hover:text-white font-bold text-lg px-8 h-14 rounded-full w-full sm:w-auto">
+                          <Phone className="mr-2 h-5 w-5" /> {c.cta?.bulkCallLabel ?? "Call our team"}
+                        </Button>
+                      </a>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>

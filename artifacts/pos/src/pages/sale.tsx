@@ -32,7 +32,16 @@ import { useToast } from "@/hooks/use-toast";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 
 const categories = ["All", "Ground", "Aerial", "Sparkler", "Gift Box", "Bundle"];
-const QUICK_CASH = [100, 200, 500, 1000, 2000];
+const DEFAULT_QUICK_CASH = [100, 200, 500, 1000, 2000];
+
+type PosConfig = {
+  quickCash: number[];
+  paymentMethods: { cash: boolean; upi: boolean; card: boolean; credit: boolean };
+};
+const DEFAULT_POS_CONFIG: PosConfig = {
+  quickCash: DEFAULT_QUICK_CASH,
+  paymentMethods: { cash: true, upi: true, card: true, credit: true },
+};
 
 type Variant = { variantId?: string; id?: string; size?: string; label?: string; price?: number | string; stock?: number };
 type Product = { id: string; code?: string; name: string; category?: string; variants?: Variant[] };
@@ -105,6 +114,32 @@ const SaleScreen = () => {
       })
       .catch(() => {});
   }, []);
+
+  // POS config (quick cash denominations + enabled payment methods) is admin-
+  // editable in the ERP CMS. Falls back to the original defaults if the call fails.
+  const [posConfig, setPosConfig] = useState<PosConfig>(DEFAULT_POS_CONFIG);
+  useEffect(() => {
+    fetch("/api/v1/site-content/public")
+      .then((r) => r.json())
+      .then((res) => {
+        const pos = res?.data?.pos ?? {};
+        const qc = Array.isArray(pos.quickCash)
+          ? pos.quickCash.map((n: any) => Number(n)).filter((n: number) => Number.isFinite(n) && n > 0)
+          : DEFAULT_QUICK_CASH;
+        setPosConfig({
+          quickCash: qc.length ? qc : DEFAULT_QUICK_CASH,
+          paymentMethods: {
+            cash:   pos.paymentMethods?.cash   !== false,
+            upi:    pos.paymentMethods?.upi    !== false,
+            card:   pos.paymentMethods?.card   !== false,
+            credit: pos.paymentMethods?.credit !== false,
+          },
+        });
+      })
+      .catch(() => {});
+  }, []);
+  const QUICK_CASH = posConfig.quickCash;
+  const pmEnabled = posConfig.paymentMethods;
 
   const { data: productsData } = useGetPosProducts(
     { locationId: activeLocationId },
@@ -681,30 +716,42 @@ const SaleScreen = () => {
             </div>
           </div>
 
-          {/* Multi-tender */}
-          <div className="grid grid-cols-3 gap-2 text-xs">
-            <div>
-              <label className="text-[10px] text-zinc-500 uppercase font-black">Cash</label>
-              <Input ref={cashRef} type="number" inputMode="decimal" className="h-11 bg-zinc-950 border-zinc-800 font-bold"
-                value={tenderCash} onChange={(e) => setTenderCash(e.target.value)} data-testid="tender-cash" />
-            </div>
-            <div>
-              <label className="text-[10px] text-zinc-500 uppercase font-black">UPI</label>
-              <Input type="number" inputMode="decimal" className="h-11 bg-zinc-950 border-zinc-800 font-bold"
-                value={tenderUpi} onChange={(e) => setTenderUpi(e.target.value)} data-testid="tender-upi" />
-            </div>
-            <div>
-              <label className="text-[10px] text-zinc-500 uppercase font-black">Card</label>
-              <Input type="number" inputMode="decimal" className="h-11 bg-zinc-950 border-zinc-800 font-bold"
-                value={tenderCard} onChange={(e) => setTenderCard(e.target.value)} data-testid="tender-card" />
-            </div>
-            {upiAmt > 0 && (
-              <Input placeholder="UPI ref (optional)" className="col-span-3 h-9 bg-zinc-950 border-zinc-800 text-xs" value={tenderUpiRef} onChange={(e) => setTenderUpiRef(e.target.value)} />
-            )}
-            {cardAmt > 0 && (
-              <Input placeholder="Card last 4 (optional)" className="col-span-3 h-9 bg-zinc-950 border-zinc-800 text-xs" value={tenderCardRef} onChange={(e) => setTenderCardRef(e.target.value)} />
-            )}
-          </div>
+          {/* Multi-tender (admin-toggleable per method via Website CMS → pos.paymentMethods) */}
+          {(() => {
+            const cols = (pmEnabled.cash ? 1 : 0) + (pmEnabled.upi ? 1 : 0) + (pmEnabled.card ? 1 : 0);
+            const gridCls = cols === 3 ? "grid-cols-3" : cols === 2 ? "grid-cols-2" : "grid-cols-1";
+            return (
+              <div className={`grid ${gridCls} gap-2 text-xs`}>
+                {pmEnabled.cash && (
+                  <div>
+                    <label className="text-[10px] text-zinc-500 uppercase font-black">Cash</label>
+                    <Input ref={cashRef} type="number" inputMode="decimal" className="h-11 bg-zinc-950 border-zinc-800 font-bold"
+                      value={tenderCash} onChange={(e) => setTenderCash(e.target.value)} data-testid="tender-cash" />
+                  </div>
+                )}
+                {pmEnabled.upi && (
+                  <div>
+                    <label className="text-[10px] text-zinc-500 uppercase font-black">UPI</label>
+                    <Input type="number" inputMode="decimal" className="h-11 bg-zinc-950 border-zinc-800 font-bold"
+                      value={tenderUpi} onChange={(e) => setTenderUpi(e.target.value)} data-testid="tender-upi" />
+                  </div>
+                )}
+                {pmEnabled.card && (
+                  <div>
+                    <label className="text-[10px] text-zinc-500 uppercase font-black">Card</label>
+                    <Input type="number" inputMode="decimal" className="h-11 bg-zinc-950 border-zinc-800 font-bold"
+                      value={tenderCard} onChange={(e) => setTenderCard(e.target.value)} data-testid="tender-card" />
+                  </div>
+                )}
+                {pmEnabled.upi && upiAmt > 0 && (
+                  <Input placeholder="UPI ref (optional)" className={`${cols === 3 ? "col-span-3" : cols === 2 ? "col-span-2" : "col-span-1"} h-9 bg-zinc-950 border-zinc-800 text-xs`} value={tenderUpiRef} onChange={(e) => setTenderUpiRef(e.target.value)} />
+                )}
+                {pmEnabled.card && cardAmt > 0 && (
+                  <Input placeholder="Card last 4 (optional)" className={`${cols === 3 ? "col-span-3" : cols === 2 ? "col-span-2" : "col-span-1"} h-9 bg-zinc-950 border-zinc-800 text-xs`} value={tenderCardRef} onChange={(e) => setTenderCardRef(e.target.value)} />
+                )}
+              </div>
+            );
+          })()}
 
           <div className="flex flex-wrap gap-2">
             {QUICK_CASH.map((amt) => (
