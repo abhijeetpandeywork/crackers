@@ -6,6 +6,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useGetPublicSiteContent } from "@workspace/api-client-react";
+import { Seo, breadcrumbLd, faqLd } from "@/lib/seo";
 
 const ICONS: Record<string, LucideIcon> = {
   ShoppingBag, FileText, Truck, Shield, Sparkles, Award, Heart, Clock, BadgeCheck,
@@ -71,6 +72,15 @@ export default function WebsiteHelp() {
 
   return (
     <div className="min-h-screen bg-cream flex flex-col" style={{ background: "#fff8ed" }}>
+      <Seo
+        title="Help & FAQ — Ordering, Delivery, GST & Safety"
+        description="How to order crackers from Rathinam, GST invoice rules, pan-India delivery timelines, and PESO safety compliance — answered."
+        path="/help"
+        jsonLd={[
+          breadcrumbLd([{ name: "Home", path: "/" }, { name: "Help", path: "/help" }]),
+          faqLd(FAQS.map((f) => ({ q: f.q, a: f.a }))),
+        ]}
+      />
       <Navbar />
       <main className="flex-1">
         <section className="bg-gradient-to-br from-[#1a0a00] via-[#4a1000] to-[#8b2500] text-white py-14">

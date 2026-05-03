@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, Loader2 } from "lucide-react";
 import { Layout } from "@/components/layout";
+import { Seo, breadcrumbLd } from "@/lib/seo";
 
 export default function Catalogue() {
   const [searchParams] = useLocation();
@@ -37,6 +38,12 @@ export default function Catalogue() {
 
   return (
     <Layout>
+      <Seo
+        title={category && category !== "All" ? `${category} Crackers — Catalogue` : "Cracker Catalogue — Sparklers, Sky Shots, Gift Boxes"}
+        description={`Shop ${category && category !== "All" ? category.toLowerCase() + " crackers" : "sparklers, ground chakkars, sky shots, aerial cakes, rockets and gift boxes"} from Sivakasi. PESO-licensed, GST invoices, pan-India shipping.`}
+        path={`/catalogue${category && category !== "All" ? `?category=${encodeURIComponent(category)}` : ""}`}
+        jsonLd={[breadcrumbLd([{ name: "Home", path: "/" }, { name: "Catalogue", path: "/catalogue" }])]}
+      />
       <div className="bg-gray-50 min-h-screen pb-20">
         {/* Sticky Header */}
         <div className="sticky top-16 z-40 bg-white border-b border-gray-200 py-4 shadow-sm">

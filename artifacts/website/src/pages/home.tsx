@@ -9,6 +9,7 @@ import {
   MessageCircle, Mail, BadgeCheck, Heart, Gift, Clock, Quote, ChevronRight,
 } from "lucide-react";
 import { Layout } from "@/components/layout";
+import { Seo, organizationLd, websiteLd, faqLd } from "@/lib/seo";
 
 type ProductVariantLite = { prices?: { retailOnline?: number } };
 type Product = {
@@ -130,6 +131,21 @@ export default function Home() {
 
   return (
     <Layout>
+      <Seo
+        title="Rathinam Crackers — PESO-licensed Online Cracker Shop, Sivakasi"
+        description="Buy crackers online from Sivakasi. PESO-licensed family fireworks, gift boxes, and bulk Diwali & wedding orders shipped pan-India with GST invoices."
+        path="/"
+        jsonLd={[
+          organizationLd(),
+          websiteLd(),
+          faqLd([
+            { q: "Are Rathinam Crackers PESO-licensed?", a: "Yes. Every product we ship complies with PESO (Petroleum and Explosives Safety Organisation) regulations and Indian fireworks safety standards." },
+            { q: "Do you ship pan-India?", a: "Yes, via licensed cracker logistics partners to all states where fireworks delivery is legally permitted." },
+            { q: "Do you provide GST invoices?", a: "Yes — tick 'I need GST invoice' at checkout and we email a fully GST-compliant invoice (CGST+SGST intra-state, IGST inter-state)." },
+            { q: "Can I order in bulk for a wedding?", a: "Yes. 10+ units of the same item automatically get the wholesale rate. For very large orders, please call us first." },
+          ]),
+        ]}
+      />
       {/* HERO */}
       <section className="relative h-[640px] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 bg-[linear-gradient(135deg,#1a0a00_0%,#4a1000_50%,#8b2500_100%)]" />

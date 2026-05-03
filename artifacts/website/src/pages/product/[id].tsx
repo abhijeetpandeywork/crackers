@@ -24,6 +24,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { useCart } from "@/context/cart";
+import { Seo, productLd, breadcrumbLd } from "@/lib/seo";
 import {
   ChevronLeft,
   ShoppingCart,
@@ -473,8 +474,36 @@ export default function ProductDetail() {
     : 0;
   const stockState = mockStock > 20 ? "high" : mockStock > 8 ? "medium" : "low";
 
+  const seoPrice = Number(selectedVariant?.prices?.retailOnline) || 0;
+  const seoDescription = `${product.name} — ${product.category ?? "fireworks"} from Rathinam Crackers, Sivakasi. PESO-licensed, GST invoice, pan-India shipping.`;
+
   return (
     <Layout>
+      <Seo
+        title={`${product.name} — Buy Online`}
+        description={seoDescription}
+        path={`/product/${product.id}`}
+        type="product"
+        jsonLd={[
+          breadcrumbLd([
+            { name: "Home", path: "/" },
+            { name: "Catalogue", path: "/catalogue" },
+            ...(product.category ? [{ name: String(product.category), path: `/catalogue?category=${encodeURIComponent(String(product.category))}` }] : []),
+            { name: String(product.name ?? "Product"), path: `/product/${product.id ?? ""}` },
+          ]),
+          productLd({
+            name: String(product.name ?? "Product"),
+            description: seoDescription,
+            sku: product.code ? String(product.code) : undefined,
+            category: product.category ? String(product.category) : undefined,
+            brand: selectedBrand ?? undefined,
+            price: seoPrice,
+            inStock: mockStock > 0,
+            ratingValue: avgRating > 0 ? avgRating : undefined,
+            ratingCount: totalReviews > 0 ? totalReviews : undefined,
+          }),
+        ]}
+      />
       <div className="bg-white pb-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Breadcrumb */}
