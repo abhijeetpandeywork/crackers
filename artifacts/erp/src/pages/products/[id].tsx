@@ -25,12 +25,13 @@ export default function ProductDetail() {
   const updateMutation = useUpdateProduct();
   const createMutation = useCreateProduct();
   
-  const [formData, setFormData] = useState<CreateProductBody & { status: string; occasions: string[] }>({
+  const [formData, setFormData] = useState<CreateProductBody & { status: string; occasions: string[]; gstRate: number | null }>({
     code: "",
     name: "",
     category: "Ground",
     description: "",
     hsnCode: "",
+    gstRate: null,
     onlineDisplay: true,
     status: "Active",
     variants: [] as ProductVariant[],
@@ -64,6 +65,7 @@ export default function ProductDetail() {
         category: (product.category as string) || "Ground",
         description: product.description || "",
         hsnCode: product.hsnCode || "",
+        gstRate: (product as { gstRate?: number | null }).gstRate ?? null,
         onlineDisplay: product.onlineDisplay ?? true,
         status: (product.status as string) || "Active",
         variants: product.variants || [],
@@ -198,6 +200,24 @@ export default function ProductDetail() {
                   value={formData.hsnCode} 
                   onChange={e => setFormData(p => ({...p, hsnCode: e.target.value}))} 
                 />
+              </div>
+              <div className="space-y-2">
+                <Label>GST Rate Override (%)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={28}
+                  value={formData.gstRate ?? ""}
+                  placeholder="Use HSN slab / default"
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setFormData((p) => ({ ...p, gstRate: v === "" ? null : Math.max(0, Math.min(28, Number(v))) }));
+                  }}
+                  data-testid="product-gst-rate"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Leave blank to use the HSN slab from Settings → Pricing, or the default rate if no slab matches.
+                </p>
               </div>
               <div className="space-y-2">
                 <Label>Default Brand</Label>

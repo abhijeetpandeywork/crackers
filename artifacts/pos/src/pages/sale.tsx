@@ -45,7 +45,7 @@ const DEFAULT_POS_CONFIG: PosConfig = {
 };
 
 type Variant = { variantId?: string; id?: string; size?: string; label?: string; price?: number | string; stock?: number };
-type Product = { id: string; code?: string; name: string; category?: string; variants?: Variant[] };
+type Product = { id: string; code?: string; name: string; category?: string; variants?: Variant[]; hsnCode?: string | null; gstRate?: number | null };
 
 const inr = (n: number) => `₹${(Math.round(n * 100) / 100).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -261,6 +261,10 @@ const SaleScreen = () => {
       productId: product.id, variantId: variantId(variant),
       productName: product.name, variantLabel: variantLabel(variant),
       qty: 1, unitPrice: variantPrice(variant),
+      // Include tax-resolution fields so the cart can mirror the server's
+      // per-line GST math (override → HSN slab → default).
+      hsnCode: product.hsnCode ?? null,
+      gstRate: product.gstRate ?? null,
     });
   }, [addItem, toast]);
 

@@ -26,9 +26,21 @@ const companySchema = z.object({
   defaultHSN: z.string().trim().max(15).optional().default("36049000"),
 });
 
+const hsnRateSchema = z.object({
+  hsn: z.string().trim().min(1, "HSN is required").max(20),
+  rate: z.number().min(0).max(28),
+  label: z.string().trim().max(60).optional().default(""),
+  active: z.boolean().optional().default(true),
+});
+
 const pricingSchema = z.object({
   wholesaleThreshold: z.number().int().min(1).max(10000).default(50),
+  // Master GST switch. Off = invoices and POS bills are tax-free (cgst/sgst/igst
+  // all zero). On = each line uses the per-product override → HSN slab → default.
+  gstEnabled: z.boolean().optional().default(true),
   defaultGstRate: z.number().int().min(0).max(28).default(18),
+  // Tax slabs keyed by HSN code. Admins manage this list from Settings → Pricing.
+  hsnRates: z.array(hsnRateSchema).optional().default([]),
   loyaltyEarnRate: z.number().min(0).max(100).default(1),
   loyaltyRedemptionRate: z.number().min(0).max(100).optional().default(1),
   defaultPriceListId: z.string().nullable().optional().default(null),
@@ -56,7 +68,9 @@ const companyDefaults = {
 
 const pricingDefaults = {
   wholesaleThreshold: 50,
+  gstEnabled: true,
   defaultGstRate: 18,
+  hsnRates: [] as Array<{ hsn: string; rate: number; label?: string; active?: boolean }>,
   loyaltyEarnRate: 1,
   loyaltyRedemptionRate: 1,
   defaultPriceListId: null,

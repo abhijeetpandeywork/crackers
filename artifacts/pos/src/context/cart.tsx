@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { useGetPricingSettings } from '@workspace/api-client-react';
 
 export interface CartItem {
@@ -9,7 +9,9 @@ export interface CartItem {
   qty: number;
   unitPrice: number;
   lineTotal: number;
-  hsnCode?: string;
+  hsnCode?: string | null;
+  // Per-product GST override (percent). NULL/undefined = fall back to HSN slab → default.
+  gstRate?: number | null;
 }
 
 export interface CouponData {
@@ -30,7 +32,7 @@ interface CartContextType {
   gst: number;
   discount: number;
   total: number;
-  taxRate: number;
+  taxRate: number; // effective blended rate for display only
   pricingLoaded: boolean;
   coupon: CouponData | null;
   applyCoupon: (coupon: CouponData | null) => void;
@@ -39,6 +41,24 @@ interface CartContextType {
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
+
+type HsnSlab = { hsn: string; rate: number; active?: boolean };
+
+// Mirror of api-server/src/lib/tax.ts effectiveRate(). Kept in sync so the
+// cart UI shows the same total the server will compute at checkout —
+// otherwise mixed-rate carts (different HSN slabs / per-product overrides)
+// produce TENDER_MISMATCH errors.
+function effectiveRate(item: CartItem, cfg: { enabled: boolean; defaultRate: number; hsnRates: HsnSlab[] }): number {
+  if (!cfg.enabled) return 0;
+  if (typeof item.gstRate === 'number' && Number.isFinite(item.gstRate)) return item.gstRate;
+  if (item.hsnCode) {
+    const slab = cfg.hsnRates.find(
+      (s) => (s.active ?? true) && s.hsn.trim().toLowerCase() === item.hsnCode!.trim().toLowerCase(),
+    );
+    if (slab) return slab.rate;
+  }
+  return cfg.defaultRate;
+}
 
 export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [items, setItems] = useState<CartItem[]>([]);
@@ -49,7 +69,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setItems(prev => {
       const existing = prev.find(i => i.productId === newItem.productId && i.variantId === newItem.variantId);
       if (existing) {
-        return prev.map(i => 
+        return prev.map(i =>
           (i.productId === newItem.productId && i.variantId === newItem.variantId)
             ? { ...i, qty: i.qty + newItem.qty, lineTotal: (i.qty + newItem.qty) * i.unitPrice }
             : i
@@ -68,7 +88,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       removeItem(productId, variantId);
       return;
     }
-    setItems(prev => prev.map(i => 
+    setItems(prev => prev.map(i =>
       (i.productId === productId && i.variantId === variantId)
         ? { ...i, qty, lineTotal: qty * i.unitPrice }
         : i
@@ -88,7 +108,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const subtotal = items.reduce((sum, item) => sum + item.lineTotal, 0);
-  
+
   let discount = 0;
   if (coupon) {
     if (coupon.type === 'PERCENT') {
@@ -98,23 +118,39 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }
 
-  // Tax rate must come from server pricing settings, not be hardcoded — the
-  // POS sale endpoint validates `tenderSum === server-computed total`, so a
-  // mismatch (e.g. 18% vs 12%) makes every checkout fail with TENDER_MISMATCH.
-  // Tax rate fallback MUST match the server's fallback (`0.18` in
-  // api-server/src/routes/v1/pos.ts) — a divergence would re-introduce the
-  // TENDER_MISMATCH bug whenever the settings fetch is slow or fails.
+  // Pricing settings drive the same fallback chain the server uses:
+  // gstEnabled → per-product gstRate → HSN slab → defaultGstRate.
   const { data: pricingResp, isSuccess: pricingLoaded } = useGetPricingSettings();
-  const taxRate = Number((pricingResp as any)?.taxRate ?? (pricingResp as any)?.data?.taxRate ?? 0.18);
+  const pricing = ((pricingResp as any)?.data ?? pricingResp ?? {}) as {
+    gstEnabled?: boolean;
+    defaultGstRate?: number;
+    hsnRates?: HsnSlab[];
+    taxRate?: number;
+  };
+  const cfg = {
+    enabled: pricing.gstEnabled === undefined ? true : Boolean(pricing.gstEnabled),
+    defaultRate: Number(pricing.defaultGstRate ?? (pricing.taxRate ? Number(pricing.taxRate) * 100 : 18)),
+    hsnRates: Array.isArray(pricing.hsnRates) ? pricing.hsnRates : [],
+  };
 
-  const taxableAmount = subtotal - discount;
-  const gst = taxableAmount * taxRate;
-  const total = taxableAmount + gst;
+  // Spread the cart-level discount across lines proportionally so each line
+  // keeps its own tax rate — exactly mirroring server `computeTax`.
+  const factor = subtotal > 0 ? Math.max(0, subtotal - discount) / subtotal : 1;
+  let gst = 0;
+  let taxableSum = 0;
+  for (const item of items) {
+    const lineTaxable = item.lineTotal * factor;
+    const rate = effectiveRate(item, cfg);
+    gst += lineTaxable * (rate / 100);
+    taxableSum += lineTaxable;
+  }
+  const taxRate = taxableSum > 0 ? gst / taxableSum : 0; // blended effective rate for display
+  const total = taxableSum + gst;
 
   return (
-    <CartContext.Provider value={{ 
+    <CartContext.Provider value={{
       items, addItem, removeItem, updateQty, clearCart, loadHeldBill,
-      subtotal, gst, discount, total, taxRate, pricingLoaded, 
+      subtotal, gst, discount, total, taxRate, pricingLoaded,
       coupon, applyCoupon: setCoupon,
       customer, setCustomer
     }}>

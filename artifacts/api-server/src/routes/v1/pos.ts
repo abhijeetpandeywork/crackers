@@ -17,6 +17,7 @@ import { authenticate } from "../../middleware/authenticate.js";
 import { nextInvoiceNo } from "../../lib/counter.js";
 import { resolvePrice } from "../../lib/pricing.js";
 import { appendLedger } from "../../lib/stockService.js";
+import { getTaxConfig, computeTax } from "../../lib/tax.js";
 
 // Module-level: read once at process start so a runtime request can never
 // flip this on. Production deployments do not set E2E_TEST_HOOKS, so the
@@ -396,10 +397,11 @@ router.post("/pos/sale", authenticate, async (req: AuthRequest, res) => {
   const settingsRows = await db.select().from(settingsTable).where(eq(settingsTable.key, "pricing")).limit(1);
   const pricingSettings = (settingsRows[0]?.value ?? {}) as any;
   const threshold = Number(pricingSettings.wholesaleQtyThreshold ?? 10);
-  const taxRate = Number(pricingSettings.taxRate ?? 0.18);
+  const taxConfig = await getTaxConfig();
 
   // Resolve lines with the same pricing engine the rest of the system uses.
   const resolvedItems: any[] = [];
+  const taxLines: { amount: number; product: { gstRate?: number | null; hsnCode?: string | null } }[] = [];
   for (const item of items) {
     const pRows = await db.select().from(productsTable).where(eq(productsTable.id, item.productId)).limit(1);
     const product = pRows[0];
@@ -408,6 +410,7 @@ router.post("/pos/sale", authenticate, async (req: AuthRequest, res) => {
     const variant = variants.find((v: any) => v.variantId === item.variantId);
     if (!variant) continue;
     const priceResult = resolvePrice(variant, item.qty, "POS", threshold);
+    const lineAmount = priceResult.resolvedPrice * item.qty;
     resolvedItems.push({
       productId: item.productId,
       productName: product.name,
@@ -417,8 +420,11 @@ router.post("/pos/sale", authenticate, async (req: AuthRequest, res) => {
       resolvedPrice: priceResult.resolvedPrice,
       resolutionReason: priceResult.resolutionReason,
       bulkRateApplied: priceResult.bulkRateApplied,
-      amount: priceResult.resolvedPrice * item.qty,
+      amount: lineAmount,
+      hsnCode: product.hsnCode ?? null,
+      gstRate: product.gstRate ?? null,
     });
+    taxLines.push({ amount: lineAmount, product: { gstRate: product.gstRate, hsnCode: product.hsnCode } });
   }
 
   const subtotal = resolvedItems.reduce((s, i) => s + i.amount, 0);
@@ -444,10 +450,12 @@ router.post("/pos/sale", authenticate, async (req: AuthRequest, res) => {
     return;
   }
   const manualDiscount = Math.min(requestedDiscount, maxAllowedDiscount);
-  const taxable = Math.max(0, subtotal - manualDiscount);
-  const cgst = taxable * (taxRate / 2);
-  const sgst = taxable * (taxRate / 2);
-  const total = taxable + cgst + sgst;
+  // Per-line GST: each item uses its product override → HSN slab → default rate.
+  const tx = computeTax(taxLines, manualDiscount, taxConfig, false);
+  const taxable = tx.taxable;
+  const cgst = tx.cgst;
+  const sgst = tx.sgst;
+  const total = tx.total;
 
   // Tender validation. Strict: known modes only, non-negative finite amounts.
   const ALLOWED_MODES = new Set(["CASH", "UPI", "CARD", "CREDIT"]);

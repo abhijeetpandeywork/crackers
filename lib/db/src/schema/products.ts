@@ -12,6 +12,9 @@ export const productsTable = pgTable("products", {
   category: text("category", { enum: ["Ground","Aerial","Sparkler","Novelty","Gift Box","Bundle"] }).notNull(),
   description: text("description"),
   hsnCode: text("hsn_code"),
+  // Per-product GST override as a percentage (0–28). NULL means "fall back
+  // to the HSN slab map, then to the default rate" — see lib/tax.ts.
+  gstRate: integer("gst_rate"),
   onlineDisplay: boolean("online_display").notNull().default(false),
   featured: boolean("featured").notNull().default(false),
   imageUrl: text("image_url"),

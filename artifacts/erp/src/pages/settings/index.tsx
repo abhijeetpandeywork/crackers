@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Building, IndianRupee, Settings as SettingsIcon, Save, Loader2, Database, ShieldCheck, RefreshCw } from "lucide-react";
+import { Building, IndianRupee, Settings as SettingsIcon, Save, Loader2, Database, ShieldCheck, RefreshCw, Plus, Trash2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 
 type Company = {
@@ -21,9 +22,12 @@ type Company = {
   financialYear: string;
   defaultHSN: string;
 };
+type HsnSlab = { hsn: string; rate: number; label?: string; active?: boolean };
 type Pricing = {
   wholesaleThreshold: number;
+  gstEnabled: boolean;
   defaultGstRate: number;
+  hsnRates: HsnSlab[];
   loyaltyEarnRate: number;
   loyaltyRedemptionRate: number;
   defaultPriceListId: string | null;
@@ -43,7 +47,7 @@ const companyDefaults: Company = {
   invoiceStartNumber: 1, financialYear: "2025-2026", defaultHSN: "36049000",
 };
 const pricingDefaults: Pricing = {
-  wholesaleThreshold: 50, defaultGstRate: 18,
+  wholesaleThreshold: 50, gstEnabled: true, defaultGstRate: 18, hsnRates: [],
   loyaltyEarnRate: 1, loyaltyRedemptionRate: 1, defaultPriceListId: null,
 };
 
@@ -266,11 +270,7 @@ export default function Settings() {
                     </div>
                   </div>
                   <div className="space-y-4">
-                    <h4 className="text-sm font-bold">Tax & Loyalty</h4>
-                    <div className="space-y-2">
-                      <Label>Default GST Rate (%)</Label>
-                      <Input type="number" min={0} max={28} value={pricing.defaultGstRate} onChange={(e) => setPricing({ ...pricing, defaultGstRate: parseInt(e.target.value || "0", 10) })} />
-                    </div>
+                    <h4 className="text-sm font-bold">Loyalty</h4>
                     <div className="space-y-2">
                       <Label>Loyalty Earn Rate (per ₹100)</Label>
                       <Input type="number" step="0.1" min={0} value={pricing.loyaltyEarnRate} onChange={(e) => setPricing({ ...pricing, loyaltyEarnRate: parseFloat(e.target.value || "0") })} />
@@ -279,6 +279,90 @@ export default function Settings() {
                       <Label>Loyalty Redemption Rate (₹ per point)</Label>
                       <Input type="number" step="0.1" min={0} value={pricing.loyaltyRedemptionRate} onChange={(e) => setPricing({ ...pricing, loyaltyRedemptionRate: parseFloat(e.target.value || "0") })} />
                     </div>
+                  </div>
+                </div>
+
+                <div className="border-t pt-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-sm font-bold">GST</h4>
+                      <p className="text-xs text-muted-foreground">When off, invoices and POS bills are tax-free. When on, every line uses its product override → HSN slab → default rate.</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="gst-enabled" className="text-sm">Apply GST</Label>
+                      <Switch id="gst-enabled" checked={pricing.gstEnabled} onCheckedChange={(v) => setPricing({ ...pricing, gstEnabled: v })} data-testid="gst-enabled" />
+                    </div>
+                  </div>
+                  <div className="grid md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label>Default GST Rate (%)</Label>
+                      <Input type="number" min={0} max={28} disabled={!pricing.gstEnabled} value={pricing.defaultGstRate} onChange={(e) => setPricing({ ...pricing, defaultGstRate: parseInt(e.target.value || "0", 10) })} />
+                      <p className="text-[10px] text-muted-foreground">Used when a product has no override and its HSN code is not in the slab table below.</p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <Label className="text-sm">HSN tax slabs</Label>
+                      <Button type="button" size="sm" variant="outline" disabled={!pricing.gstEnabled}
+                        onClick={() => setPricing({ ...pricing, hsnRates: [...pricing.hsnRates, { hsn: "", rate: pricing.defaultGstRate, label: "", active: true }] })}
+                        data-testid="hsn-add">
+                        <Plus className="h-3.5 w-3.5 mr-1" /> Add slab
+                      </Button>
+                    </div>
+                    {pricing.hsnRates.length === 0 ? (
+                      <p className="text-xs text-muted-foreground py-3 text-center border rounded-md border-dashed">
+                        No HSN-specific slabs. All products fall back to the default rate.
+                      </p>
+                    ) : (
+                      <div className="border rounded-md overflow-hidden">
+                        <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-muted/40 text-[11px] font-medium uppercase text-muted-foreground">
+                          <div className="col-span-3">HSN code</div>
+                          <div className="col-span-5">Label</div>
+                          <div className="col-span-2 text-right">Rate %</div>
+                          <div className="col-span-1 text-center">Active</div>
+                          <div className="col-span-1"></div>
+                        </div>
+                        {pricing.hsnRates.map((slab, idx) => (
+                          <div key={idx} className="grid grid-cols-12 gap-2 px-3 py-2 border-t items-center">
+                            <Input className="col-span-3 h-8" value={slab.hsn}
+                              onChange={(e) => {
+                                const next = [...pricing.hsnRates];
+                                next[idx] = { ...slab, hsn: e.target.value };
+                                setPricing({ ...pricing, hsnRates: next });
+                              }} placeholder="36049000" data-testid={`hsn-code-${idx}`} disabled={!pricing.gstEnabled} />
+                            <Input className="col-span-5 h-8" value={slab.label ?? ""}
+                              onChange={(e) => {
+                                const next = [...pricing.hsnRates];
+                                next[idx] = { ...slab, label: e.target.value };
+                                setPricing({ ...pricing, hsnRates: next });
+                              }} placeholder="Fireworks (12%)" disabled={!pricing.gstEnabled} />
+                            <Input type="number" min={0} max={28} className="col-span-2 h-8 text-right" value={slab.rate}
+                              onChange={(e) => {
+                                const next = [...pricing.hsnRates];
+                                next[idx] = { ...slab, rate: Number(e.target.value || "0") };
+                                setPricing({ ...pricing, hsnRates: next });
+                              }} data-testid={`hsn-rate-${idx}`} disabled={!pricing.gstEnabled} />
+                            <div className="col-span-1 flex justify-center">
+                              <Switch checked={slab.active ?? true} disabled={!pricing.gstEnabled}
+                                onCheckedChange={(v) => {
+                                  const next = [...pricing.hsnRates];
+                                  next[idx] = { ...slab, active: v };
+                                  setPricing({ ...pricing, hsnRates: next });
+                                }} />
+                            </div>
+                            <div className="col-span-1 flex justify-end">
+                              <Button type="button" variant="ghost" size="icon" className="h-7 w-7"
+                                onClick={() => setPricing({ ...pricing, hsnRates: pricing.hsnRates.filter((_, i) => i !== idx) })}
+                                data-testid={`hsn-remove-${idx}`}>
+                                <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <p className="text-[10px] text-muted-foreground mt-2">Each product can also override the rate from its own edit page (Products → Basic Information → GST rate).</p>
                   </div>
                 </div>
                 <div className="flex justify-end pt-4">

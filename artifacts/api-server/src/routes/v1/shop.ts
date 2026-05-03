@@ -15,6 +15,7 @@ import { shopAuthenticate, type ShopAuthRequest } from "../../middleware/shopAut
 import { nextInvoiceNo } from "../../lib/counter.js";
 import { resolvePrice, type PricingChannel } from "../../lib/pricing.js";
 import { appendLedger } from "../../lib/stockService.js";
+import { getTaxConfig, computeTax } from "../../lib/tax.js";
 
 const router = Router();
 
@@ -316,9 +317,11 @@ router.post("/shop/orders", shopAuthenticate, async (req: ShopAuthRequest, res) 
   const settingsRows = await db.select().from(settingsTable).where(eq(settingsTable.key, "pricing")).limit(1);
   const pricingSettings = (settingsRows[0]?.value ?? {}) as any;
   const threshold = Number(pricingSettings.wholesaleQtyThreshold ?? 10);
+  const taxConfig = await getTaxConfig();
   const channel: PricingChannel = "RETAIL";
 
   const resolvedItems: any[] = [];
+  const taxLines: { amount: number; product: { gstRate?: number | null; hsnCode?: string | null } }[] = [];
   for (const item of body.items) {
     const pRows = await db.select().from(productsTable).where(eq(productsTable.id, item.productId)).limit(1);
     const product = pRows[0];
@@ -333,6 +336,7 @@ router.post("/shop/orders", shopAuthenticate, async (req: ShopAuthRequest, res) 
       return;
     }
     const priceResult = resolvePrice(variant, item.qty, channel, threshold);
+    const lineAmount = priceResult.resolvedPrice * item.qty;
     resolvedItems.push({
       productId: item.productId,
       productName: product.name,
@@ -342,16 +346,20 @@ router.post("/shop/orders", shopAuthenticate, async (req: ShopAuthRequest, res) 
       resolvedPrice: priceResult.resolvedPrice,
       resolutionReason: priceResult.resolutionReason,
       bulkRateApplied: priceResult.bulkRateApplied,
-      amount: priceResult.resolvedPrice * item.qty,
+      amount: lineAmount,
+      hsnCode: product.hsnCode ?? null,
+      gstRate: product.gstRate ?? null,
     });
+    taxLines.push({ amount: lineAmount, product: { gstRate: product.gstRate, hsnCode: product.hsnCode } });
   }
 
   const subtotal = resolvedItems.reduce((s, i) => s + i.amount, 0);
-  const taxRate = Number(pricingSettings.taxRate ?? 0.18);
-  const taxableAmount = subtotal;
-  const cgst = taxableAmount * (taxRate / 2);
-  const sgst = taxableAmount * (taxRate / 2);
-  const total = taxableAmount + cgst + sgst;
+  // Per-line GST (override → HSN slab → default), zero when GST is disabled.
+  const tx = computeTax(taxLines, 0, taxConfig, false);
+  const taxableAmount = tx.taxable;
+  const cgst = tx.cgst;
+  const sgst = tx.sgst;
+  const total = tx.total;
 
   const fy = new Date().getFullYear();
   const financialYear = `${fy}-${fy + 1}`;
