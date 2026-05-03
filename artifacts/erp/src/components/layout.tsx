@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { 
   BarChart3, Box, Package, Users, UsersRound, Truck, 
   ShoppingCart, Tags, FileText, FileBarChart, Settings, LogOut,
-  HelpCircle, ShieldCheck, Globe, MessageSquare, Award, UserCircle2
+  HelpCircle, ShieldCheck, Globe, MessageSquare, Award, UserCircle2, RotateCcw
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -25,13 +25,18 @@ const navItems = [
   { icon: ShoppingCart, label: "Purchase Orders", href: "/purchase-orders" },
   { icon: Truck, label: "Transfers", href: "/transfers" },
   { icon: Tags, label: "Coupons", href: "/coupons" },
+  { icon: RotateCcw, label: "Returns", href: "/returns" },
 ];
 
 const reportItems = [
   { label: "Sales", href: "/reports/sales" },
+  { label: "Day Book", href: "/reports/daybook" },
   { label: "Outstanding", href: "/reports/outstanding" },
   { label: "Commission", href: "/reports/commission" },
   { label: "GST", href: "/reports/gst" },
+  { label: "Returns", href: "/reports/returns" },
+  { label: "Damage", href: "/reports/damage" },
+  { label: "Loyalty", href: "/reports/loyalty" },
   { label: "Activity log", href: "/reports/activity" },
 ];
 

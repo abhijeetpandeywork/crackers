@@ -2,14 +2,37 @@ import { pgTable, text, timestamp, decimal, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
+export type ReturnLineItem = {
+  productId: string;
+  variantId: string;
+  productName?: string;
+  variantLabel?: string;
+  qty: number;
+  unitPrice?: number;
+  lineTotal?: number;
+  reason?: string;
+};
+
 export const returnsTable = pgTable("returns", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  returnNo: text("return_no").unique(),
   type: text("type", { enum: ["customer","supplier","online"] }).notNull(),
+  // referenceId = invoice id (for customer/online) or PO id (supplier)
   referenceId: text("reference_id"),
-  items: jsonb("items").$type<Array<{productId:string;variantId:string;qty:number}>>().notNull().default([]),
+  referenceNo: text("reference_no"),
+  customerId: text("customer_id"),
+  customerName: text("customer_name"),
+  locationId: text("location_id"),
+  items: jsonb("items").$type<ReturnLineItem[]>().notNull().default([]),
   reason: text("reason").notNull(),
   creditAmount: decimal("credit_amount", { precision: 12, scale: 2 }).default("0"),
+  // How the refund was issued. CREDIT_NOTE = added to customer wallet /
+  // reduces their outstanding balance. CASH = paid out from till. NONE =
+  // goodwill replacement, no money movement.
+  refundMode: text("refund_mode", { enum: ["CREDIT_NOTE","CASH","NONE"] }).notNull().default("CREDIT_NOTE"),
+  creditNoteNo: text("credit_note_no").unique(),
   status: text("status", { enum: ["pending","approved","rejected"] }).notNull().default("approved"),
+  notes: text("notes"),
   createdBy: text("created_by"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

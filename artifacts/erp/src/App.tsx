@@ -41,6 +41,12 @@ import OutstandingReport from "@/pages/reports/outstanding";
 import CommissionReport from "@/pages/reports/commission";
 import GstReport from "@/pages/reports/gst";
 import ActivityReport from "@/pages/reports/activity";
+import DaybookReport from "@/pages/reports/daybook";
+import DamageReport from "@/pages/reports/damage";
+import LoyaltyReport from "@/pages/reports/loyalty";
+import ReturnsReport from "@/pages/reports/returns";
+import ReturnsList from "@/pages/returns/index";
+import NewReturn from "@/pages/returns/new";
 import UsersList from "@/pages/users/index";
 import LocationsList from "@/pages/locations/index";
 import Settings from "@/pages/settings/index";
@@ -170,6 +176,24 @@ function Router() {
       </Route>
       <Route path="/reports/activity">
         {(params) => <ProtectedRoute component={ActivityReport} {...params} />}
+      </Route>
+      <Route path="/reports/daybook">
+        {(params) => <ProtectedRoute component={DaybookReport} {...params} />}
+      </Route>
+      <Route path="/reports/damage">
+        {(params) => <ProtectedRoute component={DamageReport} {...params} />}
+      </Route>
+      <Route path="/reports/loyalty">
+        {(params) => <ProtectedRoute component={LoyaltyReport} {...params} />}
+      </Route>
+      <Route path="/reports/returns">
+        {(params) => <ProtectedRoute component={ReturnsReport} {...params} />}
+      </Route>
+      <Route path="/returns/new">
+        {(params) => <ProtectedRoute component={NewReturn} {...params} />}
+      </Route>
+      <Route path="/returns">
+        {(params) => <ProtectedRoute component={ReturnsList} {...params} />}
       </Route>
       <Route path="/system/roles">
         {(params) => <ProtectedRoute component={RolesPage} {...params} />}

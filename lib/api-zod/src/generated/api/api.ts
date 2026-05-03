@@ -2649,12 +2649,34 @@ export const ListReturnsResponse = zod.object({
     .array(
       zod.object({
         id: zod.string().optional(),
+        returnNo: zod.string().nullish(),
         type: zod.enum(["customer", "supplier", "online"]).optional(),
-        referenceId: zod.string().optional(),
-        items: zod.array(zod.object({}).passthrough()).optional(),
+        referenceId: zod.string().nullish(),
+        referenceNo: zod.string().nullish(),
+        customerId: zod.string().nullish(),
+        customerName: zod.string().nullish(),
+        locationId: zod.string().nullish(),
+        items: zod
+          .array(
+            zod.object({
+              productId: zod.string(),
+              variantId: zod.string(),
+              productName: zod.string().optional(),
+              variantLabel: zod.string().optional(),
+              qty: zod.number(),
+              unitPrice: zod.number().optional(),
+              lineTotal: zod.number().optional(),
+              reason: zod.string().optional(),
+            }),
+          )
+          .optional(),
         reason: zod.string().optional(),
-        creditAmount: zod.number().optional(),
-        status: zod.string().optional(),
+        creditAmount: zod.string().optional(),
+        refundMode: zod.enum(["CREDIT_NOTE", "CASH", "NONE"]).optional(),
+        creditNoteNo: zod.string().nullish(),
+        status: zod.enum(["pending", "approved", "rejected"]).optional(),
+        notes: zod.string().nullish(),
+        createdBy: zod.string().nullish(),
         createdAt: zod.string().optional(),
       }),
     )
@@ -2665,6 +2687,156 @@ export const ListReturnsResponse = zod.object({
       limit: zod.number().optional(),
       total: zod.number().optional(),
       pages: zod.number().optional(),
+    })
+    .optional(),
+});
+
+/**
+ * @summary Create a return (restocks goods + issues credit note)
+ */
+export const createReturnBodyTypeDefault = `customer`;
+export const createReturnBodyRefundModeDefault = `CREDIT_NOTE`;
+
+export const CreateReturnBody = zod.object({
+  type: zod
+    .enum(["customer", "supplier", "online"])
+    .default(createReturnBodyTypeDefault),
+  referenceId: zod
+    .string()
+    .optional()
+    .describe("Originating invoice id (customer\/online) or PO id (supplier)"),
+  items: zod.array(
+    zod.object({
+      productId: zod.string(),
+      variantId: zod.string(),
+      productName: zod.string().optional(),
+      variantLabel: zod.string().optional(),
+      qty: zod.number(),
+      unitPrice: zod.number().optional(),
+      lineTotal: zod.number().optional(),
+      reason: zod.string().optional(),
+    }),
+  ),
+  reason: zod.string(),
+  refundMode: zod
+    .enum(["CREDIT_NOTE", "CASH", "NONE"])
+    .default(createReturnBodyRefundModeDefault),
+  locationId: zod
+    .string()
+    .optional()
+    .describe("Location to restock to. Defaults to invoice.locationId."),
+  notes: zod.string().optional(),
+});
+
+/**
+ * @summary Get a single return
+ */
+export const GetReturnParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const GetReturnResponse = zod.object({
+  success: zod.boolean().optional(),
+  data: zod
+    .object({
+      id: zod.string().optional(),
+      returnNo: zod.string().nullish(),
+      type: zod.enum(["customer", "supplier", "online"]).optional(),
+      referenceId: zod.string().nullish(),
+      referenceNo: zod.string().nullish(),
+      customerId: zod.string().nullish(),
+      customerName: zod.string().nullish(),
+      locationId: zod.string().nullish(),
+      items: zod
+        .array(
+          zod.object({
+            productId: zod.string(),
+            variantId: zod.string(),
+            productName: zod.string().optional(),
+            variantLabel: zod.string().optional(),
+            qty: zod.number(),
+            unitPrice: zod.number().optional(),
+            lineTotal: zod.number().optional(),
+            reason: zod.string().optional(),
+          }),
+        )
+        .optional(),
+      reason: zod.string().optional(),
+      creditAmount: zod.string().optional(),
+      refundMode: zod.enum(["CREDIT_NOTE", "CASH", "NONE"]).optional(),
+      creditNoteNo: zod.string().nullish(),
+      status: zod.enum(["pending", "approved", "rejected"]).optional(),
+      notes: zod.string().nullish(),
+      createdBy: zod.string().nullish(),
+      createdAt: zod.string().optional(),
+    })
+    .optional(),
+});
+
+/**
+ * @summary Returns aggregate report
+ */
+export const GetReturnsReportQueryParams = zod.object({
+  dateFrom: zod.coerce.string().optional(),
+  dateTo: zod.coerce.string().optional(),
+});
+
+export const GetReturnsReportResponse = zod.object({
+  success: zod.boolean().optional(),
+  data: zod
+    .object({
+      summary: zod
+        .object({
+          totalReturns: zod.number().optional(),
+          totalCredit: zod.string().optional(),
+          byType: zod.record(zod.string(), zod.number()).optional(),
+          byMode: zod.record(zod.string(), zod.number()).optional(),
+        })
+        .optional(),
+      topReasons: zod
+        .array(
+          zod.object({
+            reason: zod.string().optional(),
+            count: zod.number().optional(),
+          }),
+        )
+        .optional(),
+      recent: zod
+        .array(
+          zod.object({
+            id: zod.string().optional(),
+            returnNo: zod.string().nullish(),
+            type: zod.enum(["customer", "supplier", "online"]).optional(),
+            referenceId: zod.string().nullish(),
+            referenceNo: zod.string().nullish(),
+            customerId: zod.string().nullish(),
+            customerName: zod.string().nullish(),
+            locationId: zod.string().nullish(),
+            items: zod
+              .array(
+                zod.object({
+                  productId: zod.string(),
+                  variantId: zod.string(),
+                  productName: zod.string().optional(),
+                  variantLabel: zod.string().optional(),
+                  qty: zod.number(),
+                  unitPrice: zod.number().optional(),
+                  lineTotal: zod.number().optional(),
+                  reason: zod.string().optional(),
+                }),
+              )
+              .optional(),
+            reason: zod.string().optional(),
+            creditAmount: zod.string().optional(),
+            refundMode: zod.enum(["CREDIT_NOTE", "CASH", "NONE"]).optional(),
+            creditNoteNo: zod.string().nullish(),
+            status: zod.enum(["pending", "approved", "rejected"]).optional(),
+            notes: zod.string().nullish(),
+            createdBy: zod.string().nullish(),
+            createdAt: zod.string().optional(),
+          }),
+        )
+        .optional(),
     })
     .optional(),
 });
@@ -2865,6 +3037,49 @@ export const GetCommissionReportResponse = zod.object({
           }),
         )
         .optional(),
+    })
+    .optional(),
+});
+
+/**
+ * @summary Damage / write-off report
+ */
+export const GetDamageReportQueryParams = zod.object({
+  dateFrom: zod.coerce.string().optional(),
+  dateTo: zod.coerce.string().optional(),
+  locationId: zod.coerce.string().optional(),
+});
+
+export const GetDamageReportResponse = zod.object({
+  success: zod.boolean().optional(),
+  data: zod
+    .object({
+      summary: zod
+        .object({
+          totalUnits: zod.number().optional(),
+          eventCount: zod.number().optional(),
+        })
+        .optional(),
+      events: zod.array(zod.object({}).passthrough()).optional(),
+    })
+    .optional(),
+});
+
+/**
+ * @summary Loyalty points report
+ */
+export const GetLoyaltyReportQueryParams = zod.object({
+  dateFrom: zod.coerce.string().optional(),
+  dateTo: zod.coerce.string().optional(),
+});
+
+export const GetLoyaltyReportResponse = zod.object({
+  success: zod.boolean().optional(),
+  data: zod
+    .object({
+      summary: zod.object({}).passthrough().optional(),
+      topCustomers: zod.array(zod.object({}).passthrough()).optional(),
+      recent: zod.array(zod.object({}).passthrough()).optional(),
     })
     .optional(),
 });

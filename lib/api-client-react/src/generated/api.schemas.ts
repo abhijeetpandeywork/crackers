@@ -1225,6 +1225,17 @@ export interface PosRecentSalesResponse {
   data?: PosRecentSalesResponseDataItem[];
 }
 
+export interface ReturnLineItem {
+  productId: string;
+  variantId: string;
+  productName?: string;
+  variantLabel?: string;
+  qty: number;
+  unitPrice?: number;
+  lineTotal?: number;
+  reason?: string;
+}
+
 export type ReturnType = (typeof ReturnType)[keyof typeof ReturnType];
 
 export const ReturnType = {
@@ -1233,17 +1244,103 @@ export const ReturnType = {
   online: "online",
 } as const;
 
-export type ReturnItemsItem = { [key: string]: unknown };
+export type ReturnRefundMode =
+  (typeof ReturnRefundMode)[keyof typeof ReturnRefundMode];
+
+export const ReturnRefundMode = {
+  CREDIT_NOTE: "CREDIT_NOTE",
+  CASH: "CASH",
+  NONE: "NONE",
+} as const;
+
+export type ReturnStatus = (typeof ReturnStatus)[keyof typeof ReturnStatus];
+
+export const ReturnStatus = {
+  pending: "pending",
+  approved: "approved",
+  rejected: "rejected",
+} as const;
 
 export interface Return {
   id?: string;
+  returnNo?: string | null;
   type?: ReturnType;
-  referenceId?: string;
-  items?: ReturnItemsItem[];
+  referenceId?: string | null;
+  referenceNo?: string | null;
+  customerId?: string | null;
+  customerName?: string | null;
+  locationId?: string | null;
+  items?: ReturnLineItem[];
   reason?: string;
-  creditAmount?: number;
-  status?: string;
+  creditAmount?: string;
+  refundMode?: ReturnRefundMode;
+  creditNoteNo?: string | null;
+  status?: ReturnStatus;
+  notes?: string | null;
+  createdBy?: string | null;
   createdAt?: string;
+}
+
+export type CreateReturnBodyType =
+  (typeof CreateReturnBodyType)[keyof typeof CreateReturnBodyType];
+
+export const CreateReturnBodyType = {
+  customer: "customer",
+  supplier: "supplier",
+  online: "online",
+} as const;
+
+export type CreateReturnBodyRefundMode =
+  (typeof CreateReturnBodyRefundMode)[keyof typeof CreateReturnBodyRefundMode];
+
+export const CreateReturnBodyRefundMode = {
+  CREDIT_NOTE: "CREDIT_NOTE",
+  CASH: "CASH",
+  NONE: "NONE",
+} as const;
+
+export interface CreateReturnBody {
+  type?: CreateReturnBodyType;
+  /** Originating invoice id (customer/online) or PO id (supplier) */
+  referenceId?: string;
+  items: ReturnLineItem[];
+  reason: string;
+  refundMode?: CreateReturnBodyRefundMode;
+  /** Location to restock to. Defaults to invoice.locationId. */
+  locationId?: string;
+  notes?: string;
+}
+
+export interface ReturnResponse {
+  success?: boolean;
+  data?: Return;
+}
+
+export type ReturnsReportResponseDataSummaryByType = { [key: string]: number };
+
+export type ReturnsReportResponseDataSummaryByMode = { [key: string]: number };
+
+export type ReturnsReportResponseDataSummary = {
+  totalReturns?: number;
+  totalCredit?: string;
+  byType?: ReturnsReportResponseDataSummaryByType;
+  byMode?: ReturnsReportResponseDataSummaryByMode;
+};
+
+export type ReturnsReportResponseDataTopReasonsItem = {
+  reason?: string;
+  count?: number;
+};
+
+export type ReturnsReportResponseData = {
+  summary?: ReturnsReportResponseDataSummary;
+  topReasons?: ReturnsReportResponseDataTopReasonsItem[];
+  recent?: Return[];
+};
+
+export interface ReturnsReportResponse {
+  success?: boolean;
+  data?: ReturnsReportResponseData;
 }
 
 export interface ReturnListResponse {
@@ -2138,6 +2235,11 @@ export type ListReturnsParams = {
   limit?: number;
 };
 
+export type GetReturnsReportParams = {
+  dateFrom?: string;
+  dateTo?: string;
+};
+
 export type ListDamageParams = {
   locationId?: string;
   category?: string;
@@ -2177,6 +2279,53 @@ export type GetCommissionReportParams = {
   dateFrom?: string;
   dateTo?: string;
   period?: string;
+};
+
+export type GetDamageReportParams = {
+  dateFrom?: string;
+  dateTo?: string;
+  locationId?: string;
+};
+
+export type GetDamageReport200DataSummary = {
+  totalUnits?: number;
+  eventCount?: number;
+};
+
+export type GetDamageReport200DataEventsItem = { [key: string]: unknown };
+
+export type GetDamageReport200Data = {
+  summary?: GetDamageReport200DataSummary;
+  events?: GetDamageReport200DataEventsItem[];
+};
+
+export type GetDamageReport200 = {
+  success?: boolean;
+  data?: GetDamageReport200Data;
+};
+
+export type GetLoyaltyReportParams = {
+  dateFrom?: string;
+  dateTo?: string;
+};
+
+export type GetLoyaltyReport200DataSummary = { [key: string]: unknown };
+
+export type GetLoyaltyReport200DataTopCustomersItem = {
+  [key: string]: unknown;
+};
+
+export type GetLoyaltyReport200DataRecentItem = { [key: string]: unknown };
+
+export type GetLoyaltyReport200Data = {
+  summary?: GetLoyaltyReport200DataSummary;
+  topCustomers?: GetLoyaltyReport200DataTopCustomersItem[];
+  recent?: GetLoyaltyReport200DataRecentItem[];
+};
+
+export type GetLoyaltyReport200 = {
+  success?: boolean;
+  data?: GetLoyaltyReport200Data;
 };
 
 export type GetDaybookReportParams = {

@@ -1975,6 +1975,70 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ReturnListResponse"
+    post:
+      operationId: createReturn
+      tags: [returns]
+      summary: Create a return (restocks goods + issues credit note)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateReturnBody"
+      responses:
+        "201":
+          description: Return created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReturnResponse"
+
+  /v1/returns/{id}:
+    get:
+      operationId: getReturn
+      tags: [returns]
+      summary: Get a single return
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Return detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReturnResponse"
+
+  /v1/reports/returns:
+    get:
+      operationId: getReturnsReport
+      tags: [reports]
+      summary: Returns aggregate report
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Returns report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReturnsReportResponse"
 
   /v1/damage:
     post:
@@ -2193,6 +2257,80 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CommissionReportResponse"
+
+  /v1/reports/damage:
+    get:
+      operationId: getDamageReport
+      tags: [reports]
+      summary: Damage / write-off report
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: dateFrom
+          in: query
+          schema: { type: string }
+        - name: dateTo
+          in: query
+          schema: { type: string }
+        - name: locationId
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Damage report
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: object
+                    properties:
+                      summary:
+                        type: object
+                        properties:
+                          totalUnits: { type: number }
+                          eventCount: { type: integer }
+                      events:
+                        type: array
+                        items:
+                          type: object
+
+  /v1/reports/loyalty:
+    get:
+      operationId: getLoyaltyReport
+      tags: [reports]
+      summary: Loyalty points report
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: dateFrom
+          in: query
+          schema: { type: string }
+        - name: dateTo
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Loyalty report
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: object
+                    properties:
+                      summary:
+                        type: object
+                      topCustomers:
+                        type: array
+                        items: { type: object }
+                      recent:
+                        type: array
+                        items: { type: object }
 
   /v1/reports/daybook:
     get:
@@ -5008,28 +5146,150 @@ components:
                 type: integer
 
     # RETURN/DAMAGE SCHEMAS
+    ReturnLineItem:
+      type: object
+      required: [productId, variantId, qty]
+      properties:
+        productId:
+          type: string
+        variantId:
+          type: string
+        productName:
+          type: string
+        variantLabel:
+          type: string
+        qty:
+          type: number
+        unitPrice:
+          type: number
+        lineTotal:
+          type: number
+        reason:
+          type: string
+
     Return:
       type: object
       properties:
         id:
           type: string
+        returnNo:
+          type: string
+          nullable: true
         type:
           type: string
           enum: [customer, supplier, online]
         referenceId:
           type: string
+          nullable: true
+        referenceNo:
+          type: string
+          nullable: true
+        customerId:
+          type: string
+          nullable: true
+        customerName:
+          type: string
+          nullable: true
+        locationId:
+          type: string
+          nullable: true
         items:
           type: array
           items:
-            type: object
+            $ref: "#/components/schemas/ReturnLineItem"
         reason:
           type: string
         creditAmount:
-          type: number
+          type: string
+        refundMode:
+          type: string
+          enum: [CREDIT_NOTE, CASH, NONE]
+        creditNoteNo:
+          type: string
+          nullable: true
         status:
           type: string
+          enum: [pending, approved, rejected]
+        notes:
+          type: string
+          nullable: true
+        createdBy:
+          type: string
+          nullable: true
         createdAt:
           type: string
+
+    CreateReturnBody:
+      type: object
+      required: [items, reason]
+      properties:
+        type:
+          type: string
+          enum: [customer, supplier, online]
+          default: customer
+        referenceId:
+          type: string
+          description: Originating invoice id (customer/online) or PO id (supplier)
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReturnLineItem"
+        reason:
+          type: string
+        refundMode:
+          type: string
+          enum: [CREDIT_NOTE, CASH, NONE]
+          default: CREDIT_NOTE
+        locationId:
+          type: string
+          description: Location to restock to. Defaults to invoice.locationId.
+        notes:
+          type: string
+
+    ReturnResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: "#/components/schemas/Return"
+
+    ReturnsReportResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            summary:
+              type: object
+              properties:
+                totalReturns:
+                  type: integer
+                totalCredit:
+                  type: string
+                byType:
+                  type: object
+                  additionalProperties:
+                    type: integer
+                byMode:
+                  type: object
+                  additionalProperties:
+                    type: integer
+            topReasons:
+              type: array
+              items:
+                type: object
+                properties:
+                  reason:
+                    type: string
+                  count:
+                    type: integer
+            recent:
+              type: array
+              items:
+                $ref: "#/components/schemas/Return"
 
     ReturnListResponse:
       type: object

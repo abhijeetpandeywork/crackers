@@ -20,7 +20,7 @@ The system is a monorepo built with pnpm workspaces, utilizing a full-stack arch
 - **API Contract**: OpenAPI 3.1 with codegen for Zod schemas and React Query hooks, ensuring type-safe API interactions.
 
 **Applications:**
-- **ERP Admin Panel**: Central console for business operations with over 25 pages and contextual help.
+- **ERP Admin Panel**: Central console for business operations with over 25 pages and contextual help. Includes a full Returns + Credit Note workflow (POST /v1/returns transactionally restocks goods via the stock ledger, atomically decrements customer outstanding balance, and issues a sequential credit-note number) and report pages for Sales, Day Book, Outstanding, Commission, GST, Returns, Damage, Loyalty, and Activity.
 - **POS Interface**: Touch-screen optimized cashier terminal with a dark theme, designed for retail. Includes features like quick-add/barcode input, low-stock indicators, quick-cash denominations, global keyboard shortcuts, PIN login, and thermal receipt printing. Supports shift management with opening floats, Z-reports, and multi-tender (split payments) with manual discount and reason tracking.
 - **Warehouse Dashboard**: Interface for stock operations including receiving, adjusting, and transferring.
 - **E-commerce Website**: Public-facing online shop with a festive Indian theme, customer accounts, address book, wishlist, and order placement linked to the ERP. Supports product reviews.
