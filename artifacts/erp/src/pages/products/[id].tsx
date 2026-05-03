@@ -35,6 +35,17 @@ export default function ProductDetail() {
     status: "Active",
     variants: [] as ProductVariant[],
   });
+  const [defaultBrand, setDefaultBrand] = useState<string>("Standard");
+
+  const KNOWN_BRANDS = [
+    "Standard",
+    "Sri Kaliswari",
+    "Cock Brand",
+    "Ajantha",
+    "Vinayaga",
+    "Coronation",
+    "Supreme",
+  ];
 
   useEffect(() => {
     if (product) {
@@ -48,6 +59,8 @@ export default function ProductDetail() {
         status: (product.status as string) || "Active",
         variants: product.variants || []
       });
+      const firstBrand = product.variants?.find(v => v.brand)?.brand;
+      if (firstBrand) setDefaultBrand(firstBrand);
     }
   }, [product]);
 
@@ -81,6 +94,7 @@ export default function ProductDetail() {
         size: "",
         packContent: "",
         unit: "box",
+        brand: defaultBrand || undefined,
         prices: {
           purchase: 0,
           wholesaleBulk: 0,
@@ -175,6 +189,43 @@ export default function ProductDetail() {
                   onChange={e => setFormData(p => ({...p, hsnCode: e.target.value}))} 
                 />
               </div>
+              <div className="space-y-2">
+                <Label>Default Brand</Label>
+                <Input
+                  list="erp-brand-suggestions"
+                  value={defaultBrand}
+                  onChange={e => setDefaultBrand(e.target.value)}
+                  placeholder="e.g. Standard, Sri Kaliswari"
+                />
+                <datalist id="erp-brand-suggestions">
+                  {KNOWN_BRANDS.map(b => <option key={b} value={b} />)}
+                </datalist>
+                <p className="text-xs text-muted-foreground">
+                  Pre-fills brand for new variants. Each variant can override.
+                </p>
+                {formData.variants.length > 0 && (() => {
+                  const trimmed = defaultBrand.trim();
+                  const blankCount = formData.variants.filter(v => !v.brand?.trim()).length;
+                  return (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      disabled={!trimmed || blankCount === 0}
+                      onClick={() => setFormData(p => ({
+                        ...p,
+                        variants: p.variants.map(v => v.brand?.trim() ? v : { ...v, brand: trimmed })
+                      }))}
+                      title={!trimmed ? "Enter a default brand first" : blankCount === 0 ? "All variants already have a brand" : ""}
+                    >
+                      {blankCount === 0
+                        ? "All variants have a brand"
+                        : `Fill ${blankCount} variant${blankCount === 1 ? '' : 's'} without a brand`}
+                    </Button>
+                  );
+                })()}
+              </div>
               <div className="flex items-center justify-between">
                 <Label>Online Display</Label>
                 <Switch 
@@ -204,7 +255,7 @@ export default function ProductDetail() {
                     <Trash2 className="h-4 w-4" />
                   </Button>
                   
-                  <div className="grid grid-cols-3 gap-4 mb-4 pr-8">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 pr-8">
                     <div className="space-y-2">
                       <Label>Size/Detail</Label>
                       <Input value={variant.size || ''} onChange={e => updateVariant(i, 'size', e.target.value)} placeholder="e.g. 5cm, 1000 wala" />
@@ -216,6 +267,15 @@ export default function ProductDetail() {
                     <div className="space-y-2">
                       <Label>Unit</Label>
                       <Input value={variant.unit || ''} onChange={e => updateVariant(i, 'unit', e.target.value)} placeholder="box, pkt" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Brand</Label>
+                      <Input
+                        list="erp-brand-suggestions"
+                        value={variant.brand || ''}
+                        onChange={e => updateVariant(i, 'brand', e.target.value || undefined)}
+                        placeholder={defaultBrand || 'Standard'}
+                      />
                     </div>
                   </div>
 
