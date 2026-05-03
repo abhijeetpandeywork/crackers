@@ -1223,7 +1223,7 @@ export default function ProductDetail() {
                     <Link
                       key={rp.id}
                       href={`/product/${rp.id}`}
-                      className="group flex items-center rounded-2xl border border-gray-100 hover:border-red-200 hover:shadow-md transition-all overflow-hidden bg-white p-4"
+                      className="group flex items-center rounded-2xl border border-gray-100 hover:border-primary/30 hover:shadow-md transition-all overflow-hidden bg-white p-4"
                     >
                       <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-primary/10 to-amber-500/10 flex items-center justify-center text-4xl mr-4 flex-shrink-0">
                         {categoryEmoji(rp.category)}
@@ -1256,7 +1256,7 @@ export default function ProductDetail() {
                     <Link
                       key={rp.id}
                       href={`/product/${rp.id}`}
-                      className="group rounded-2xl border border-gray-100 hover:border-red-200 hover:shadow-md transition-all overflow-hidden bg-white"
+                      className="group rounded-2xl border border-gray-100 hover:border-primary/30 hover:shadow-md transition-all overflow-hidden bg-white"
                       data-testid={`related-${rp.id}`}
                     >
                       <div className="aspect-square bg-gradient-to-br from-primary/10 to-amber-500/10 flex items-center justify-center text-6xl group-hover:scale-105 transition-transform">

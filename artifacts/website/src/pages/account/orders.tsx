@@ -23,7 +23,7 @@ export default function AccountOrders() {
         <div className="space-y-3">
           {orders.map((o) => (
             <Link key={o.id} href={`/account/orders/${o.id}`}>
-              <div className="bg-white rounded-2xl p-5 border border-gray-100 hover:border-red-200 cursor-pointer" data-testid={`order-row-${o.id}`}>
+              <div className="bg-white rounded-2xl p-5 border border-gray-100 hover:border-primary/30 cursor-pointer" data-testid={`order-row-${o.id}`}>
                 <div className="flex items-center justify-between mb-2">
                   <div>
                     <p className="font-bold text-lg">#{o.invoiceNo}</p>

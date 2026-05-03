@@ -165,7 +165,7 @@ export default function Home() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-10">
             <Link href="/catalogue">
-              <Button size="lg" className="bg-amber-500 hover:bg-amber-600 text-red-950 font-bold text-lg px-10 h-14 rounded-full shadow-xl shadow-amber-900/30">
+              <Button size="lg" className="bg-amber-500 hover:bg-amber-600 text-[hsl(197,65%,12%)] font-bold text-lg px-10 h-14 rounded-full shadow-xl shadow-amber-900/30">
                 Shop the collection <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>
@@ -420,7 +420,7 @@ export default function Home() {
             {WHY_US.map((f) => {
               const Icon = HOW_ICONS[f.icon] ?? Award;
               return (
-              <div key={f.title} className="bg-white rounded-2xl p-7 border border-gray-100 hover:border-red-200 hover:shadow-lg transition-all">
+              <div key={f.title} className="bg-white rounded-2xl p-7 border border-gray-100 hover:border-primary/30 hover:shadow-lg transition-all">
                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${f.iconBg ?? "bg-primary/10 text-primary"}`}>
                   <Icon className="h-6 w-6" />
                 </div>
@@ -443,7 +443,7 @@ export default function Home() {
 
           <div className="relative max-w-3xl mx-auto">
             <div className="bg-gradient-to-br from-primary/5 to-amber-50 border border-amber-200 rounded-3xl p-8 md:p-12 shadow-sm relative overflow-hidden">
-              <Quote className="absolute top-6 right-6 h-16 w-16 text-red-200/60" />
+              <Quote className="absolute top-6 right-6 h-16 w-16 text-primary/30" />
               <div className="flex items-center gap-1 mb-5">
                 {[...Array(currentTestimonial?.rating ?? 5)].map((_, i) => (
                   <Star key={i} className="h-5 w-5 fill-amber-500 text-amber-500" />
@@ -539,7 +539,7 @@ export default function Home() {
           </div>
           <div className="text-center mt-8">
             <Link href="/help">
-              <Button variant="outline" className="rounded-full border-red-200 text-primary hover:bg-primary/10 hover:text-primary">
+              <Button variant="outline" className="rounded-full border-primary/30 text-primary hover:bg-primary/10 hover:text-primary">
                 See full Help &amp; FAQ <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
@@ -563,7 +563,7 @@ export default function Home() {
               placeholder="you@example.com"
               className="flex-1 px-5 h-12 rounded-full bg-white/10 border border-white/20 backdrop-blur text-white placeholder-white/50 focus:outline-none focus:border-amber-400 focus:bg-white/20"
             />
-            <Button type="submit" size="lg" className="bg-amber-500 hover:bg-amber-600 text-red-950 font-bold rounded-full h-12 px-8">
+            <Button type="submit" size="lg" className="bg-amber-500 hover:bg-amber-600 text-[hsl(197,65%,12%)] font-bold rounded-full h-12 px-8">
               Subscribe
             </Button>
           </form>

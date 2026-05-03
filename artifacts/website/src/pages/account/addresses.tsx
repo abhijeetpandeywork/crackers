@@ -106,7 +106,7 @@ export default function Addresses() {
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   {a.label && <span className="px-2 py-0.5 rounded-full bg-gray-100 text-xs">{a.label}</span>}
-                  {a.isDefault && <span className="px-2 py-0.5 rounded-full bg-red-50 text-red-700 text-xs flex items-center gap-1"><Star className="h-3 w-3" /> Default</span>}
+                  {a.isDefault && <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs flex items-center gap-1"><Star className="h-3 w-3" /> Default</span>}
                 </div>
                 <div className="flex gap-1">
                   <Button size="sm" variant="ghost" onClick={() => startEdit(a)}><Pencil className="h-4 w-4" /></Button>
