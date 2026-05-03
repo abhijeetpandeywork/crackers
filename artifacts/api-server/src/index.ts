@@ -2,6 +2,7 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { startSystemHealthScheduler } from "./lib/system-health";
 import { startBackupScheduler } from "./lib/system-backup";
+import { startAuditRetentionScheduler } from "./lib/audit-retention";
 
 const rawPort = process.env["PORT"];
 
@@ -28,4 +29,7 @@ app.listen(port, (err) => {
   startSystemHealthScheduler(60_000);
   // Recoverability: nightly Postgres dump, retain last 7.
   startBackupScheduler();
+  // Retention: prune audit_log rows older than the configured window
+  // (default 365d, configurable via settings.audit.retentionDays).
+  startAuditRetentionScheduler();
 });

@@ -4,6 +4,14 @@ import { db, settingsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { authenticate, requireRole, type AuthRequest } from "../../middleware/authenticate.js";
 import { auditWrite } from "../../lib/audit.js";
+import {
+  AUDIT_SETTINGS_KEY,
+  DEFAULT_RETENTION_DAYS,
+  MAX_RETENTION_DAYS,
+  MIN_RETENTION_DAYS,
+  pruneOldAuditLogs,
+  getLastPruneResult,
+} from "../../lib/audit-retention.js";
 
 const router = Router();
 
@@ -142,6 +150,107 @@ router.put(
       .onConflictDoUpdate({ target: settingsTable.key, set: { value, updatedAt: new Date() } });
     await auditWrite(req, { action: "UPDATE", entityType: "settings.pricing", entityId: "pricing", before, after: value });
     res.json({ success: true, data: value });
+  },
+);
+
+// --- Audit retention -------------------------------------------------------
+// The audit_log table grows on every admin write, so a configurable retention
+// window keeps the Activity log fast and the database lean. The scheduled
+// prune in lib/audit-retention.ts reads this same setting on every run.
+
+const auditSchema = z.object({
+  retentionDays: z
+    .number()
+    .int()
+    .min(MIN_RETENTION_DAYS)
+    .max(MAX_RETENTION_DAYS)
+    .default(DEFAULT_RETENTION_DAYS),
+});
+
+const auditDefaults = {
+  retentionDays: DEFAULT_RETENTION_DAYS,
+};
+
+router.get("/settings/audit", authenticate, requireRole("SUPER_ADMIN", "ADMIN"), async (_req, res) => {
+  const rows = await db
+    .select()
+    .from(settingsTable)
+    .where(eq(settingsTable.key, AUDIT_SETTINGS_KEY))
+    .limit(1);
+  const stored = (rows[0]?.value as Record<string, unknown> | undefined) ?? {};
+  res.json({
+    success: true,
+    data: {
+      ...auditDefaults,
+      ...stored,
+      lastPrune: getLastPruneResult(),
+    },
+  });
+});
+
+// Mutating retention or pruning is restricted to SUPER_ADMIN: ADMINs are
+// themselves audited, so allowing them to shorten retention or trigger a
+// prune would let them erase evidence of their own actions.
+router.put(
+  "/settings/audit",
+  authenticate,
+  requireRole("SUPER_ADMIN"),
+  async (req: AuthRequest, res) => {
+    const parsed = auditSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({
+        success: false,
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "Invalid audit settings",
+          details: parsed.error.issues,
+        },
+      });
+      return;
+    }
+    const value = parsed.data;
+    const before =
+      (
+        await db
+          .select()
+          .from(settingsTable)
+          .where(eq(settingsTable.key, AUDIT_SETTINGS_KEY))
+          .limit(1)
+      )[0]?.value ?? null;
+    await db
+      .insert(settingsTable)
+      .values({ key: AUDIT_SETTINGS_KEY, value })
+      .onConflictDoUpdate({
+        target: settingsTable.key,
+        set: { value, updatedAt: new Date() },
+      });
+    await auditWrite(req, {
+      action: "UPDATE",
+      entityType: "settings.audit",
+      entityId: AUDIT_SETTINGS_KEY,
+      before,
+      after: value,
+    });
+    res.json({ success: true, data: value });
+  },
+);
+
+// Manual trigger so admins can prune immediately after shortening the window
+// rather than waiting for the next scheduled run.
+router.post(
+  "/settings/audit/prune",
+  authenticate,
+  requireRole("SUPER_ADMIN"),
+  async (req: AuthRequest, res) => {
+    const result = await pruneOldAuditLogs();
+    await auditWrite(req, {
+      action: "DELETE",
+      entityType: "settings.audit",
+      entityId: "prune",
+      before: null,
+      after: result,
+    });
+    res.json({ success: result.ok, data: result });
   },
 );
 
