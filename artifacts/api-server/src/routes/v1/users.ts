@@ -60,9 +60,14 @@ router.get("/users/:id", authenticate, adminOnly, async (req, res) => {
 });
 
 router.put("/users/:id", authenticate, adminOnly, async (req, res) => {
-  const { password, ...rest } = req.body;
-  const updates: any = { ...rest, updatedAt: new Date() };
-  if (password) updates.passwordHash = await hashPassword(password);
+  const { password, ...rest } = req.body as Record<string, unknown>;
+  const updates: Partial<typeof usersTable.$inferInsert> = {
+    ...(rest as Partial<typeof usersTable.$inferInsert>),
+    updatedAt: new Date(),
+  };
+  if (typeof password === "string" && password.length > 0) {
+    updates.passwordHash = await hashPassword(password);
+  }
   const [user] = await db.update(usersTable).set(updates).where(eq(usersTable.id, req.params["id"] as string)).returning({
     id: usersTable.id,
     name: usersTable.name,

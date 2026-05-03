@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/table";
 import {
   ArrowLeft, ArrowRightLeft, Send, PackageCheck, Truck, MapPin, FileText, Download, Printer,
+  FileEdit, ClipboardCheck, CircleDot, Circle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { generateTransferPdf, savePdf, type CompanyInfo } from "@workspace/pdf";
@@ -195,6 +196,81 @@ export default function TransferDetail() {
           </CardContent>
         </Card>
       </div>
+
+      <Card data-testid="transfer-status-timeline">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <CircleDot className="h-4 w-4 text-primary" /> Status Timeline
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {(() => {
+            const isCancelled = t.status === "cancelled";
+            const steps = [
+              {
+                key: "draft",
+                label: "Draft Created",
+                icon: FileEdit,
+                at: t.createdAt,
+                done: true,
+              },
+              {
+                key: "in_transit",
+                label: "Dispatched",
+                icon: Send,
+                at: t.dispatchedAt,
+                done: !!t.dispatchedAt || t.status === "in_transit" || t.status === "received",
+                meta: t.vehicleNo ? `Vehicle ${t.vehicleNo}` : undefined,
+              },
+              {
+                key: "received",
+                label: "Received at destination",
+                icon: PackageCheck,
+                at: t.receivedAt,
+                done: !!t.receivedAt || t.status === "received",
+              },
+            ];
+            return (
+              <ol className="relative border-l-2 border-muted ml-3 space-y-6 py-2">
+                {steps.map((s) => {
+                  const Icon = s.icon;
+                  const reached = s.done && !isCancelled;
+                  return (
+                    <li key={s.key} className="ml-6">
+                      <span
+                        className={`absolute -left-[13px] flex h-6 w-6 items-center justify-center rounded-full border-2 ${
+                          reached
+                            ? "bg-primary border-primary text-primary-foreground"
+                            : "bg-background border-muted-foreground/40 text-muted-foreground"
+                        }`}
+                      >
+                        {reached ? <Icon className="h-3 w-3" /> : <Circle className="h-3 w-3" />}
+                      </span>
+                      <div className="flex flex-col sm:flex-row sm:items-baseline sm:gap-3">
+                        <p className={`font-medium ${reached ? "" : "text-muted-foreground"}`}>{s.label}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {s.at ? new Date(s.at).toLocaleString("en-IN") : reached ? "—" : "Pending"}
+                        </p>
+                      </div>
+                      {s.meta && reached && (
+                        <p className="text-xs text-muted-foreground mt-0.5">{s.meta}</p>
+                      )}
+                    </li>
+                  );
+                })}
+                {isCancelled && (
+                  <li className="ml-6">
+                    <span className="absolute -left-[13px] flex h-6 w-6 items-center justify-center rounded-full border-2 bg-destructive border-destructive text-destructive-foreground">
+                      <ClipboardCheck className="h-3 w-3" />
+                    </span>
+                    <p className="font-medium text-destructive">Cancelled</p>
+                  </li>
+                )}
+              </ol>
+            );
+          })()}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
