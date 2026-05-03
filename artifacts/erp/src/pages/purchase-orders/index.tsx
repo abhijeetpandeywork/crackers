@@ -17,17 +17,29 @@ export default function PurchaseOrdersList() {
   const [page, setPage] = useState(1);
 
   const queryParams: any = { page, limit: 50 };
-  if (search) queryParams.search = search;
   if (status !== "ALL") queryParams.status = status;
 
   const { data, isLoading } = useListPurchaseOrders(queryParams);
 
+  const filtered = (data?.data ?? []).filter((po: any) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (
+      (po.poNumber ?? "").toLowerCase().includes(q) ||
+      (po.supplierName ?? "").toLowerCase().includes(q)
+    );
+  });
+
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "Draft": return <Badge variant="secondary">{status}</Badge>;
-      case "Sent": return <Badge variant="default" className="bg-blue-500">{status}</Badge>;
-      case "Received": return <Badge variant="default" className="bg-green-500">{status}</Badge>;
-      default: return <Badge variant="outline">{status}</Badge>;
+    const s = (status ?? "").toLowerCase();
+    const label = s ? s[0]!.toUpperCase() + s.slice(1) : "—";
+    switch (s) {
+      case "draft": return <Badge variant="secondary">{label}</Badge>;
+      case "sent": return <Badge variant="default" className="bg-blue-500">{label}</Badge>;
+      case "partial": return <Badge variant="default" className="bg-amber-500">{label}</Badge>;
+      case "received": return <Badge variant="default" className="bg-green-500">{label}</Badge>;
+      case "cancelled": return <Badge variant="destructive">{label}</Badge>;
+      default: return <Badge variant="outline">{label}</Badge>;
     }
   };
 
@@ -63,9 +75,11 @@ export default function PurchaseOrdersList() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="ALL">All Statuses</SelectItem>
-              <SelectItem value="Draft">Draft</SelectItem>
-              <SelectItem value="Sent">Sent</SelectItem>
-              <SelectItem value="Received">Received</SelectItem>
+              <SelectItem value="draft">Draft</SelectItem>
+              <SelectItem value="sent">Sent</SelectItem>
+              <SelectItem value="partial">Partial</SelectItem>
+              <SelectItem value="received">Received</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -97,20 +111,20 @@ export default function PurchaseOrdersList() {
                   <TableCell><Skeleton className="h-8 w-12 ml-auto" /></TableCell>
                 </TableRow>
               ))
-            ) : data?.data?.length === 0 ? (
+            ) : filtered.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-center h-32 text-muted-foreground">
                   No purchase orders found.
                 </TableCell>
               </TableRow>
             ) : (
-              data?.data?.map((po: any) => (
+              filtered.map((po: any) => (
                 <TableRow key={po.id}>
                   <TableCell className="font-mono text-sm">{po.poNumber || po.id.slice(0,8)}</TableCell>
-                  <TableCell className="font-medium">{po.supplierName}</TableCell>
+                  <TableCell className="font-medium">{po.supplierName ?? "—"}</TableCell>
                   <TableCell>{new Date(po.createdAt).toLocaleDateString('en-IN')}</TableCell>
                   <TableCell>{po.itemsCount || po.items?.length || 0}</TableCell>
-                  <TableCell>₹{po.totalAmount?.toLocaleString('en-IN')}</TableCell>
+                  <TableCell>₹{Number(po.totalAmount ?? 0).toLocaleString('en-IN')}</TableCell>
                   <TableCell>{getStatusBadge(po.status)}</TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="sm" asChild>

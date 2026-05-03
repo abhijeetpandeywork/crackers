@@ -19,7 +19,6 @@ export default function EstimatesList() {
   const { toast } = useToast();
 
   const queryParams: any = { page, limit: 50 };
-  if (search) queryParams.search = search;
   if (status !== "ALL") queryParams.status = status;
 
   const { data, isLoading, refetch } = useListEstimates(queryParams);
@@ -46,12 +45,14 @@ export default function EstimatesList() {
   };
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "Draft": return <Badge variant="secondary">{status}</Badge>;
-      case "Sent": return <Badge variant="default" className="bg-blue-500">{status}</Badge>;
-      case "Converted": return <Badge variant="default" className="bg-green-500">{status}</Badge>;
-      case "Expired": return <Badge variant="destructive">{status}</Badge>;
-      default: return <Badge variant="outline">{status}</Badge>;
+    const s = (status ?? "").toLowerCase();
+    const label = s ? s[0]!.toUpperCase() + s.slice(1) : "—";
+    switch (s) {
+      case "draft": return <Badge variant="secondary">{label}</Badge>;
+      case "confirmed": return <Badge variant="default" className="bg-blue-500">{label}</Badge>;
+      case "converted": return <Badge variant="default" className="bg-green-500">{label}</Badge>;
+      case "cancelled": return <Badge variant="destructive">{label}</Badge>;
+      default: return <Badge variant="outline">{label}</Badge>;
     }
   };
 
@@ -87,10 +88,10 @@ export default function EstimatesList() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="ALL">All Statuses</SelectItem>
-              <SelectItem value="Draft">Draft</SelectItem>
-              <SelectItem value="Sent">Sent</SelectItem>
-              <SelectItem value="Converted">Converted</SelectItem>
-              <SelectItem value="Expired">Expired</SelectItem>
+              <SelectItem value="draft">Draft</SelectItem>
+              <SelectItem value="confirmed">Confirmed</SelectItem>
+              <SelectItem value="converted">Converted</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -129,12 +130,21 @@ export default function EstimatesList() {
                 </TableCell>
               </TableRow>
             ) : (
-              data?.data?.map((estimate) => (
+              (data?.data ?? [])
+                .filter((e: any) => {
+                  if (!search) return true;
+                  const q = search.toLowerCase();
+                  return (
+                    (e.estimateNo ?? "").toLowerCase().includes(q) ||
+                    (e.customerName ?? "").toLowerCase().includes(q)
+                  );
+                })
+                .map((estimate: any) => (
                 <TableRow key={estimate.id}>
                   <TableCell className="font-mono text-sm">{estimate.estimateNo || estimate.id?.slice(0,8)}</TableCell>
-                  <TableCell className="font-medium">{estimate.customerName}</TableCell>
+                  <TableCell className="font-medium">{estimate.customerName ?? "Walk-in"}</TableCell>
                   <TableCell>{estimate.createdAt ? new Date(estimate.createdAt).toLocaleDateString('en-IN') : ''}</TableCell>
-                  <TableCell>₹{estimate.total?.toLocaleString('en-IN')}</TableCell>
+                  <TableCell>₹{Number(estimate.total ?? 0).toLocaleString('en-IN')}</TableCell>
                   <TableCell>
                     <Badge variant="outline">{estimate.type || 'Manual'}</Badge>
                   </TableCell>

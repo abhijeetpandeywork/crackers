@@ -22,9 +22,9 @@ export default function CustomersList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
 
-  const queryParams: { limit: number; search?: string; type?: string } = { limit: 50 };
+  const queryParams: { limit: number; search?: string; customerType?: string } = { limit: 50 };
   if (search) queryParams.search = search;
-  if (type !== "ALL") queryParams.type = type;
+  if (type !== "ALL") queryParams.customerType = type;
 
   const { data, isLoading, refetch } = useListCustomers(queryParams);
   const createMutation = useCreateCustomer();
@@ -83,14 +83,16 @@ export default function CustomersList() {
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="type" className="text-right">Type</Label>
-                  <Select name="type" defaultValue="Retail">
+                  <Select name="type" defaultValue="RETAIL">
                     <SelectTrigger className="col-span-3">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Retail">Retail</SelectItem>
-                      <SelectItem value="Wholesale">Wholesale</SelectItem>
-                      <SelectItem value="Walk-in">Walk-in</SelectItem>
+                      <SelectItem value="RETAIL">Retail</SelectItem>
+                      <SelectItem value="WHOLESALE">Wholesale</SelectItem>
+                      <SelectItem value="VIP">VIP</SelectItem>
+                      <SelectItem value="AGENT_CUSTOMER">Agent customer</SelectItem>
+                      <SelectItem value="WALK_IN">Walk-in</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -136,9 +138,11 @@ export default function CustomersList() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="ALL">All Types</SelectItem>
-              <SelectItem value="Wholesale">Wholesale</SelectItem>
-              <SelectItem value="Retail">Retail</SelectItem>
-              <SelectItem value="Walk-in">Walk-in</SelectItem>
+              <SelectItem value="RETAIL">Retail</SelectItem>
+              <SelectItem value="WHOLESALE">Wholesale</SelectItem>
+              <SelectItem value="VIP">VIP</SelectItem>
+              <SelectItem value="AGENT_CUSTOMER">Agent customer</SelectItem>
+              <SelectItem value="WALK_IN">Walk-in</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -205,9 +209,14 @@ export default function CustomersList() {
                   </TableCell>
                   <TableCell>{customer.city || 'N/A'}</TableCell>
                   <TableCell>
-                    <span className={(customer.outstandingBalance ?? 0) > 0 ? "text-destructive font-bold" : "text-green-600"}>
-                      ₹{customer.outstandingBalance?.toLocaleString('en-IN') || 0}
-                    </span>
+                    {(() => {
+                      const ob = Number(customer.outstandingBalance ?? 0);
+                      return (
+                        <span className={ob > 0 ? "text-destructive font-bold" : "text-green-600"}>
+                          ₹{ob.toLocaleString('en-IN')}
+                        </span>
+                      );
+                    })()}
                   </TableCell>
                   <TableCell>
                     <span className="text-green-600 font-medium">{customer.loyaltyPoints || 0}</span>

@@ -59,9 +59,11 @@ export default function InvoiceDetail() {
 
   if (!invoice) return <div>Invoice not found.</div>;
 
-  const subtotal = invoice.subtotal ?? 0;
-  const cgst = invoice.cgst ?? 0;
-  const sgst = invoice.sgst ?? 0;
+  const subtotal = Number(invoice.subtotal ?? 0);
+  const cgst = Number(invoice.cgst ?? 0);
+  const sgst = Number(invoice.sgst ?? 0);
+  const igst = Number((invoice as any).igst ?? 0);
+  const total = Number(invoice.total ?? 0);
 
   return (
     <div className="space-y-6 print-area">
@@ -131,9 +133,9 @@ export default function InvoiceDetail() {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-sm space-y-1">
-            <div className="font-bold text-lg">{invoice.customerName}</div>
-            <p>ID: {invoice.customerId}</p>
-            {invoice.customerGstin && <p>GSTIN: {invoice.customerGstin}</p>}
+            <div className="font-bold text-lg">{invoice.customerName ?? "Walk-in"}</div>
+            {invoice.customerId && <p>ID: {invoice.customerId}</p>}
+            {(invoice as any).customerGstin && <p>GSTIN: {(invoice as any).customerGstin}</p>}
             <p>Date: {invoice.createdAt ? new Date(invoice.createdAt).toLocaleDateString('en-IN') : ''}</p>
           </CardContent>
         </Card>
@@ -190,13 +192,13 @@ export default function InvoiceDetail() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {invoice.items?.map((item, i: number) => (
+              {invoice.items?.map((item: any, i: number) => (
                 <TableRow key={i}>
                   <TableCell className="font-medium">{item.productName}</TableCell>
                   <TableCell>{item.variantSize}</TableCell>
                   <TableCell className="text-right">{item.qty}</TableCell>
-                  <TableCell className="text-right">₹{item.resolvedPrice?.toLocaleString('en-IN')}</TableCell>
-                  <TableCell className="text-right font-medium">₹{item.amount?.toLocaleString('en-IN')}</TableCell>
+                  <TableCell className="text-right">₹{Number(item.resolvedPrice ?? 0).toLocaleString('en-IN')}</TableCell>
+                  <TableCell className="text-right font-medium">₹{Number(item.amount ?? 0).toLocaleString('en-IN')}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -208,17 +210,27 @@ export default function InvoiceDetail() {
                 <span className="text-muted-foreground">Subtotal:</span>
                 <span>₹{subtotal.toLocaleString('en-IN')}</span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">CGST (9%):</span>
-                <span>₹{cgst.toLocaleString('en-IN')}</span>
-              </div>
-              <div className="flex justify-between text-sm border-b pb-2">
-                <span className="text-muted-foreground">SGST (9%):</span>
-                <span>₹{sgst.toLocaleString('en-IN')}</span>
-              </div>
-              <div className="flex justify-between text-lg font-bold pt-2">
+              {cgst > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">CGST:</span>
+                  <span>₹{cgst.toLocaleString('en-IN')}</span>
+                </div>
+              )}
+              {sgst > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">SGST:</span>
+                  <span>₹{sgst.toLocaleString('en-IN')}</span>
+                </div>
+              )}
+              {igst > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">IGST:</span>
+                  <span>₹{igst.toLocaleString('en-IN')}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-lg font-bold pt-2 border-t">
                 <span>Grand Total:</span>
-                <span className="text-primary">₹{invoice.total?.toLocaleString('en-IN')}</span>
+                <span className="text-primary">₹{total.toLocaleString('en-IN')}</span>
               </div>
             </div>
           </div>

@@ -138,7 +138,7 @@ export default function PurchaseOrderDetail() {
             <IndianRupee className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₹{po.totalAmount?.toLocaleString('en-IN')}</div>
+            <div className="text-2xl font-bold">₹{Number(po.totalAmount ?? 0).toLocaleString('en-IN')}</div>
           </CardContent>
         </Card>
       </div>
@@ -164,8 +164,8 @@ export default function PurchaseOrderDetail() {
                   <TableCell className="font-medium">{item.productName}</TableCell>
                   <TableCell>{item.variantId}</TableCell>
                   <TableCell className="text-right">{item.orderedQty}</TableCell>
-                  <TableCell className="text-right">₹{item.unitPrice?.toLocaleString('en-IN')}</TableCell>
-                  <TableCell className="text-right font-medium">₹{((item.orderedQty ?? 0) * (item.unitPrice ?? 0)).toLocaleString('en-IN')}</TableCell>
+                  <TableCell className="text-right">₹{Number(item.unitPrice ?? 0).toLocaleString('en-IN')}</TableCell>
+                  <TableCell className="text-right font-medium">₹{(Number(item.orderedQty ?? 0) * Number(item.unitPrice ?? 0)).toLocaleString('en-IN')}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

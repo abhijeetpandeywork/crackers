@@ -103,7 +103,7 @@ export default function SupplierDetail() {
                     <TableRow key={po.id}>
                       <TableCell className="font-mono text-xs">{po.poNumber || po.id?.slice(0,8)}</TableCell>
                       <TableCell>{po.createdAt ? new Date(po.createdAt).toLocaleDateString('en-IN') : ''}</TableCell>
-                      <TableCell>₹{po.totalAmount?.toLocaleString('en-IN')}</TableCell>
+                      <TableCell>₹{Number(po.totalAmount ?? 0).toLocaleString('en-IN')}</TableCell>
                       <TableCell>
                         <Badge variant={po.status === 'received' ? 'default' : 'outline'}>{po.status}</Badge>
                       </TableCell>
