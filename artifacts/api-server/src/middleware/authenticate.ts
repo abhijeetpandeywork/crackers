@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from "express";
 import { verifyToken } from "../lib/auth.js";
 import { db, usersTable, rolesTable, rolePermissionsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { verifyApiToken } from "../routes/v1/apiTokens.js";
 
 export interface AuthRequest extends Request {
   user?: { id: string; role: string };
@@ -13,8 +14,29 @@ export function authenticate(req: AuthRequest, res: Response, next: NextFunction
     res.status(401).json({ success: false, error: { code: "UNAUTHORIZED", message: "Missing token" } });
     return;
   }
+  const raw = auth.slice(7).trim();
+
+  // Long-lived third-party API tokens (rkc_…) are validated against the
+  // api_tokens table. They map to a synthetic admin-equivalent user so
+  // existing routes and audit logging continue to work unchanged.
+  if (raw.startsWith("rkc_")) {
+    verifyApiToken(raw)
+      .then((mapped) => {
+        if (!mapped) {
+          res.status(401).json({ success: false, error: { code: "INVALID_TOKEN", message: "Invalid, revoked or expired API token" } });
+          return;
+        }
+        req.user = mapped;
+        next();
+      })
+      .catch(() => {
+        res.status(500).json({ success: false, error: { code: "AUTH_FAILED", message: "Could not verify API token" } });
+      });
+    return;
+  }
+
   try {
-    const payload = verifyToken(auth.slice(7));
+    const payload = verifyToken(raw);
     req.user = payload;
     next();
   } catch {
@@ -74,7 +96,9 @@ export function requirePermission(permission: string) {
       res.status(401).json({ success: false, error: { code: "UNAUTHORIZED", message: "Login required" } });
       return;
     }
-    if (role === "SUPER_ADMIN") return next();
+    // SUPER_ADMIN and synthetic API_TOKEN users get a free pass — token-based
+    // scoping is enforced by token scopes rather than by RBAC roles.
+    if (role === "SUPER_ADMIN" || role === "API_TOKEN") return next();
     try {
       const perms = await permsForRole(role);
       if (!perms.has(permission)) {

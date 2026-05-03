@@ -3,6 +3,7 @@ export * from "./locations";
 export * from "./products";
 export * from "./brands";
 export * from "./categories";
+export * from "./apiTokens";
 export * from "./priceLists";
 export * from "./customers";
 export * from "./suppliers";
