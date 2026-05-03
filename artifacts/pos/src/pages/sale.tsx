@@ -44,8 +44,23 @@ const DEFAULT_POS_CONFIG: PosConfig = {
   paymentMethods: { cash: true, upi: true, card: true, credit: true },
 };
 
-type Variant = { variantId?: string; id?: string; size?: string; label?: string; price?: number | string; stock?: number };
-type Product = { id: string; code?: string; name: string; category?: string; variants?: Variant[]; hsnCode?: string | null; gstRate?: number | null };
+type Variant = { variantId?: string; id?: string; size?: string; label?: string; price?: number | string; stock?: number; brand?: string };
+type Product = { id: string; code?: string; name: string; category?: string; variants?: Variant[]; hsnCode?: string | null; gstRate?: number | null; imageUrl?: string | null };
+
+// Deterministic accent so two cards in the same row don't look identical.
+const accentFor = (key: string) => {
+  const palette = [
+    "from-amber-500/20 to-rose-500/10",
+    "from-sky-500/20 to-indigo-500/10",
+    "from-emerald-500/20 to-teal-500/10",
+    "from-fuchsia-500/20 to-purple-500/10",
+    "from-orange-500/20 to-red-500/10",
+    "from-cyan-500/20 to-blue-500/10",
+  ];
+  let h = 0;
+  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) | 0;
+  return palette[Math.abs(h) % palette.length];
+};
 
 const inr = (n: number) => `₹${(Math.round(n * 100) / 100).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -605,39 +620,73 @@ const SaleScreen = () => {
         </div>
 
         <ScrollArea className="flex-1 px-4">
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 pb-4">
-            {filteredProducts.map((product) => (
-              <Card key={product.id} className="bg-zinc-900 border-zinc-800 overflow-hidden hover:border-primary/50 transition-colors">
-                <CardContent className="p-0">
-                  <div className="aspect-square bg-gradient-to-br from-zinc-800 to-zinc-900 flex items-center justify-center p-4">
-                    <span className="text-zinc-600 font-bold text-4xl">{product.code}</span>
-                  </div>
-                  <div className="p-3">
-                    <h3 className="font-bold truncate text-lg" title={product.name}>{product.name}</h3>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {(product.variants ?? []).map((variant) => {
-                        const stock = typeof variant.stock === "number" ? variant.stock : null;
-                        const oos = stock !== null && stock <= 0;
-                        const low = stock !== null && stock > 0 && stock <= 5;
-                        return (
-                          <Button
-                            key={variantId(variant)} variant="secondary" size="sm" disabled={oos}
-                            className={`text-xs h-10 bg-zinc-800 hover:bg-primary hover:text-white relative ${oos ? "opacity-40 cursor-not-allowed" : ""}`}
-                            onClick={() => addVariantToCart(product, variant)}
-                            title={oos ? "Out of stock" : low ? `Only ${stock} left` : `${stock ?? "?"} in stock`}
-                          >
-                            <span className="font-bold">{variantLabel(variant)}</span>
-                            <span className="ml-2">₹{variantPrice(variant)}</span>
-                            {low && <span className="absolute -top-1.5 -right-1.5 h-4 min-w-4 rounded-full bg-amber-500 text-[10px] text-black font-black px-1 leading-4">{stock}</span>}
-                            {oos && <span className="absolute -top-1.5 -right-1.5 h-4 px-1 rounded-full bg-red-600 text-[10px] text-white font-black leading-4">OUT</span>}
-                          </Button>
-                        );
-                      })}
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 pb-4">
+            {filteredProducts.map((product) => {
+              const variants = product.variants ?? [];
+              const inStockVariants = variants.filter((v) => typeof v.stock !== "number" || v.stock > 0);
+              const cheapest = [...variants].sort((a, b) => variantPrice(a) - variantPrice(b))[0];
+              const fromPrice = cheapest ? variantPrice(cheapest) : 0;
+              const initials = (product.name || "?").trim().slice(0, 2).toUpperCase();
+              const accent = accentFor(product.id);
+              const allOos = variants.length > 0 && inStockVariants.length === 0;
+              return (
+                <Card key={product.id} className={`bg-zinc-900/80 border-zinc-800 overflow-hidden hover:border-amber-400/60 transition-colors ${allOos ? "opacity-60" : ""}`}>
+                  <CardContent className="p-0">
+                    {/* Compact accent header — no more giant code placeholder. */}
+                    <div className={`relative h-20 bg-gradient-to-br ${accent} flex items-center px-3`}>
+                      {product.imageUrl ? (
+                        <img src={product.imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover opacity-90" />
+                      ) : (
+                        <div className="h-12 w-12 rounded-lg bg-zinc-950/60 ring-1 ring-white/10 flex items-center justify-center text-amber-300 font-black text-lg tracking-tight">
+                          {initials}
+                        </div>
+                      )}
+                      {product.code && (
+                        <span className="ml-auto font-mono text-[10px] uppercase tracking-wider text-zinc-300/80 bg-zinc-950/40 px-2 py-0.5 rounded">
+                          {product.code}
+                        </span>
+                      )}
+                      {allOos && (
+                        <span className="absolute top-1.5 left-1.5 text-[10px] font-bold bg-red-600 text-white px-1.5 py-0.5 rounded">OUT</span>
+                      )}
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                    <div className="p-3 space-y-2">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <h3 className="font-bold truncate text-sm leading-tight" title={product.name}>{product.name}</h3>
+                        <span className="text-[11px] text-zinc-500 shrink-0">from <span className="text-amber-300 font-bold">₹{fromPrice}</span></span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {variants.slice(0, 6).map((variant) => {
+                          const stock = typeof variant.stock === "number" ? variant.stock : null;
+                          const oos = stock !== null && stock <= 0;
+                          const low = stock !== null && stock > 0 && stock <= 5;
+                          return (
+                            <button
+                              key={variantId(variant)}
+                              disabled={oos}
+                              onClick={() => addVariantToCart(product, variant)}
+                              title={oos ? "Out of stock" : low ? `Only ${stock} left` : `${stock ?? "?"} in stock`}
+                              className={`relative h-12 rounded-md border text-left px-2 py-1 transition-colors ${
+                                oos
+                                  ? "bg-zinc-900 border-zinc-800 text-zinc-600 line-through cursor-not-allowed"
+                                  : "bg-zinc-800/60 border-zinc-700 hover:bg-amber-400 hover:text-zinc-950 hover:border-amber-300 active:scale-[0.97]"
+                              }`}
+                            >
+                              <div className="text-[10px] uppercase tracking-wide opacity-70 truncate">{variantLabel(variant)}</div>
+                              <div className="text-xs font-bold leading-tight">₹{variantPrice(variant)}</div>
+                              {low && <span className="absolute -top-1 -right-1 h-3.5 min-w-3.5 rounded-full bg-amber-500 text-[9px] text-black font-black px-1 leading-[14px]">{stock}</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {variants.length > 6 && (
+                        <p className="text-[10px] text-zinc-500">+{variants.length - 6} more sizes</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
             {filteredProducts.length === 0 && (
               <div className="col-span-full flex flex-col items-center justify-center py-20 text-zinc-600">
                 <Search className="h-16 w-16 mb-4 opacity-20" />
