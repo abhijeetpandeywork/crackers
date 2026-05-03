@@ -544,22 +544,40 @@ const SaleScreen = () => {
           </div>
         </div>
 
-        {/* Shift bar */}
+        {/* Shift bar — Float = cash put in the till at shift open; Sales =
+            all invoices billed in this shift (any payment mode); Cash Drawer
+            = Float + cash sales only (the physical cash you should have on
+            hand right now). UPI/Card sales never affect the drawer. */}
         {currentShift && running && (
           <div className="px-4 pt-2">
             <div className="flex items-center gap-3 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2 text-xs">
               <Wallet className="h-4 w-4 text-emerald-400" />
-              <span className="text-zinc-400">Shift</span>
+              <span className="text-zinc-400" title="Unique ID for this cashier shift">Shift</span>
               <span className="font-bold text-white">{String(currentShift.id).slice(0, 8)}</span>
               <span className="text-zinc-600">|</span>
-              <span className="text-zinc-400">Float</span>
+              <span
+                className="text-zinc-400 cursor-help"
+                title="Opening Float — the cash you put in the till when this shift was opened. Stays fixed for the whole shift."
+              >
+                Opening Float
+              </span>
               <span className="font-bold">{inr(Number(currentShift.openingCash) || 0)}</span>
               <span className="text-zinc-600">|</span>
-              <span className="text-zinc-400">Sales</span>
+              <span
+                className="text-zinc-400 cursor-help"
+                title={`Total Sales billed this shift (all payment modes).\nCash ${inr(running.cashSales || 0)} • UPI ${inr(running.upiSales || 0)} • Card ${inr(running.cardSales || 0)}${running.creditSales ? ` • Credit ${inr(running.creditSales)}` : ""}`}
+              >
+                Sales
+              </span>
               <span className="font-bold text-amber-300">{inr(running.totalSales || 0)}</span>
               <span className="text-zinc-500">({running.txnCount || 0} txn)</span>
               <span className="text-zinc-600">|</span>
-              <span className="text-zinc-400">Drawer</span>
+              <span
+                className="text-zinc-400 cursor-help"
+                title={`Cash Drawer — physical cash that should be in the till right now.\nOpening Float ${inr(Number(currentShift.openingCash) || 0)} + Cash Sales ${inr(running.cashSales || 0)} = ${inr(running.expectedCash || 0)}.\nUPI / Card sales do not affect the drawer.`}
+              >
+                Cash Drawer
+              </span>
               <span className="font-bold text-emerald-400">{inr(running.expectedCash || 0)}</span>
               <Button
                 size="sm" variant="ghost"
@@ -892,9 +910,9 @@ const SaleScreen = () => {
             {md > 0 && (
               <div className="flex justify-between text-green-500"><span>Manual discount</span><span>- ₹{md.toLocaleString("en-IN")}</span></div>
             )}
-            <div className="flex justify-between"><span>GST ({Math.round(taxRate * 100)}%)</span><span>₹{Math.round(gstAdj).toLocaleString("en-IN")}</span></div>
+            <div className="flex justify-between"><span>GST ({Math.round(taxRate * 100)}%)</span><span>₹{gstAdj.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
             <div className="flex justify-between text-white text-3xl font-black pt-2 border-t border-zinc-800">
-              <span>TOTAL</span><span className="text-primary">₹{Math.round(total).toLocaleString("en-IN")}</span>
+              <span>TOTAL</span><span className="text-primary">₹{total.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
           </div>
 
