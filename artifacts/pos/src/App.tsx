@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CartProvider } from "@/context/cart";
-import { setAuthTokenGetter } from "@workspace/api-client-react";
+import { setAuthTokenGetter, setUnauthorizedHandler } from "@workspace/api-client-react";
 import PinLogin from "@/pages/pin-login";
 import SaleScreen from "@/pages/sale";
 import ReceiptScreen from "@/pages/receipt";
@@ -11,6 +11,16 @@ import PosHelp from "@/pages/help";
 import NotFound from "@/pages/not-found";
 
 setAuthTokenGetter(() => localStorage.getItem("pos_token"));
+
+// On 401: drop the stale token and bounce to PIN login so the cashier
+// can re-authenticate instead of staring at a broken sale screen.
+setUnauthorizedHandler(() => {
+  if (localStorage.getItem("pos_token")) {
+    localStorage.removeItem("pos_token");
+    const base = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
+    window.location.href = `${base}/`;
+  }
+});
 
 const queryClient = new QueryClient();
 

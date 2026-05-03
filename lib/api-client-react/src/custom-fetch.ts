@@ -17,6 +17,19 @@ const DEFAULT_JSON_ACCEPT = "application/json, application/problem+json";
 
 let _baseUrl: string | null = null;
 let _authTokenGetter: AuthTokenGetter | null = null;
+let _unauthorizedHandler: (() => void) | null = null;
+
+/**
+ * Register a handler invoked when the API returns 401 Unauthorized.
+ * Apps typically use this to clear their stored auth token and redirect
+ * the user to the login screen, so a stale/expired token does not leave
+ * the UI stuck on a permanently-failing page.
+ *
+ * Pass `null` to clear the handler.
+ */
+export function setUnauthorizedHandler(handler: (() => void) | null): void {
+  _unauthorizedHandler = handler;
+}
 
 /**
  * Set a base URL that is prepended to every relative request URL
@@ -363,6 +376,13 @@ export async function customFetch<T = unknown>(
   const response = await fetch(input, { ...init, method, headers });
 
   if (!response.ok) {
+    if (response.status === 401 && _unauthorizedHandler) {
+      try {
+        _unauthorizedHandler();
+      } catch {
+        // never let the handler swallow the original failure
+      }
+    }
     const errorData = await parseErrorBody(response, method);
     throw new ApiError(response, errorData, requestInfo);
   }
