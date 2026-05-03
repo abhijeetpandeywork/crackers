@@ -279,24 +279,30 @@ const SaleScreen = () => {
                   <div className="p-3">
                     <h3 className="font-bold truncate text-lg">{product.name}</h3>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      {product.variants?.map((variant: any) => (
-                        <Button 
-                          key={variant.id}
-                          variant="secondary" 
-                          size="sm"
-                          className="text-xs h-9 bg-zinc-800 hover:bg-primary hover:text-white"
-                          onClick={() => addItem({
-                            productId: product.id,
-                            variantId: variant.id,
-                            productName: product.name,
-                            variantLabel: variant.label,
-                            qty: 1,
-                            unitPrice: variant.price || 0
-                          })}
-                        >
-                          {variant.label} • ₹{variant.price}
-                        </Button>
-                      ))}
+                      {product.variants?.map((variant: any) => {
+                        // POS API returns { variantId, size, price, stock }
+                        const vid = variant.variantId ?? variant.id;
+                        const vlabel = variant.size ?? variant.label ?? "Standard";
+                        const vprice = Number(variant.price) || 0;
+                        return (
+                          <Button
+                            key={vid}
+                            variant="secondary"
+                            size="sm"
+                            className="text-xs h-9 bg-zinc-800 hover:bg-primary hover:text-white"
+                            onClick={() => addItem({
+                              productId: product.id,
+                              variantId: vid,
+                              productName: product.name,
+                              variantLabel: vlabel,
+                              qty: 1,
+                              unitPrice: vprice,
+                            })}
+                          >
+                            {vlabel} • ₹{vprice}
+                          </Button>
+                        );
+                      })}
                     </div>
                   </div>
                 </CardContent>

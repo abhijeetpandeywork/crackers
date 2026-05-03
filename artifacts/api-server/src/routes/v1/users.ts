@@ -6,11 +6,10 @@ import { hashPassword } from "../../lib/auth.js";
 
 const router = Router();
 
-// Admin-only: SUPER_ADMIN may manage users. ERP_MANAGER may read for assignment dropdowns.
+// Admin-only: only SUPER_ADMIN may read or modify the user directory.
 const adminOnly = requireRole("SUPER_ADMIN");
-const adminOrManager = requireRole("SUPER_ADMIN", "ERP_MANAGER");
 
-router.get("/users", authenticate, adminOrManager, async (_req, res) => {
+router.get("/users", authenticate, adminOnly, async (_req, res) => {
   const rows = await db.select({
     id: usersTable.id,
     name: usersTable.name,
@@ -43,7 +42,7 @@ router.post("/users", authenticate, adminOnly, async (req, res) => {
   res.status(201).json({ success: true, data: user });
 });
 
-router.get("/users/:id", authenticate, adminOrManager, async (req, res) => {
+router.get("/users/:id", authenticate, adminOnly, async (req, res) => {
   const rows = await db.select({
     id: usersTable.id,
     name: usersTable.name,
