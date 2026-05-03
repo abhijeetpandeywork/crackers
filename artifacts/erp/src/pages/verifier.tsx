@@ -208,6 +208,25 @@ const SECTIONS: Array<{ name: string; run: () => Promise<Check[]> }> = [
       });
       const users = await http("/api/v1/users", { headers });
       out.push({ name: "GET /users returns 200 (admin)", passed: users.status === 200, detail: `status=${users.status}` });
+      // RBAC: a non-admin (CASHIER) MUST be rejected with 403.
+      const cashierTok = await login("cashier", "admin123");
+      const cashierHeaders = { Authorization: `Bearer ${cashierTok}` };
+      const usersAsCashier = await http("/api/v1/users", { headers: cashierHeaders });
+      out.push({
+        name: "GET /users as non-admin (CASHIER) returns 403 (RBAC)",
+        passed: usersAsCashier.status === 403,
+        detail: `status=${usersAsCashier.status}`,
+      });
+      const userCreateAsCashier = await http("/api/v1/users", {
+        method: "POST",
+        headers: { ...cashierHeaders, "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Hacker", username: "hacker", password: "x", role: "SUPER_ADMIN" }),
+      });
+      out.push({
+        name: "POST /users as non-admin (CASHIER) returns 403 (RBAC)",
+        passed: userCreateAsCashier.status === 403,
+        detail: `status=${userCreateAsCashier.status}`,
+      });
 
       const company = await http("/api/v1/settings/company", { headers });
       out.push({ name: "GET /settings/company returns 200", passed: company.status === 200, detail: `status=${company.status}` });

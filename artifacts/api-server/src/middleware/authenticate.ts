@@ -19,3 +19,18 @@ export function authenticate(req: AuthRequest, res: Response, next: NextFunction
     res.status(401).json({ success: false, error: { code: "INVALID_TOKEN", message: "Invalid or expired token" } });
   }
 }
+
+/** RBAC guard. Use AFTER authenticate(). Returns 403 for any role not in `allowed`. */
+export function requireRole(...allowed: string[]) {
+  return (req: AuthRequest, res: Response, next: NextFunction) => {
+    const role = req.user?.role;
+    if (!role || !allowed.includes(role)) {
+      res.status(403).json({
+        success: false,
+        error: { code: "FORBIDDEN", message: "Insufficient permissions" },
+      });
+      return;
+    }
+    next();
+  };
+}

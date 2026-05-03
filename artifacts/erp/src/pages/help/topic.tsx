@@ -91,7 +91,7 @@ const TOPICS: Record<string, Topic> = {
           <>
             For any customer (including walk-ins), if a single line quantity hits the
             wholesale threshold, the system silently switches that line to the wholesale
-            tier. Default = 10 units. Configure in <Link href="/settings"><a className="text-primary underline">Settings → Pricing</a></Link>.
+            tier. Default = 10 units. Configure in <Link href="/settings" className="text-primary underline">Settings → Pricing</Link>.
           </>
         ),
       },

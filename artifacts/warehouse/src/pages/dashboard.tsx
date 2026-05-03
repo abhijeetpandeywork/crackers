@@ -85,13 +85,15 @@ export default function Dashboard() {
         <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
         <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
           {quickActions.map((action) => (
-            <Link key={action.href} href={action.href}>
-              <a className="flex flex-col items-center justify-center p-6 bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all group">
-                <div className={`p-3 rounded-full ${action.color} text-white mb-3 group-hover:scale-110 transition-transform`}>
-                  <action.icon className="h-6 w-6" />
-                </div>
-                <span className="font-medium text-gray-900">{action.label}</span>
-              </a>
+            <Link
+              key={action.href}
+              href={action.href}
+              className="flex flex-col items-center justify-center p-6 bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all group"
+            >
+              <div className={`p-3 rounded-full ${action.color} text-white mb-3 group-hover:scale-110 transition-transform`}>
+                <action.icon className="h-6 w-6" />
+              </div>
+              <span className="font-medium text-gray-900">{action.label}</span>
             </Link>
           ))}
         </div>

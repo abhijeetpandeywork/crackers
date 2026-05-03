@@ -1,12 +1,16 @@
 import { Router } from "express";
 import { db, usersTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
-import { authenticate } from "../../middleware/authenticate.js";
+import { authenticate, requireRole } from "../../middleware/authenticate.js";
 import { hashPassword } from "../../lib/auth.js";
 
 const router = Router();
 
-router.get("/users", authenticate, async (_req, res) => {
+// Admin-only: SUPER_ADMIN may manage users. ERP_MANAGER may read for assignment dropdowns.
+const adminOnly = requireRole("SUPER_ADMIN");
+const adminOrManager = requireRole("SUPER_ADMIN", "ERP_MANAGER");
+
+router.get("/users", authenticate, adminOrManager, async (_req, res) => {
   const rows = await db.select({
     id: usersTable.id,
     name: usersTable.name,
@@ -22,7 +26,7 @@ router.get("/users", authenticate, async (_req, res) => {
   res.json({ success: true, data: rows, meta: { page: 1, limit: 100, total: rows.length, pages: 1 } });
 });
 
-router.post("/users", authenticate, async (req, res) => {
+router.post("/users", authenticate, adminOnly, async (req, res) => {
   const { password, pin, ...rest } = req.body;
   const passwordHash = await hashPassword(password);
   const [user] = await db.insert(usersTable).values({ ...rest, id: crypto.randomUUID(), passwordHash, pin }).returning({
@@ -39,7 +43,7 @@ router.post("/users", authenticate, async (req, res) => {
   res.status(201).json({ success: true, data: user });
 });
 
-router.get("/users/:id", authenticate, async (req, res) => {
+router.get("/users/:id", authenticate, adminOrManager, async (req, res) => {
   const rows = await db.select({
     id: usersTable.id,
     name: usersTable.name,
@@ -56,7 +60,7 @@ router.get("/users/:id", authenticate, async (req, res) => {
   res.json({ success: true, data: rows[0] });
 });
 
-router.put("/users/:id", authenticate, async (req, res) => {
+router.put("/users/:id", authenticate, adminOnly, async (req, res) => {
   const { password, ...rest } = req.body;
   const updates: any = { ...rest, updatedAt: new Date() };
   if (password) updates.passwordHash = await hashPassword(password);
