@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -265,15 +264,11 @@ export default function SiteContent() {
   };
 
   if (isLoading || !draft) {
-    return (
-      <Layout>
-        <div className="p-6">Loading…</div>
-      </Layout>
-    );
+    return <div className="p-6">Loading…</div>;
   }
 
   return (
-    <Layout>
+    <>
       <div className="p-6 max-w-5xl mx-auto">
         <div className="flex items-start justify-between mb-1 gap-4">
           <div>
@@ -700,6 +695,6 @@ export default function SiteContent() {
           </TabsContent>
         </Tabs>
       </div>
-    </Layout>
+    </>
   );
 }

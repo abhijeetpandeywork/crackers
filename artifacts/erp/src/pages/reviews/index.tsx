@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -47,8 +46,7 @@ export default function Reviews() {
   };
 
   return (
-    <Layout>
-      <div className="p-6 max-w-6xl mx-auto">
+    <div className="p-6 max-w-6xl mx-auto">
         <h1 className="text-2xl font-bold mb-1">Product reviews</h1>
         <p className="text-sm text-muted-foreground mb-4">
           Moderate reviews submitted from the public website. Approved reviews appear on the product page.
@@ -118,7 +116,6 @@ export default function Reviews() {
             ))}
           </div>
         )}
-      </div>
-    </Layout>
+    </div>
   );
 }
