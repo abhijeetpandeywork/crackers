@@ -36,6 +36,7 @@ import SalesReport from "@/pages/reports/sales";
 import OutstandingReport from "@/pages/reports/outstanding";
 import CommissionReport from "@/pages/reports/commission";
 import GstReport from "@/pages/reports/gst";
+import ActivityReport from "@/pages/reports/activity";
 import UsersList from "@/pages/users/index";
 import LocationsList from "@/pages/locations/index";
 import Settings from "@/pages/settings/index";
@@ -149,6 +150,9 @@ function Router() {
       </Route>
       <Route path="/reports/gst">
         {(params) => <ProtectedRoute component={GstReport} {...params} />}
+      </Route>
+      <Route path="/reports/activity">
+        {(params) => <ProtectedRoute component={ActivityReport} {...params} />}
       </Route>
       <Route path="/users">
         {(params) => <ProtectedRoute component={UsersList} {...params} />}

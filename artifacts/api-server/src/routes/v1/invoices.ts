@@ -50,7 +50,13 @@ router.post("/invoices", authenticate, async (req: AuthRequest, res) => {
     customerName = cRows[0]?.name;
   }
 
-  const resolvedItems = [];
+  const resolvedItems: Array<{
+    productId: string;
+    variantId: string;
+    qty: number;
+    amount: number;
+    [k: string]: unknown;
+  }> = [];
   for (const item of items) {
     const pRows = await db.select().from(productsTable).where(eq(productsTable.id, item.productId)).limit(1);
     const product = pRows[0];
@@ -83,47 +89,53 @@ router.post("/invoices", authenticate, async (req: AuthRequest, res) => {
   const financialYear = `${fy}-${fy + 1}`;
   const invoiceNo = await nextInvoiceNo();
 
-  // Deduct stock
-  if (locationId) {
-    for (const item of resolvedItems) {
-      await appendLedger({
-        productId: item.productId,
-        variantId: item.variantId,
-        locationId,
-        type: "OUT",
-        qty: -item.qty,
-        refType: "INVOICE",
-        createdBy: req.user?.id,
-      });
+  // Stock-ledger writes and the invoice insert run inside a single
+  // transaction so a parent failure never leaves orphan ledger rows.
+  const invoice = await db.transaction(async (tx) => {
+    if (locationId) {
+      for (const item of resolvedItems) {
+        await appendLedger(
+          {
+            productId: item.productId,
+            variantId: item.variantId,
+            locationId,
+            type: "OUT",
+            qty: -item.qty,
+            refType: "INVOICE",
+            createdBy: req.user?.id,
+          },
+          tx,
+        );
+      }
     }
-  }
-
-  const [invoice] = await db.insert(invoicesTable).values({
-    id: crypto.randomUUID(),
-    invoiceNo,
-    customerId,
-    customerName,
-    agentId,
-    locationId,
-    priceListId,
-    items: resolvedItems,
-    subtotal: subtotal.toFixed(2),
-    discountAmount: "0",
-    couponCode,
-    couponDiscount: "0",
-    loyaltyPointsRedeemed: loyaltyPointsRedeem ?? 0,
-    loyaltyDiscount: "0",
-    taxableAmount: taxableAmount.toFixed(2),
-    cgst: cgst.toFixed(2),
-    sgst: sgst.toFixed(2),
-    igst: "0",
-    total: total.toFixed(2),
-    paymentMode: paymentMode as any,
-    channel: (channel ?? "RETAIL") as any,
-    financialYear,
-    status: paymentMode === "CREDIT" ? "credit" : "paid",
-    createdBy: req.user?.id,
-  }).returning();
+    const [inv] = await tx.insert(invoicesTable).values({
+      id: crypto.randomUUID(),
+      invoiceNo,
+      customerId,
+      customerName,
+      agentId,
+      locationId,
+      priceListId,
+      items: resolvedItems as any,
+      subtotal: subtotal.toFixed(2),
+      discountAmount: "0",
+      couponCode,
+      couponDiscount: "0",
+      loyaltyPointsRedeemed: loyaltyPointsRedeem ?? 0,
+      loyaltyDiscount: "0",
+      taxableAmount: taxableAmount.toFixed(2),
+      cgst: cgst.toFixed(2),
+      sgst: sgst.toFixed(2),
+      igst: "0",
+      total: total.toFixed(2),
+      paymentMode: paymentMode as any,
+      channel: (channel ?? "RETAIL") as any,
+      financialYear,
+      status: paymentMode === "CREDIT" ? "credit" : "paid",
+      createdBy: req.user?.id,
+    }).returning();
+    return inv;
+  });
 
   // Update outstanding balance if credit
   if (paymentMode === "CREDIT" && customerId) {

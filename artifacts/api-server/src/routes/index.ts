@@ -27,6 +27,7 @@ import siteContentRouter from "./v1/siteContent.js";
 import reviewsRouter from "./v1/reviews.js";
 import shopRouter from "./v1/shop.js";
 import systemRouter from "./v1/system.js";
+import auditLogRouter from "./v1/auditLog.js";
 
 const router: IRouter = Router();
 
@@ -58,5 +59,6 @@ router.use("/v1", siteContentRouter);
 router.use("/v1", reviewsRouter);
 router.use("/v1", shopRouter);
 router.use("/v1", systemRouter);
+router.use("/v1", auditLogRouter);
 
 export default router;

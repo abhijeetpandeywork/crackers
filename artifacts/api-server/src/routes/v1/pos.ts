@@ -439,53 +439,60 @@ router.post("/pos/sale", authenticate, async (req: AuthRequest, res) => {
   const fy = new Date().getFullYear();
   const invoiceNo = await nextInvoiceNo();
 
-  // Stock movements first so a failure rejects the sale before persisting the invoice.
-  for (const item of resolvedItems) {
-    await appendLedger({
-      productId: item.productId,
-      variantId: item.variantId,
-      locationId,
-      type: "OUT",
-      qty: -item.qty,
-      refType: "POS",
-      createdBy: req.user?.id,
-    });
-  }
-
   const status: "paid" | "credit" =
     finalPaymentMode === "CREDIT" || nonZero.some((t) => t.mode === "CREDIT") ? "credit" : "paid";
 
-  const [invoice] = await db
-    .insert(invoicesTable)
-    .values({
-      id: crypto.randomUUID(),
-      invoiceNo,
-      customerId,
-      items: resolvedItems,
-      subtotal: subtotal.toFixed(2),
-      discountAmount: manualDiscount.toFixed(2),
-      couponCode,
-      couponDiscount: "0",
-      taxableAmount: taxable.toFixed(2),
-      cgst: cgst.toFixed(2),
-      sgst: sgst.toFixed(2),
-      igst: "0",
-      total: total.toFixed(2),
-      paymentMode: finalPaymentMode,
-      channel: "POS",
-      financialYear: `${fy}-${fy + 1}`,
-      status,
-      locationId,
-      shiftId: shiftId ?? undefined,
-      logisticsDetails: {
-        tenders: nonZero,
-        cashReceived: num(cashReceived),
-        change: Math.max(0, num(cashReceived) - (nonZero.find((t) => t.mode === "CASH")?.amount ?? 0)),
-        discountReason: discountReason ?? null,
-      } as any,
-      createdBy: req.user?.id,
-    })
-    .returning();
+  // Wrap stock-ledger writes and the invoice insert in a single DB transaction
+  // so a failure on the parent insert rolls back the ledger rows and stock
+  // levels — no orphan ledger entries, no silent stock drift.
+  const invoice = await db.transaction(async (tx) => {
+    for (const item of resolvedItems) {
+      await appendLedger(
+        {
+          productId: item.productId,
+          variantId: item.variantId,
+          locationId,
+          type: "OUT",
+          qty: -item.qty,
+          refType: "POS",
+          createdBy: req.user?.id,
+        },
+        tx,
+      );
+    }
+    const [inv] = await tx
+      .insert(invoicesTable)
+      .values({
+        id: crypto.randomUUID(),
+        invoiceNo,
+        customerId,
+        items: resolvedItems,
+        subtotal: subtotal.toFixed(2),
+        discountAmount: manualDiscount.toFixed(2),
+        couponCode,
+        couponDiscount: "0",
+        taxableAmount: taxable.toFixed(2),
+        cgst: cgst.toFixed(2),
+        sgst: sgst.toFixed(2),
+        igst: "0",
+        total: total.toFixed(2),
+        paymentMode: finalPaymentMode,
+        channel: "POS",
+        financialYear: `${fy}-${fy + 1}`,
+        status,
+        locationId,
+        shiftId: shiftId ?? undefined,
+        logisticsDetails: {
+          tenders: nonZero,
+          cashReceived: num(cashReceived),
+          change: Math.max(0, num(cashReceived) - (nonZero.find((t) => t.mode === "CASH")?.amount ?? 0)),
+          discountReason: discountReason ?? null,
+        } as any,
+        createdBy: req.user?.id,
+      })
+      .returning();
+    return inv;
+  });
 
   // Loyalty earn (paid sales only).
   let loyaltyEarned = 0;

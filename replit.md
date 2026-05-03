@@ -10,6 +10,14 @@ Key capabilities include a 5-tier pricing engine, an immutable stock ledger syst
 
 **Server-enforced safety rails on POS sales:** non-positive/non-finite item quantities are rejected (400 VALIDATION); manual-discount % is capped per role (Admin 100%, Manager `pricing.maxManagerDiscountPct` default 50%, Cashier `pricing.maxCashierDiscountPct` default 10%) and over-cap requests return 403 DISCOUNT_LIMIT — preventing API-level bypass of the UI.
 
+**Atomic stock + parent writes:** every operation that mutates the immutable stock ledger together with a parent record (POS sale, retail invoice, transfer dispatch, transfer receive, PO receive) runs inside a single Postgres transaction (`db.transaction`). `appendLedger(entry, tx?)` accepts an optional Drizzle tx so all ledger inserts and stock-level upserts ride the same transaction — a parent-row failure rolls back stock, no orphan ledger rows, no silent stock drift.
+
+**Audit log (immutable):** an append-only `audit_log` table records every admin write to `settings.company`, `settings.pricing`, `site-content`, `product`, `customer`, `coupon`, and `brand` — capturing actor, role, action (CREATE/UPDATE/DELETE), entity type/id, before/after JSON snapshots, IP and user-agent. The helper `auditWrite(req, …)` is invoked from the route handler after the write succeeds and swallows its own errors so logging failures never break the user-facing operation. Browse the log at ERP → Reports → Activity log; both `PUT /api/v1/site-content` and `/api/v1/audit-log` are gated to SUPER_ADMIN/ADMIN.
+
+**Stock-level concurrency:** `stock_levels` has a composite primary key on `(product_id, variant_id, location_id)`. `appendLedger` upserts via `INSERT … ON CONFLICT DO UPDATE SET current_qty = current_qty + $delta`, so concurrent transactions can never lose-update each other's stock writes.
+
+**CMS form editor:** the Website Content page (ERP → Settings → Website Content) is a tabbed form (Brand / Contact / Socials / Hero & CTAs / Promo / Policies / POS) instead of a raw JSON textarea. A "JSON (advanced)" tab remains for power users to edit arrays such as FAQs, testimonials, how-it-works steps and homepage stats.
+
 The business vision is to provide a highly efficient and auditable system that supports both internal operations and external customer engagement, enhancing overall productivity and customer satisfaction in a specialized market.
 
 ## User Preferences

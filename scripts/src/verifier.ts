@@ -412,6 +412,28 @@ const sections: Array<{ name: string; checks: () => Promise<CheckResult[]> }> = 
         detail: `taxRate=${String(taxRate)}`,
       });
 
+      // Audit-log: a settings PUT must record an audit row.
+      const beforeCount = await http("/api/v1/audit-log?entityType=settings.pricing&limit=1", { headers });
+      const beforeTotal = Number(((beforeCount.body as { meta?: { total?: number } })?.meta?.total) ?? 0);
+      const echoPut = await http("/api/v1/settings/pricing", {
+        method: "PUT",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify(pricingData),
+      });
+      const afterCount = await http("/api/v1/audit-log?entityType=settings.pricing&limit=1", { headers });
+      const afterTotal = Number(((afterCount.body as { meta?: { total?: number } })?.meta?.total) ?? 0);
+      out.push({
+        name: "PUT /settings/pricing records an audit-log row",
+        passed: echoPut.status === 200 && afterTotal === beforeTotal + 1,
+        detail: `before=${beforeTotal} after=${afterTotal} put=${echoPut.status}`,
+      });
+      const auditAsCashier = await http("/api/v1/audit-log", { headers: cashierHeaders });
+      out.push({
+        name: "GET /audit-log as non-admin (CASHIER) returns 403 (RBAC)",
+        passed: auditAsCashier.status === 403,
+        detail: `status=${auditAsCashier.status}`,
+      });
+
       // End-to-end transfer flow: create → dispatch → receive
       if (Array.isArray(locArr) && locArr.length >= 2) {
         const products = await http("/api/v1/products?limit=1", { headers });

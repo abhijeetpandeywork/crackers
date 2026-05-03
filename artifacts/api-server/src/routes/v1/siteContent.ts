@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { db, settingsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { authenticate } from "../../middleware/authenticate.js";
+import { authenticate, requireRole, type AuthRequest } from "../../middleware/authenticate.js";
+import { auditWrite } from "../../lib/audit.js";
 
 const router = Router();
 
@@ -159,12 +160,21 @@ router.get("/site-content", authenticate, async (_req, res) => {
   res.json({ success: true, data });
 });
 
-router.put("/site-content", authenticate, async (req, res) => {
+router.put("/site-content", authenticate, requireRole("SUPER_ADMIN", "ADMIN"), async (req: AuthRequest, res) => {
   const value = req.body ?? {};
+  const before =
+    (await db.select().from(settingsTable).where(eq(settingsTable.key, SITE_CONTENT_KEY)).limit(1))[0]?.value ?? null;
   await db
     .insert(settingsTable)
     .values({ key: SITE_CONTENT_KEY, value })
     .onConflictDoUpdate({ target: settingsTable.key, set: { value, updatedAt: new Date() } });
+  await auditWrite(req, {
+    action: "UPDATE",
+    entityType: "site-content",
+    entityId: SITE_CONTENT_KEY,
+    before,
+    after: value,
+  });
   const data = await loadContent();
   res.json({ success: true, data });
 });

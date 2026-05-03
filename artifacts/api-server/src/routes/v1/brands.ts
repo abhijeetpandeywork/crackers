@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db, brandsTable } from "@workspace/db";
 import { eq, asc } from "drizzle-orm";
 import { authenticate, type AuthRequest } from "../../middleware/authenticate.js";
+import { auditWrite } from "../../lib/audit.js";
 
 const router = Router();
 
@@ -51,6 +52,7 @@ router.post("/brands", authenticate, async (req: AuthRequest, res) => {
         isActive: isActive !== false,
       })
       .returning();
+    await auditWrite(req, { action: "CREATE", entityType: "brand", entityId: brand?.id, after: brand });
     res.status(201).json({ success: true, data: brand });
   } catch (err: any) {
     if (err?.code === "23505") {
@@ -79,11 +81,13 @@ router.patch("/brands/:id", authenticate, async (req: AuthRequest, res) => {
   if (typeof isActive === "boolean") patch["isActive"] = isActive;
 
   try {
+    const before = (await db.select().from(brandsTable).where(eq(brandsTable.id, id)).limit(1))[0] ?? null;
     const [brand] = await db.update(brandsTable).set(patch).where(eq(brandsTable.id, id)).returning();
     if (!brand) {
       res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Brand not found" } });
       return;
     }
+    await auditWrite(req, { action: "UPDATE", entityType: "brand", entityId: id, before, after: brand });
     res.json({ success: true, data: brand });
   } catch (err: any) {
     if (err?.code === "23505") {
@@ -105,6 +109,7 @@ router.delete("/brands/:id", authenticate, async (req: AuthRequest, res) => {
     res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Brand not found" } });
     return;
   }
+  await auditWrite(req, { action: "DELETE", entityType: "brand", entityId: id, before: brand });
   res.json({ success: true, data: { id } });
 });
 

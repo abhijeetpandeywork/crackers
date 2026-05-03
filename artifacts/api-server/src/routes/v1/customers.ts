@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { db, customersTable, creditLedgerTable, loyaltyLedgerTable } from "@workspace/db";
 import { eq, ilike, and, sql, desc } from "drizzle-orm";
-import { authenticate } from "../../middleware/authenticate.js";
+import { authenticate, type AuthRequest } from "../../middleware/authenticate.js";
+import { auditWrite } from "../../lib/audit.js";
 
 const router = Router();
 
@@ -25,8 +26,9 @@ router.get("/customers", authenticate, async (req, res) => {
   res.json({ success: true, data: rows, meta: { page: pg, limit: lim, total, pages: Math.ceil(total / lim) } });
 });
 
-router.post("/customers", authenticate, async (req, res) => {
+router.post("/customers", authenticate, async (req: AuthRequest, res) => {
   const [customer] = await db.insert(customersTable).values({ ...req.body, id: crypto.randomUUID() }).returning();
+  await auditWrite(req, { action: "CREATE", entityType: "customer", entityId: customer?.id, after: customer });
   res.status(201).json(customer);
 });
 
@@ -36,9 +38,12 @@ router.get("/customers/:id", authenticate, async (req, res) => {
   res.json(rows[0]);
 });
 
-router.put("/customers/:id", authenticate, async (req, res) => {
-  const [customer] = await db.update(customersTable).set({ ...req.body, updatedAt: new Date() }).where(eq(customersTable.id, req.params["id"] as string)).returning();
+router.put("/customers/:id", authenticate, async (req: AuthRequest, res) => {
+  const id = req.params["id"] as string;
+  const before = (await db.select().from(customersTable).where(eq(customersTable.id, id)).limit(1))[0] ?? null;
+  const [customer] = await db.update(customersTable).set({ ...req.body, updatedAt: new Date() }).where(eq(customersTable.id, id)).returning();
   if (!customer) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Customer not found" } }); return; }
+  await auditWrite(req, { action: "UPDATE", entityType: "customer", entityId: id, before, after: customer });
   res.json(customer);
 });
 

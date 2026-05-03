@@ -16,45 +16,38 @@ interface LedgerEntry {
   createdBy?: string;
 }
 
-export async function appendLedger(entry: LedgerEntry) {
-  await db.insert(stockLedgerTable).values(entry);
+// Drizzle's tx and db expose the same query builder API, so a single signature
+// works for both. Defaulting to `db` keeps existing call-sites compatible.
+// We type as `any` here because the transaction type is not assignable to the
+// concrete NodePgDatabase type (missing `$client`), but the query API is the same.
+type DbLike = any;
 
-  // Update materialized stock levels
-  const existing = await db
-    .select()
-    .from(stockLevelsTable)
-    .where(
-      and(
-        eq(stockLevelsTable.productId, entry.productId),
-        eq(stockLevelsTable.variantId, entry.variantId),
-        eq(stockLevelsTable.locationId, entry.locationId)
-      )
-    )
-    .limit(1);
+export async function appendLedger(entry: LedgerEntry, tx: DbLike = db) {
+  await tx.insert(stockLedgerTable).values(entry);
 
-  const currentQty = existing[0]?.currentQty ?? 0;
-  const newQty = currentQty + entry.qty;
-
-  if (existing.length === 0) {
-    await db.insert(stockLevelsTable).values({
+  // Atomic upsert: `current_qty = current_qty + delta` is computed by Postgres
+  // itself, so two concurrent transactions cannot lose-update each other.
+  // Relies on the composite primary key (product, variant, location).
+  await tx
+    .insert(stockLevelsTable)
+    .values({
       productId: entry.productId,
       variantId: entry.variantId,
       locationId: entry.locationId,
-      currentQty: newQty,
+      currentQty: entry.qty,
       reservedQty: 0,
+    })
+    .onConflictDoUpdate({
+      target: [
+        stockLevelsTable.productId,
+        stockLevelsTable.variantId,
+        stockLevelsTable.locationId,
+      ],
+      set: {
+        currentQty: sql`${stockLevelsTable.currentQty} + ${entry.qty}`,
+        updatedAt: new Date(),
+      },
     });
-  } else {
-    await db
-      .update(stockLevelsTable)
-      .set({ currentQty: newQty, updatedAt: new Date() })
-      .where(
-        and(
-          eq(stockLevelsTable.productId, entry.productId),
-          eq(stockLevelsTable.variantId, entry.variantId),
-          eq(stockLevelsTable.locationId, entry.locationId)
-        )
-      );
-  }
 }
 
 export async function getStockLevel(productId: string, variantId: string, locationId: string): Promise<number> {
@@ -65,8 +58,8 @@ export async function getStockLevel(productId: string, variantId: string, locati
       and(
         eq(stockLevelsTable.productId, productId),
         eq(stockLevelsTable.variantId, variantId),
-        eq(stockLevelsTable.locationId, locationId)
-      )
+        eq(stockLevelsTable.locationId, locationId),
+      ),
     )
     .limit(1);
   return row[0]?.currentQty ?? 0;

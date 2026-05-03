@@ -67,28 +67,32 @@ router.put("/transfers/:id/dispatch", authenticate, async (req: AuthRequest, res
   const t = tRows[0];
   const items = (t.items ?? []) as any[];
 
-  // Deduct from source location
-  for (const item of items) {
-    await appendLedger({
-      productId: item.productId,
-      variantId: item.variantId,
-      locationId: t.fromLocationId,
-      type: "MOVE",
-      qty: -item.qty,
-      batchNo: item.batchNo,
-      refType: "TRANSFER",
-      refId: t.id,
-      notes: `Transfer out to ${t.toLocationName}`,
-      createdBy: req.user?.id,
-    });
-  }
-
-  const [updated] = await db.update(transfersTable).set({
-    status: "in_transit",
-    vehicleNo: req.body.vehicleNo,
-    dispatchedAt: new Date(),
-    updatedAt: new Date(),
-  }).where(eq(transfersTable.id, t.id)).returning();
+  // Atomic: deduct source stock + flip transfer to in_transit together.
+  await db.transaction(async (tx) => {
+    for (const item of items) {
+      await appendLedger(
+        {
+          productId: item.productId,
+          variantId: item.variantId,
+          locationId: t.fromLocationId,
+          type: "MOVE",
+          qty: -item.qty,
+          batchNo: item.batchNo,
+          refType: "TRANSFER",
+          refId: t.id,
+          notes: `Transfer out to ${t.toLocationName}`,
+          createdBy: req.user?.id,
+        },
+        tx,
+      );
+    }
+    await tx.update(transfersTable).set({
+      status: "in_transit",
+      vehicleNo: req.body.vehicleNo,
+      dispatchedAt: new Date(),
+      updatedAt: new Date(),
+    }).where(eq(transfersTable.id, t.id));
+  });
 
   res.json({ success: true, message: "Transfer dispatched" });
 });
@@ -99,27 +103,32 @@ router.put("/transfers/:id/receive", authenticate, async (req: AuthRequest, res)
   const t = tRows[0];
   const { items } = req.body as { items: Array<{ productId: string; variantId: string; receivedQty: number }> };
 
-  for (const item of items) {
-    if (item.receivedQty > 0) {
-      await appendLedger({
-        productId: item.productId,
-        variantId: item.variantId,
-        locationId: t.toLocationId,
-        type: "MOVE",
-        qty: item.receivedQty,
-        refType: "TRANSFER",
-        refId: t.id,
-        notes: `Transfer in from ${t.fromLocationName}`,
-        createdBy: req.user?.id,
-      });
+  // Atomic: credit destination stock + close the transfer together.
+  await db.transaction(async (tx) => {
+    for (const item of items) {
+      if (item.receivedQty > 0) {
+        await appendLedger(
+          {
+            productId: item.productId,
+            variantId: item.variantId,
+            locationId: t.toLocationId,
+            type: "MOVE",
+            qty: item.receivedQty,
+            refType: "TRANSFER",
+            refId: t.id,
+            notes: `Transfer in from ${t.fromLocationName}`,
+            createdBy: req.user?.id,
+          },
+          tx,
+        );
+      }
     }
-  }
-
-  const [updated] = await db.update(transfersTable).set({
-    status: "received",
-    receivedAt: new Date(),
-    updatedAt: new Date(),
-  }).where(eq(transfersTable.id, t.id)).returning();
+    await tx.update(transfersTable).set({
+      status: "received",
+      receivedAt: new Date(),
+      updatedAt: new Date(),
+    }).where(eq(transfersTable.id, t.id));
+  });
 
   res.json({ success: true, message: "Transfer received" });
 });

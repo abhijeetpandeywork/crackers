@@ -1,8 +1,9 @@
 import { Router } from "express";
 import { db, productsTable } from "@workspace/db";
 import { eq, ilike, and, sql } from "drizzle-orm";
-import { authenticate } from "../../middleware/authenticate.js";
+import { authenticate, type AuthRequest } from "../../middleware/authenticate.js";
 import { resolvePrice, type PricingChannel } from "../../lib/pricing.js";
+import { auditWrite } from "../../lib/audit.js";
 
 const router = Router();
 
@@ -52,21 +53,28 @@ router.get("/products/:id", authenticate, async (req, res) => {
   res.json(rows[0]);
 });
 
-router.post("/products", authenticate, async (req, res) => {
+router.post("/products", authenticate, async (req: AuthRequest, res) => {
   const body = req.body;
   const id = crypto.randomUUID();
   const [product] = await db.insert(productsTable).values({ ...body, id }).returning();
+  await auditWrite(req, { action: "CREATE", entityType: "product", entityId: id, after: product });
   res.status(201).json(product);
 });
 
-router.put("/products/:id", authenticate, async (req, res) => {
-  const [product] = await db.update(productsTable).set({ ...req.body, updatedAt: new Date() }).where(eq(productsTable.id, req.params["id"] as string)).returning();
+router.put("/products/:id", authenticate, async (req: AuthRequest, res) => {
+  const id = req.params["id"] as string;
+  const before = (await db.select().from(productsTable).where(eq(productsTable.id, id)).limit(1))[0] ?? null;
+  const [product] = await db.update(productsTable).set({ ...req.body, updatedAt: new Date() }).where(eq(productsTable.id, id)).returning();
   if (!product) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Product not found" } }); return; }
+  await auditWrite(req, { action: "UPDATE", entityType: "product", entityId: id, before, after: product });
   res.json(product);
 });
 
-router.delete("/products/:id", authenticate, async (req, res) => {
-  await db.update(productsTable).set({ status: "Discontinued", updatedAt: new Date() }).where(eq(productsTable.id, req.params["id"] as string));
+router.delete("/products/:id", authenticate, async (req: AuthRequest, res) => {
+  const id = req.params["id"] as string;
+  const before = (await db.select().from(productsTable).where(eq(productsTable.id, id)).limit(1))[0] ?? null;
+  await db.update(productsTable).set({ status: "Discontinued", updatedAt: new Date() }).where(eq(productsTable.id, id));
+  await auditWrite(req, { action: "DELETE", entityType: "product", entityId: id, before, after: { status: "Discontinued" } });
   res.json({ success: true, message: "Product discontinued" });
 });
 

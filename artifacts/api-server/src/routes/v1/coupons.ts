@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { db, couponsTable, couponUsagesTable } from "@workspace/db";
 import { eq, and, sql } from "drizzle-orm";
-import { authenticate } from "../../middleware/authenticate.js";
+import { authenticate, type AuthRequest } from "../../middleware/authenticate.js";
+import { auditWrite } from "../../lib/audit.js";
 
 const router = Router();
 
@@ -76,8 +77,9 @@ router.post("/coupons/validate", async (req, res) => {
   });
 });
 
-router.post("/coupons", authenticate, async (req, res) => {
+router.post("/coupons", authenticate, async (req: AuthRequest, res) => {
   const [coupon] = await db.insert(couponsTable).values({ ...req.body, id: crypto.randomUUID(), code: req.body.code.toUpperCase() }).returning();
+  await auditWrite(req, { action: "CREATE", entityType: "coupon", entityId: coupon?.id, after: coupon });
   res.status(201).json(coupon);
 });
 
@@ -87,9 +89,12 @@ router.get("/coupons/:id", authenticate, async (req, res) => {
   res.json(rows[0]);
 });
 
-router.put("/coupons/:id", authenticate, async (req, res) => {
-  const [coupon] = await db.update(couponsTable).set(req.body).where(eq(couponsTable.id, req.params["id"] as string)).returning();
+router.put("/coupons/:id", authenticate, async (req: AuthRequest, res) => {
+  const id = req.params["id"] as string;
+  const before = (await db.select().from(couponsTable).where(eq(couponsTable.id, id)).limit(1))[0] ?? null;
+  const [coupon] = await db.update(couponsTable).set(req.body).where(eq(couponsTable.id, id)).returning();
   if (!coupon) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Coupon not found" } }); return; }
+  await auditWrite(req, { action: "UPDATE", entityType: "coupon", entityId: id, before, after: coupon });
   res.json(coupon);
 });
 

@@ -29,6 +29,7 @@ const reportItems = [
   { label: "Outstanding", href: "/reports/outstanding" },
   { label: "Commission", href: "/reports/commission" },
   { label: "GST", href: "/reports/gst" },
+  { label: "Activity log", href: "/reports/activity" },
 ];
 
 const settingsItems = [

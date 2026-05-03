@@ -59,23 +59,28 @@ router.put("/purchase-orders/:id/receive", authenticate, async (req: AuthRequest
   const po = poRows[0];
   const { items } = req.body as { items: Array<{ productId: string; variantId: string; receivedQty: number; batchNo?: string; damagedQty?: number }> };
 
-  for (const item of items) {
-    if (item.receivedQty > 0) {
-      await appendLedger({
-        productId: item.productId,
-        variantId: item.variantId,
-        locationId: po.warehouseId,
-        type: "IN",
-        qty: item.receivedQty,
-        batchNo: item.batchNo,
-        refType: "PO",
-        refId: po.id,
-        createdBy: req.user?.id,
-      });
+  // Atomic: stock IN + PO status flip in one transaction.
+  await db.transaction(async (tx) => {
+    for (const item of items) {
+      if (item.receivedQty > 0) {
+        await appendLedger(
+          {
+            productId: item.productId,
+            variantId: item.variantId,
+            locationId: po.warehouseId,
+            type: "IN",
+            qty: item.receivedQty,
+            batchNo: item.batchNo,
+            refType: "PO",
+            refId: po.id,
+            createdBy: req.user?.id,
+          },
+          tx,
+        );
+      }
     }
-  }
-
-  await db.update(purchaseOrdersTable).set({ status: "received", updatedAt: new Date() }).where(eq(purchaseOrdersTable.id, po.id));
+    await tx.update(purchaseOrdersTable).set({ status: "received", updatedAt: new Date() }).where(eq(purchaseOrdersTable.id, po.id));
+  });
   res.json({ success: true, message: "PO received" });
 });
 

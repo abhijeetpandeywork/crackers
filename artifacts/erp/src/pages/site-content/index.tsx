@@ -1,69 +1,402 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import {
   useGetSiteContent,
   useUpdateSiteContent,
 } from "@workspace/api-client-react";
 
+// Helpers ------------------------------------------------------------
+function get<T = unknown>(obj: any, path: string, fallback?: T): T {
+  return path.split(".").reduce((acc, k) => (acc == null ? acc : acc[k]), obj) ?? (fallback as T);
+}
+function setIn(obj: any, path: string, value: unknown): any {
+  const keys = path.split(".");
+  const next = Array.isArray(obj) ? [...obj] : { ...obj };
+  let cur: any = next;
+  for (let i = 0; i < keys.length - 1; i++) {
+    const k = keys[i]!;
+    cur[k] = cur[k] != null ? (Array.isArray(cur[k]) ? [...cur[k]] : { ...cur[k] }) : {};
+    cur = cur[k];
+  }
+  cur[keys[keys.length - 1]!] = value;
+  return next;
+}
+
+// Reusable field components ------------------------------------------
+function Field({
+  label,
+  helper,
+  children,
+  testId,
+}: {
+  label: string;
+  helper?: string;
+  children: React.ReactNode;
+  testId?: string;
+}) {
+  return (
+    <div className="space-y-1.5" data-testid={testId}>
+      <Label className="text-sm font-medium">{label}</Label>
+      {children}
+      {helper && <p className="text-xs text-muted-foreground">{helper}</p>}
+    </div>
+  );
+}
+
+function TextField({
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  type?: string;
+}) {
+  return (
+    <Input
+      type={type}
+      value={value ?? ""}
+      placeholder={placeholder}
+      onChange={(e) => onChange(e.target.value)}
+    />
+  );
+}
+
+function NumberField({
+  value,
+  onChange,
+  min,
+  max,
+  step,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  min?: number;
+  max?: number;
+  step?: number;
+}) {
+  return (
+    <Input
+      type="number"
+      value={Number.isFinite(value) ? value : 0}
+      min={min}
+      max={max}
+      step={step ?? 1}
+      onChange={(e) => onChange(Number(e.target.value))}
+    />
+  );
+}
+
+function ToggleField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between rounded-md border px-3 py-2">
+      <span className="text-sm">{label}</span>
+      <Switch checked={!!value} onCheckedChange={onChange} />
+    </div>
+  );
+}
+
+// Page ---------------------------------------------------------------
 export default function SiteContent() {
   const { data, isLoading, refetch } = useGetSiteContent();
   const update = useUpdateSiteContent();
   const { toast } = useToast();
-  const [text, setText] = useState("");
+  const [draft, setDraft] = useState<any>(null);
+  const [rawText, setRawText] = useState("");
+  const [activeTab, setActiveTab] = useState("brand");
 
   useEffect(() => {
-    if (data?.data) setText(JSON.stringify(data.data, null, 2));
+    if (data?.data) {
+      setDraft(data.data);
+      setRawText(JSON.stringify(data.data, null, 2));
+    }
   }, [data]);
 
+  const dirty = useMemo(() => {
+    if (!data?.data || !draft) return false;
+    return JSON.stringify(data.data) !== JSON.stringify(draft);
+  }, [data, draft]);
+
+  const setPath = (path: string, value: unknown) => {
+    setDraft((d: any) => setIn(d ?? {}, path, value));
+  };
+
   const handleSave = async () => {
-    let parsed: unknown;
+    if (!draft) return;
     try {
-      parsed = JSON.parse(text);
-    } catch {
-      toast({ title: "Invalid JSON", description: "Please fix the JSON before saving.", variant: "destructive" });
-      return;
-    }
-    try {
-      await update.mutateAsync({ data: parsed as any });
+      await update.mutateAsync({ data: draft });
       toast({ title: "Saved", description: "Website content updated." });
-      refetch();
+      await refetch();
     } catch {
       toast({ title: "Save failed", description: "Could not update content.", variant: "destructive" });
     }
   };
 
-  const handleReset = () => {
-    if (data?.data) setText(JSON.stringify(data.data, null, 2));
+  const handleSaveRaw = async () => {
+    try {
+      const parsed = JSON.parse(rawText);
+      setDraft(parsed);
+      await update.mutateAsync({ data: parsed });
+      toast({ title: "Saved", description: "Website content updated." });
+      await refetch();
+    } catch {
+      toast({ title: "Invalid JSON", description: "Please fix the JSON before saving.", variant: "destructive" });
+    }
   };
+
+  const handleReset = () => {
+    if (data?.data) {
+      setDraft(data.data);
+      setRawText(JSON.stringify(data.data, null, 2));
+    }
+  };
+
+  if (isLoading || !draft) {
+    return (
+      <Layout>
+        <div className="p-6">Loading…</div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
       <div className="p-6 max-w-5xl mx-auto">
-        <h1 className="text-2xl font-bold mb-1">Website content (CMS)</h1>
-        <p className="text-sm text-muted-foreground mb-4">
-          Edit homepage occasions, categories, stats, testimonials, press,
-          how-it-works, why-us, FAQs, help sections, product FAQs and contact details.
-          Changes appear instantly on the public website.
-        </p>
-        <div className="rounded border bg-white">
-          <textarea
-            className="w-full h-[60vh] p-4 font-mono text-xs"
-            value={text}
-            disabled={isLoading}
-            onChange={(e) => setText(e.target.value)}
-            data-testid="site-content-editor"
-          />
+        <div className="flex items-start justify-between mb-1 gap-4">
+          <div>
+            <h1 className="text-2xl font-bold">Website content (CMS)</h1>
+            <p className="text-sm text-muted-foreground">
+              Edit your brand, contact details, hero CTAs, promo banner, policies and POS display options.
+              Changes appear instantly on the public website.
+            </p>
+          </div>
+          <div className="flex gap-2 flex-shrink-0">
+            <Button variant="outline" onClick={handleReset} disabled={!dirty} data-testid="site-content-reset">
+              Reset
+            </Button>
+            <Button onClick={handleSave} disabled={!dirty || update.isPending} data-testid="site-content-save">
+              {update.isPending ? "Saving…" : dirty ? "Save changes" : "Saved"}
+            </Button>
+          </div>
         </div>
-        <div className="flex gap-3 mt-4">
-          <Button onClick={handleSave} disabled={update.isPending} data-testid="site-content-save">
-            {update.isPending ? "Saving…" : "Save changes"}
-          </Button>
-          <Button variant="outline" onClick={handleReset} data-testid="site-content-reset">
-            Reset
-          </Button>
-        </div>
+
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
+          <TabsList className="flex flex-wrap h-auto">
+            <TabsTrigger value="brand">Brand</TabsTrigger>
+            <TabsTrigger value="contact">Contact</TabsTrigger>
+            <TabsTrigger value="socials">Socials</TabsTrigger>
+            <TabsTrigger value="cta">Hero & CTAs</TabsTrigger>
+            <TabsTrigger value="promo">Promo</TabsTrigger>
+            <TabsTrigger value="policies">Policies</TabsTrigger>
+            <TabsTrigger value="pos">POS</TabsTrigger>
+            <TabsTrigger value="json">JSON (advanced)</TabsTrigger>
+          </TabsList>
+
+          {/* BRAND ------------------------------------------------ */}
+          <TabsContent value="brand" className="space-y-4 pt-4">
+            <Field label="Brand name" helper="Shown in the navbar, footer and meta tags.">
+              <TextField value={get(draft, "brand.name")} onChange={(v) => setPath("brand.name", v)} />
+            </Field>
+            <Field label="Tagline" helper="Short one-liner shown under the logo and in the footer.">
+              <TextField value={get(draft, "brand.tagline")} onChange={(v) => setPath("brand.tagline", v)} />
+            </Field>
+            <Field label="Established year" helper="Used in the 'Since YYYY' line.">
+              <NumberField value={get(draft, "brand.establishedYear", 1985)} onChange={(v) => setPath("brand.establishedYear", v)} min={1900} max={2100} />
+            </Field>
+            <Field label="Bulk WhatsApp message" helper="Pre-filled message body when a visitor taps the bulk-quote button.">
+              <TextField value={get(draft, "brand.bulkWhatsAppMessage")} onChange={(v) => setPath("brand.bulkWhatsAppMessage", v)} />
+            </Field>
+          </TabsContent>
+
+          {/* CONTACT ---------------------------------------------- */}
+          <TabsContent value="contact" className="space-y-4 pt-4">
+            <Field label="Phone (display)" helper="Click-to-call number in the footer and contact page.">
+              <TextField type="tel" value={get(draft, "contact.phone")} onChange={(v) => setPath("contact.phone", v)} />
+            </Field>
+            <Field label="WhatsApp number (digits only, with country code)" helper="Used to build wa.me links. Example: 919876543210">
+              <TextField value={get(draft, "contact.whatsapp")} onChange={(v) => setPath("contact.whatsapp", v)} />
+            </Field>
+            <Field label="Support email">
+              <TextField type="email" value={get(draft, "contact.email")} onChange={(v) => setPath("contact.email", v)} />
+            </Field>
+            <Field label="Address line 1">
+              <TextField value={get(draft, "contact.addressLine1")} onChange={(v) => setPath("contact.addressLine1", v)} />
+            </Field>
+            <Field label="Address line 2">
+              <TextField value={get(draft, "contact.addressLine2")} onChange={(v) => setPath("contact.addressLine2", v)} />
+            </Field>
+            <Field label="GSTIN">
+              <TextField value={get(draft, "contact.gstin")} onChange={(v) => setPath("contact.gstin", v)} />
+            </Field>
+            <Field label="Google Maps embed URL" helper="Optional iframe URL for the contact page map.">
+              <TextField type="url" value={get(draft, "contact.mapUrl")} onChange={(v) => setPath("contact.mapUrl", v)} />
+            </Field>
+          </TabsContent>
+
+          {/* SOCIALS ---------------------------------------------- */}
+          <TabsContent value="socials" className="space-y-4 pt-4">
+            <Field label="WhatsApp link" helper="Full https://wa.me/... URL.">
+              <TextField type="url" value={get(draft, "socials.whatsapp")} onChange={(v) => setPath("socials.whatsapp", v)} />
+            </Field>
+            <Field label="Instagram">
+              <TextField type="url" value={get(draft, "socials.instagram")} onChange={(v) => setPath("socials.instagram", v)} />
+            </Field>
+            <Field label="Facebook">
+              <TextField type="url" value={get(draft, "socials.facebook")} onChange={(v) => setPath("socials.facebook", v)} />
+            </Field>
+            <Field label="YouTube">
+              <TextField type="url" value={get(draft, "socials.youtube")} onChange={(v) => setPath("socials.youtube", v)} />
+            </Field>
+            <Field label="Twitter / X">
+              <TextField type="url" value={get(draft, "socials.twitter")} onChange={(v) => setPath("socials.twitter", v)} />
+            </Field>
+          </TabsContent>
+
+          {/* CTA -------------------------------------------------- */}
+          <TabsContent value="cta" className="space-y-4 pt-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Field label="Hero primary button — label">
+                <TextField value={get(draft, "cta.heroPrimary.label")} onChange={(v) => setPath("cta.heroPrimary.label", v)} />
+              </Field>
+              <Field label="Hero primary button — link" helper="Internal path or full URL.">
+                <TextField value={get(draft, "cta.heroPrimary.href")} onChange={(v) => setPath("cta.heroPrimary.href", v)} />
+              </Field>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Field label="Hero secondary button — label">
+                <TextField value={get(draft, "cta.heroSecondary.label")} onChange={(v) => setPath("cta.heroSecondary.label", v)} />
+              </Field>
+              <Field label="Hero secondary button — link" helper="Use 'wa' to link to WhatsApp using the number above.">
+                <TextField value={get(draft, "cta.heroSecondary.href")} onChange={(v) => setPath("cta.heroSecondary.href", v)} />
+              </Field>
+            </div>
+            <Field label="Bulk WhatsApp button label">
+              <TextField value={get(draft, "cta.bulkWhatsAppLabel")} onChange={(v) => setPath("cta.bulkWhatsAppLabel", v)} />
+            </Field>
+            <Field label="Bulk Call button label">
+              <TextField value={get(draft, "cta.bulkCallLabel")} onChange={(v) => setPath("cta.bulkCallLabel", v)} />
+            </Field>
+            <ToggleField
+              label="Show floating WhatsApp bubble on website"
+              value={!!get(draft, "cta.floatingWhatsApp.enabled")}
+              onChange={(v) => setPath("cta.floatingWhatsApp.enabled", v)}
+            />
+            <Field label="Floating WhatsApp tooltip">
+              <TextField
+                value={get(draft, "cta.floatingWhatsApp.label")}
+                onChange={(v) => setPath("cta.floatingWhatsApp.label", v)}
+              />
+            </Field>
+          </TabsContent>
+
+          {/* PROMO ------------------------------------------------ */}
+          <TabsContent value="promo" className="space-y-4 pt-4">
+            <Field label="Top promo bar text" helper="Shown above the navbar. Leave blank to hide the bar.">
+              <TextField value={get(draft, "brand.promoBarText")} onChange={(v) => setPath("brand.promoBarText", v)} />
+            </Field>
+          </TabsContent>
+
+          {/* POLICIES --------------------------------------------- */}
+          <TabsContent value="policies" className="space-y-4 pt-4">
+            <Field label="Delivery time text" helper="Free-form text shown at checkout, e.g. '5–10 working days'.">
+              <TextField value={get(draft, "policies.deliveryDays")} onChange={(v) => setPath("policies.deliveryDays", v)} />
+            </Field>
+            <Field label="Return window (days)">
+              <NumberField value={get(draft, "policies.returnPolicyDays", 2)} onChange={(v) => setPath("policies.returnPolicyDays", v)} min={0} max={365} />
+            </Field>
+            <Field label="Minimum order value (₹)" helper="0 = no minimum.">
+              <NumberField value={get(draft, "policies.minOrderValue", 0)} onChange={(v) => setPath("policies.minOrderValue", v)} min={0} />
+            </Field>
+            <Field label="Free delivery threshold (₹)" helper="0 = no free-delivery offer.">
+              <NumberField value={get(draft, "policies.freeDeliveryThreshold", 0)} onChange={(v) => setPath("policies.freeDeliveryThreshold", v)} min={0} />
+            </Field>
+            <Field label="Bulk-pricing threshold (qty)" helper="Auto wholesale rate kicks in at this quantity per SKU.">
+              <NumberField value={get(draft, "policies.bulkThreshold", 10)} onChange={(v) => setPath("policies.bulkThreshold", v)} min={1} max={1000} />
+            </Field>
+            <Field label="Order confirmation window (hours)">
+              <NumberField value={get(draft, "policies.confirmationWindowHours", 24)} onChange={(v) => setPath("policies.confirmationWindowHours", v)} min={1} max={168} />
+            </Field>
+          </TabsContent>
+
+          {/* POS -------------------------------------------------- */}
+          <TabsContent value="pos" className="space-y-4 pt-4">
+            <Field label="Quick-cash buttons (₹)" helper="Comma-separated amounts shown on the POS keypad. Example: 100, 200, 500, 1000, 2000">
+              <TextField
+                value={(get<number[]>(draft, "pos.quickCash", []) ?? []).join(", ")}
+                onChange={(v) =>
+                  setPath(
+                    "pos.quickCash",
+                    v.split(",").map((s) => Number(s.trim())).filter((n) => Number.isFinite(n) && n > 0),
+                  )
+                }
+              />
+            </Field>
+            <ToggleField
+              label="Allow CASH payment"
+              value={!!get(draft, "pos.paymentMethods.cash")}
+              onChange={(v) => setPath("pos.paymentMethods.cash", v)}
+            />
+            <ToggleField
+              label="Allow UPI payment"
+              value={!!get(draft, "pos.paymentMethods.upi")}
+              onChange={(v) => setPath("pos.paymentMethods.upi", v)}
+            />
+            <ToggleField
+              label="Allow CARD payment"
+              value={!!get(draft, "pos.paymentMethods.card")}
+              onChange={(v) => setPath("pos.paymentMethods.card", v)}
+            />
+            <ToggleField
+              label="Allow CREDIT (on-account) payment"
+              value={!!get(draft, "pos.paymentMethods.credit")}
+              onChange={(v) => setPath("pos.paymentMethods.credit", v)}
+            />
+            <ToggleField
+              label="Show customer picker"
+              value={get<boolean>(draft, "pos.showCustomerPicker", true) !== false}
+              onChange={(v) => setPath("pos.showCustomerPicker", v)}
+            />
+            <ToggleField
+              label="Show coupon box"
+              value={get<boolean>(draft, "pos.showCouponBox", true) !== false}
+              onChange={(v) => setPath("pos.showCouponBox", v)}
+            />
+          </TabsContent>
+
+          {/* RAW JSON --------------------------------------------- */}
+          <TabsContent value="json" className="space-y-4 pt-4">
+            <p className="text-xs text-muted-foreground">
+              Power-user editor. Edit any section directly — including arrays like FAQs, testimonials,
+              how-it-works steps and homepage stats.
+            </p>
+            <Textarea
+              className="w-full h-[60vh] font-mono text-xs"
+              value={rawText}
+              onChange={(e) => setRawText(e.target.value)}
+              data-testid="site-content-editor"
+            />
+            <Button onClick={handleSaveRaw} disabled={update.isPending} data-testid="site-content-save-raw">
+              {update.isPending ? "Saving…" : "Save raw JSON"}
+            </Button>
+          </TabsContent>
+        </Tabs>
       </div>
     </Layout>
   );

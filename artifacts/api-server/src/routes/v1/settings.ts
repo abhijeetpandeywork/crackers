@@ -2,7 +2,8 @@ import { Router } from "express";
 import { z } from "zod";
 import { db, settingsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { authenticate, requireRole } from "../../middleware/authenticate.js";
+import { authenticate, requireRole, type AuthRequest } from "../../middleware/authenticate.js";
+import { auditWrite } from "../../lib/audit.js";
 
 const router = Router();
 
@@ -78,7 +79,7 @@ router.put(
   "/settings/company",
   authenticate,
   requireRole("SUPER_ADMIN", "ADMIN"),
-  async (req, res) => {
+  async (req: AuthRequest, res) => {
     const parsed = companySchema.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({
@@ -88,10 +89,12 @@ router.put(
       return;
     }
     const value = parsed.data;
+    const before = (await db.select().from(settingsTable).where(eq(settingsTable.key, "company")).limit(1))[0]?.value ?? null;
     await db
       .insert(settingsTable)
       .values({ key: "company", value })
       .onConflictDoUpdate({ target: settingsTable.key, set: { value, updatedAt: new Date() } });
+    await auditWrite(req, { action: "UPDATE", entityType: "settings.company", entityId: "company", before, after: value });
     res.json({ success: true, data: value });
   },
 );
@@ -106,7 +109,7 @@ router.put(
   "/settings/pricing",
   authenticate,
   requireRole("SUPER_ADMIN", "ADMIN"),
-  async (req, res) => {
+  async (req: AuthRequest, res) => {
     const parsed = pricingSchema.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({
@@ -118,10 +121,12 @@ router.put(
     // Keep taxRate consistent with the human-friendly defaultGstRate so the
     // pricing engine and the UI never drift apart.
     const value = { ...parsed.data, taxRate: parsed.data.taxRate ?? parsed.data.defaultGstRate / 100 };
+    const before = (await db.select().from(settingsTable).where(eq(settingsTable.key, "pricing")).limit(1))[0]?.value ?? null;
     await db
       .insert(settingsTable)
       .values({ key: "pricing", value })
       .onConflictDoUpdate({ target: settingsTable.key, set: { value, updatedAt: new Date() } });
+    await auditWrite(req, { action: "UPDATE", entityType: "settings.pricing", entityId: "pricing", before, after: value });
     res.json({ success: true, data: value });
   },
 );

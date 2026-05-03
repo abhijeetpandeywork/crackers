@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, integer, primaryKey } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -18,15 +18,23 @@ export const stockLedgerTable = pgTable("stock_ledger", {
   ts: timestamp("ts").defaultNow().notNull(),
 });
 
-// Materialized current stock levels (computed from ledger)
-export const stockLevelsTable = pgTable("stock_levels", {
-  productId: text("product_id").notNull(),
-  variantId: text("variant_id").notNull(),
-  locationId: text("location_id").notNull(),
-  currentQty: integer("current_qty").notNull().default(0),
-  reservedQty: integer("reserved_qty").notNull().default(0),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+// Materialized current stock levels (computed from ledger).
+// Composite PK on (product, variant, location) prevents duplicate rows for the
+// same SKU+location and lets us upsert atomically with `onConflictDoUpdate`.
+export const stockLevelsTable = pgTable(
+  "stock_levels",
+  {
+    productId: text("product_id").notNull(),
+    variantId: text("variant_id").notNull(),
+    locationId: text("location_id").notNull(),
+    currentQty: integer("current_qty").notNull().default(0),
+    reservedQty: integer("reserved_qty").notNull().default(0),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.productId, t.variantId, t.locationId] }),
+  }),
+);
 
 export const insertStockLedgerSchema = createInsertSchema(stockLedgerTable).omit({ id: true, ts: true });
 export type InsertStockLedger = z.infer<typeof insertStockLedgerSchema>;
