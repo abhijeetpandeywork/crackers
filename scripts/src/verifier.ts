@@ -434,6 +434,52 @@ const sections: Array<{ name: string; checks: () => Promise<CheckResult[]> }> = 
         detail: `status=${auditAsCashier.status}`,
       });
 
+      // Transactional rollback: if the parent invoice insert fails, the
+      // stock-ledger writes that were queued inside the same transaction
+      // must be rolled back. We force a NOT NULL violation by omitting
+      // paymentMode and confirm the ledger row count is unchanged.
+      const locsForRollback = (locArr as Array<{ id: string }>) ?? [];
+      const rollbackLocId = locsForRollback[0]?.id;
+      const prodsForRollback = await http("/api/v1/products?limit=1", { headers });
+      const prodsRaw = (prodsForRollback.body as { data?: unknown })?.data;
+      const prodItems = (Array.isArray(prodsRaw) ? prodsRaw : (prodsRaw as { items?: any[] })?.items ?? []) as any[];
+      const rollbackProd = prodItems[0];
+      const rollbackVariantId =
+        rollbackProd?.variants?.[0]?.id ?? rollbackProd?.variants?.[0]?.variantId;
+      if (rollbackLocId && rollbackProd?.id && rollbackVariantId) {
+        const ledgerQs =
+          `?productId=${rollbackProd.id}&variantId=${encodeURIComponent(rollbackVariantId)}&limit=1`;
+        const ledgerBefore = await http(`/api/v1/stock/ledger${ledgerQs}`, { headers });
+        const ledgerBeforeTotal = Number(
+          (ledgerBefore.body as { meta?: { total?: number } })?.meta?.total ?? -1,
+        );
+        // Intentionally invalid: paymentMode omitted → DB NOT NULL fails inside
+        // the same transaction that already inserted the ledger row.
+        const badInvoice = await http("/api/v1/invoices", {
+          method: "POST",
+          headers: { ...headers, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            locationId: rollbackLocId,
+            channel: "RETAIL",
+            items: [
+              { productId: rollbackProd.id, variantId: rollbackVariantId, qty: 1 },
+            ],
+          }),
+        });
+        const ledgerAfter = await http(`/api/v1/stock/ledger${ledgerQs}`, { headers });
+        const ledgerAfterTotal = Number(
+          (ledgerAfter.body as { meta?: { total?: number } })?.meta?.total ?? -2,
+        );
+        out.push({
+          name: "Failed invoice insert rolls back stock-ledger row (transactional)",
+          passed:
+            badInvoice.status >= 400 &&
+            ledgerBeforeTotal >= 0 &&
+            ledgerAfterTotal === ledgerBeforeTotal,
+          detail: `invoice=${badInvoice.status} ledger before=${ledgerBeforeTotal} after=${ledgerAfterTotal}`,
+        });
+      }
+
       // End-to-end transfer flow: create → dispatch → receive
       if (Array.isArray(locArr) && locArr.length >= 2) {
         const products = await http("/api/v1/products?limit=1", { headers });

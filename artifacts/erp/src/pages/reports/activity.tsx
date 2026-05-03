@@ -38,14 +38,18 @@ const actionColor: Record<string, string> = {
   DELETE: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200",
 };
 
+type UserOption = { id: string; name: string };
+
 export default function ActivityReport() {
   const [entityType, setEntityType] = useState<string>("all");
   const [action, setAction] = useState<string>("all");
+  const [actorUserId, setActorUserId] = useState<string>("all");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [page, setPage] = useState(1);
   const [data, setData] = useState<{ data: AuditRow[]; meta: { total: number; pages: number } } | null>(null);
   const [types, setTypes] = useState<string[]>([]);
+  const [users, setUsers] = useState<UserOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
 
@@ -55,6 +59,7 @@ export default function ActivityReport() {
       const params = new URLSearchParams();
       if (entityType !== "all") params.set("entityType", entityType);
       if (action !== "all") params.set("action", action);
+      if (actorUserId !== "all") params.set("actorUserId", actorUserId);
       if (from) params.set("from", new Date(from).toISOString());
       if (to) params.set("to", new Date(to).toISOString());
       params.set("page", String(page));
@@ -74,6 +79,17 @@ export default function ActivityReport() {
     api<{ success: boolean; data: string[] }>("/audit-log/entity-types")
       .then((j) => setTypes(j.data ?? []))
       .catch(() => setTypes([]));
+    // Populate the "Who" filter from the user directory so admins can pick
+    // an actor by name instead of typing a UUID.
+    api<{ success: boolean; data: Array<{ id: string; name: string }> }>("/users?limit=200")
+      .then((j) =>
+        setUsers(
+          (j.data ?? [])
+            .map((u) => ({ id: u.id, name: u.name }))
+            .sort((a, b) => a.name.localeCompare(b.name)),
+        ),
+      )
+      .catch(() => setUsers([]));
   }, []);
 
   useEffect(() => {
@@ -100,11 +116,11 @@ export default function ActivityReport() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 items-end">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-3 items-end">
         <div>
           <Label className="text-xs">Entity</Label>
           <Select value={entityType} onValueChange={setEntityType}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger data-testid="activity-entity"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All</SelectItem>
               {types.map((t) => (
@@ -116,12 +132,24 @@ export default function ActivityReport() {
         <div>
           <Label className="text-xs">Action</Label>
           <Select value={action} onValueChange={setAction}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger data-testid="activity-action"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All</SelectItem>
               <SelectItem value="CREATE">Create</SelectItem>
               <SelectItem value="UPDATE">Update</SelectItem>
               <SelectItem value="DELETE">Delete</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs">Who</Label>
+          <Select value={actorUserId} onValueChange={setActorUserId}>
+            <SelectTrigger data-testid="activity-actor"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Anyone</SelectItem>
+              {users.map((u) => (
+                <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

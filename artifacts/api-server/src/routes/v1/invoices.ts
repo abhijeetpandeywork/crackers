@@ -116,7 +116,7 @@ router.post("/invoices", authenticate, async (req: AuthRequest, res) => {
       agentId,
       locationId,
       priceListId,
-      items: resolvedItems as any,
+      items: resolvedItems as typeof invoicesTable.$inferInsert["items"],
       subtotal: subtotal.toFixed(2),
       discountAmount: "0",
       couponCode,

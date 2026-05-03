@@ -3675,3 +3675,59 @@ export const GetShopOrderResponse = zod.object({
     })
     .optional(),
 });
+
+/**
+ * @summary List audit-log entries (SUPER_ADMIN / ADMIN only)
+ */
+export const listAuditLogQueryPageDefault = 1;
+
+export const listAuditLogQueryLimitDefault = 25;
+export const listAuditLogQueryLimitMax = 100;
+
+export const ListAuditLogQueryParams = zod.object({
+  entityType: zod.coerce.string().optional(),
+  actorUserId: zod.coerce.string().optional(),
+  action: zod.enum(["CREATE", "UPDATE", "DELETE"]).optional(),
+  from: zod.date().optional(),
+  to: zod.date().optional(),
+  page: zod.coerce.number().min(1).default(listAuditLogQueryPageDefault),
+  limit: zod.coerce
+    .number()
+    .min(1)
+    .max(listAuditLogQueryLimitMax)
+    .default(listAuditLogQueryLimitDefault),
+});
+
+export const ListAuditLogResponse = zod.object({
+  success: zod.boolean(),
+  data: zod.array(
+    zod.object({
+      id: zod.string(),
+      actorUserId: zod.string().nullish(),
+      actorRole: zod.string().nullish(),
+      actorName: zod.string().nullish(),
+      action: zod.enum(["CREATE", "UPDATE", "DELETE"]),
+      entityType: zod.string(),
+      entityId: zod.string().nullish(),
+      before: zod.unknown().nullish(),
+      after: zod.unknown().nullish(),
+      ip: zod.string().nullish(),
+      userAgent: zod.string().nullish(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+  meta: zod.object({
+    page: zod.number(),
+    limit: zod.number(),
+    total: zod.number(),
+    pages: zod.number(),
+  }),
+});
+
+/**
+ * @summary Distinct entity types present in the audit log
+ */
+export const ListAuditEntityTypesResponse = zod.object({
+  success: zod.boolean(),
+  data: zod.array(zod.string()),
+});

@@ -23,6 +23,7 @@ import type {
   AgentListResponse,
   AgentPerformanceResponse,
   ApiError,
+  AuditLogResponse,
   BrandListResponse,
   BrandResponse,
   BrochureParseResponse,
@@ -84,6 +85,8 @@ import type {
   InvoiceListResponse,
   ListAgentsParams,
   ListAllReviewsParams,
+  ListAuditEntityTypes200,
+  ListAuditLogParams,
   ListCouponsParams,
   ListCustomersParams,
   ListDamageParams,
@@ -11106,6 +11109,175 @@ export function useGetShopOrder<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetShopOrderQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List audit-log entries (SUPER_ADMIN / ADMIN only)
+ */
+export const getListAuditLogUrl = (params?: ListAuditLogParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/v1/audit-log?${stringifiedParams}`
+    : `/api/v1/audit-log`;
+};
+
+export const listAuditLog = async (
+  params?: ListAuditLogParams,
+  options?: RequestInit,
+): Promise<AuditLogResponse> => {
+  return customFetch<AuditLogResponse>(getListAuditLogUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListAuditLogQueryKey = (params?: ListAuditLogParams) => {
+  return [`/api/v1/audit-log`, ...(params ? [params] : [])] as const;
+};
+
+export const getListAuditLogQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAuditLog>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListAuditLogParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listAuditLog>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListAuditLogQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listAuditLog>>> = ({
+    signal,
+  }) => listAuditLog(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAuditLog>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListAuditLogQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAuditLog>>
+>;
+export type ListAuditLogQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List audit-log entries (SUPER_ADMIN / ADMIN only)
+ */
+
+export function useListAuditLog<
+  TData = Awaited<ReturnType<typeof listAuditLog>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListAuditLogParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listAuditLog>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListAuditLogQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Distinct entity types present in the audit log
+ */
+export const getListAuditEntityTypesUrl = () => {
+  return `/api/v1/audit-log/entity-types`;
+};
+
+export const listAuditEntityTypes = async (
+  options?: RequestInit,
+): Promise<ListAuditEntityTypes200> => {
+  return customFetch<ListAuditEntityTypes200>(getListAuditEntityTypesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListAuditEntityTypesQueryKey = () => {
+  return [`/api/v1/audit-log/entity-types`] as const;
+};
+
+export const getListAuditEntityTypesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAuditEntityTypes>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listAuditEntityTypes>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListAuditEntityTypesQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listAuditEntityTypes>>
+  > = ({ signal }) => listAuditEntityTypes({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAuditEntityTypes>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListAuditEntityTypesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAuditEntityTypes>>
+>;
+export type ListAuditEntityTypesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Distinct entity types present in the audit log
+ */
+
+export function useListAuditEntityTypes<
+  TData = Awaited<ReturnType<typeof listAuditEntityTypes>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listAuditEntityTypes>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListAuditEntityTypesQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

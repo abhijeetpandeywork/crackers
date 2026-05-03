@@ -16,13 +16,14 @@ interface LedgerEntry {
   createdBy?: string;
 }
 
-// Drizzle's tx and db expose the same query builder API, so a single signature
-// works for both. Defaulting to `db` keeps existing call-sites compatible.
-// We type as `any` here because the transaction type is not assignable to the
-// concrete NodePgDatabase type (missing `$client`), but the query API is the same.
-type DbLike = any;
+// Derive the transaction parameter type directly from `db.transaction` so we
+// don't have to import internal Drizzle types. This unions the top-level
+// `db` and the `tx` value passed into the callback — both expose the same
+// query-builder API used below.
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+export type DbOrTx = typeof db | Tx;
 
-export async function appendLedger(entry: LedgerEntry, tx: DbLike = db) {
+export async function appendLedger(entry: LedgerEntry, tx: DbOrTx = db) {
   await tx.insert(stockLedgerTable).values(entry);
 
   // Atomic upsert: `current_qty = current_qty + delta` is computed by Postgres

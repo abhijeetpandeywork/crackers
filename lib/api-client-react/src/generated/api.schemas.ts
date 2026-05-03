@@ -9,6 +9,43 @@ export interface HealthStatus {
   status: string;
 }
 
+export type AuditLogEntryAction =
+  (typeof AuditLogEntryAction)[keyof typeof AuditLogEntryAction];
+
+export const AuditLogEntryAction = {
+  CREATE: "CREATE",
+  UPDATE: "UPDATE",
+  DELETE: "DELETE",
+} as const;
+
+export interface AuditLogEntry {
+  id: string;
+  actorUserId?: string | null;
+  actorRole?: string | null;
+  actorName?: string | null;
+  action: AuditLogEntryAction;
+  entityType: string;
+  entityId?: string | null;
+  before?: unknown | null;
+  after?: unknown | null;
+  ip?: string | null;
+  userAgent?: string | null;
+  createdAt: string;
+}
+
+export type AuditLogResponseMeta = {
+  page: number;
+  limit: number;
+  total: number;
+  pages: number;
+};
+
+export interface AuditLogResponse {
+  success: boolean;
+  data: AuditLogEntry[];
+  meta: AuditLogResponseMeta;
+}
+
 export interface SuccessMessage {
   success: boolean;
   message: string;
@@ -2038,4 +2075,35 @@ export type ChangeShopPasswordBody = {
 
 export type AddShopWishlistBody = {
   productId: string;
+};
+
+export type ListAuditLogParams = {
+  entityType?: string;
+  actorUserId?: string;
+  action?: ListAuditLogAction;
+  from?: string;
+  to?: string;
+  /**
+   * @minimum 1
+   */
+  page?: number;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
+  limit?: number;
+};
+
+export type ListAuditLogAction =
+  (typeof ListAuditLogAction)[keyof typeof ListAuditLogAction];
+
+export const ListAuditLogAction = {
+  CREATE: "CREATE",
+  UPDATE: "UPDATE",
+  DELETE: "DELETE",
+} as const;
+
+export type ListAuditEntityTypes200 = {
+  success: boolean;
+  data: string[];
 };

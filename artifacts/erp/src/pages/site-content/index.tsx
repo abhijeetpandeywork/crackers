@@ -120,13 +120,41 @@ export default function SiteContent() {
   const { toast } = useToast();
   const [draft, setDraft] = useState<any>(null);
   const [rawText, setRawText] = useState("");
+  const [rawDirty, setRawDirty] = useState(false);
   const [activeTab, setActiveTab] = useState("brand");
+  const [lastEdit, setLastEdit] = useState<{ when: string; who: string | null } | null>(null);
 
   useEffect(() => {
     if (data?.data) {
       setDraft(data.data);
       setRawText(JSON.stringify(data.data, null, 2));
+      setRawDirty(false);
     }
+  }, [data]);
+
+  // Keep the JSON (advanced) tab in sync with form-tab edits, but never
+  // overwrite unsaved changes the user has typed directly in the JSON tab.
+  useEffect(() => {
+    if (draft && !rawDirty) {
+      setRawText(JSON.stringify(draft, null, 2));
+    }
+  }, [draft, rawDirty]);
+
+  // Show "last edited by … at …" by reading the most recent audit-log entry
+  // for site-content. Fails silently for non-admin viewers.
+  useEffect(() => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("erp_token") : null;
+    if (!token) return;
+    const base = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
+    fetch(`${base}/api/v1/audit-log?entityType=site-content&limit=1`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: { data?: Array<{ createdAt: string; actorName: string | null }> } | null) => {
+        const row = j?.data?.[0];
+        if (row) setLastEdit({ when: row.createdAt, who: row.actorName });
+      })
+      .catch(() => {});
   }, [data]);
 
   const dirty = useMemo(() => {
@@ -154,6 +182,7 @@ export default function SiteContent() {
       const parsed = JSON.parse(rawText);
       setDraft(parsed);
       await update.mutateAsync({ data: parsed });
+      setRawDirty(false);
       toast({ title: "Saved", description: "Website content updated." });
       await refetch();
     } catch {
@@ -186,6 +215,16 @@ export default function SiteContent() {
               Edit your brand, contact details, hero CTAs, promo banner, policies and POS display options.
               Changes appear instantly on the public website.
             </p>
+            {lastEdit && (
+              <p className="text-xs text-muted-foreground mt-1" data-testid="site-content-last-edit">
+                Last edited by{" "}
+                <span className="font-medium text-foreground">{lastEdit.who ?? "unknown"}</span>
+                {" "}on{" "}
+                {new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short" }).format(
+                  new Date(lastEdit.when),
+                )}
+              </p>
+            )}
           </div>
           <div className="flex gap-2 flex-shrink-0">
             <Button variant="outline" onClick={handleReset} disabled={!dirty} data-testid="site-content-reset">
@@ -389,7 +428,10 @@ export default function SiteContent() {
             <Textarea
               className="w-full h-[60vh] font-mono text-xs"
               value={rawText}
-              onChange={(e) => setRawText(e.target.value)}
+              onChange={(e) => {
+                setRawText(e.target.value);
+                setRawDirty(true);
+              }}
               data-testid="site-content-editor"
             />
             <Button onClick={handleSaveRaw} disabled={update.isPending} data-testid="site-content-save-raw">
