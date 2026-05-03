@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle2, XCircle, Loader2, ShieldCheck, RefreshCw } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { CheckCircle2, XCircle, Loader2, ShieldCheck, RefreshCw, Wrench, Activity, AlertTriangle } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 type Check = {
   name: string;
@@ -393,6 +396,190 @@ const SECTIONS: Array<{ name: string; run: () => Promise<Check[]> }> = [
   },
 ];
 
+type LiveCheck = {
+  id: string;
+  label: string;
+  description: string;
+  severity: "info" | "warn" | "error";
+  ok: boolean;
+  detail: string;
+  count: number;
+  autoFixable: boolean;
+  durationMs: number;
+};
+type LiveFix = { ts: string; checkId: string; ok: boolean; message: string; affected: number };
+type LiveSnapshot = {
+  startedAt: string;
+  finishedAt: string;
+  durationMs: number;
+  ok: boolean;
+  totals: { passed: number; failed: number; total: number };
+  checks: LiveCheck[];
+  recentFixes: LiveFix[];
+  autoHeal: boolean;
+};
+
+function getToken(): string | null {
+  return localStorage.getItem("erp_token");
+}
+
+async function fetchSnapshot(): Promise<LiveSnapshot | null> {
+  const tok = getToken();
+  if (!tok) return null;
+  const r = await fetch("/api/v1/system/health", { headers: { Authorization: `Bearer ${tok}` } });
+  if (!r.ok) return null;
+  const b = (await r.json()) as { data?: LiveSnapshot };
+  return b.data ?? null;
+}
+
+function LiveHealthPanel() {
+  const [snap, setSnap] = useState<LiveSnapshot | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const { toast } = useToast();
+  const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const refresh = async (force = false) => {
+    setRefreshing(true);
+    try {
+      const tok = getToken();
+      if (!tok) { setSnap(null); return; }
+      const url = force ? "/api/v1/system/health/run" : "/api/v1/system/health";
+      const r = await fetch(url, {
+        method: force ? "POST" : "GET",
+        headers: { Authorization: `Bearer ${tok}` },
+      });
+      if (r.ok) {
+        const b = (await r.json()) as { data?: LiveSnapshot };
+        if (b.data) setSnap(b.data);
+      }
+    } finally { setRefreshing(false); }
+  };
+
+  const setAutoHeal = async (enabled: boolean) => {
+    const tok = getToken();
+    if (!tok) return;
+    await fetch("/api/v1/system/health/auto-heal", {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${tok}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled }),
+    });
+    toast({ title: enabled ? "Auto-heal enabled" : "Auto-heal disabled", description: enabled ? "Safe issues will be repaired automatically each minute." : "" });
+    refresh();
+  };
+
+  const runFix = async (id: string) => {
+    const tok = getToken();
+    if (!tok) return;
+    setBusy(id);
+    try {
+      const r = await fetch(`/api/v1/system/health/fix/${id}`, { method: "POST", headers: { Authorization: `Bearer ${tok}` } });
+      const b = (await r.json()) as { data?: LiveFix; error?: { message?: string } };
+      if (r.ok && b.data?.ok) {
+        toast({ title: "Repaired", description: b.data.message });
+      } else {
+        toast({ title: "Fix failed", description: b.data?.message ?? b.error?.message ?? "Unknown error", variant: "destructive" });
+      }
+      await refresh();
+    } finally { setBusy(null); }
+  };
+
+  useEffect(() => {
+    void fetchSnapshot().then((s) => { if (s) setSnap(s); });
+    tickRef.current = setInterval(() => { void refresh(); }, 60_000);
+    return () => { if (tickRef.current) clearInterval(tickRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (!snap) {
+    return (
+      <Card>
+        <CardHeader><CardTitle className="text-base flex items-center gap-2"><Activity className="h-4 w-4" /> Live system health</CardTitle></CardHeader>
+        <CardContent className="text-sm text-muted-foreground">Loading current health snapshot…</CardContent>
+      </Card>
+    );
+  }
+
+  const failing = snap.checks.filter((c) => !c.ok);
+  const fixable = failing.filter((c) => c.autoFixable);
+  const overallBadge = snap.ok
+    ? <Badge variant="outline" className="bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/30"><CheckCircle2 className="h-3 w-3 mr-1" /> Healthy</Badge>
+    : <Badge variant="outline" className="bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/30"><AlertTriangle className="h-3 w-3 mr-1" /> {failing.length} issue{failing.length === 1 ? "" : "s"}</Badge>;
+
+  return (
+    <Card data-testid="live-health-panel">
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-3">
+            <div className="rounded-md bg-primary/10 p-2"><Activity className="h-5 w-5 text-primary" /></div>
+            <div>
+              <CardTitle className="text-base flex items-center gap-2">Live self-monitoring {overallBadge}</CardTitle>
+              <CardDescription className="text-xs">
+                Auto-checked every minute · last sweep {new Date(snap.finishedAt).toLocaleTimeString()} ({snap.durationMs} ms) · {snap.totals.passed}/{snap.totals.total} passing
+              </CardDescription>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Switch id="auto-heal" checked={snap.autoHeal} onCheckedChange={setAutoHeal} data-testid="auto-heal-toggle" />
+              <Label htmlFor="auto-heal" className="text-sm">Auto-heal</Label>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => refresh(true)} disabled={refreshing} data-testid="refresh-health">
+              {refreshing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
+              Re-check now
+            </Button>
+            {fixable.length > 0 && (
+              <Button size="sm" onClick={async () => { for (const c of fixable) await runFix(c.id); }} data-testid="fix-all">
+                <Wrench className="h-3.5 w-3.5 mr-1.5" /> Repair all ({fixable.length})
+              </Button>
+            )}
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <ul className="divide-y border rounded-md">
+          {snap.checks.map((c) => (
+            <li key={c.id} className="flex items-start gap-3 p-3 text-sm" data-testid={`live-check-${c.id}`}>
+              {c.ok
+                ? <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
+                : (c.severity === "error"
+                    ? <XCircle className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
+                    : <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />)}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-medium">{c.label}</span>
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0">{c.severity}</Badge>
+                  {c.autoFixable && <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/30">auto-fixable</Badge>}
+                </div>
+                <div className="text-xs text-muted-foreground mt-0.5">{c.description}</div>
+                <div className={`text-xs mt-1 ${c.ok ? "text-muted-foreground" : "text-foreground"}`}>{c.detail}</div>
+              </div>
+              {!c.ok && c.autoFixable && (
+                <Button size="sm" variant="outline" onClick={() => runFix(c.id)} disabled={busy === c.id} data-testid={`fix-${c.id}`}>
+                  {busy === c.id ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Wrench className="h-3.5 w-3.5 mr-1.5" />}
+                  Repair
+                </Button>
+              )}
+            </li>
+          ))}
+        </ul>
+        {snap.recentFixes.length > 0 && (
+          <div className="mt-3 text-xs">
+            <div className="font-medium mb-1">Recent auto-heal activity</div>
+            <ul className="space-y-1 text-muted-foreground">
+              {snap.recentFixes.slice(0, 5).map((f, i) => (
+                <li key={i}>
+                  <span className="font-mono">{new Date(f.ts).toLocaleTimeString()}</span> · <span className="font-medium text-foreground">{f.checkId}</span> · {f.message}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function Verifier() {
   const [sections, setSections] = useState<Section[]>(
     SECTIONS.map((s) => ({ name: s.name, status: "pending", checks: [] })),
@@ -442,6 +629,8 @@ export default function Verifier() {
           {running ? "Running…" : "Run all checks"}
         </Button>
       </div>
+
+      <LiveHealthPanel />
 
       {totalChecks > 0 && (
         <Card>
