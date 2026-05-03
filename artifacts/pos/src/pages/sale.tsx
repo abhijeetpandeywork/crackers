@@ -30,7 +30,10 @@ import {
   HelpCircle,
   ScanLine,
   Keyboard,
+  Settings2,
 } from "lucide-react";
+import ScannerSettingsDialog from "@/components/pos/scanner-settings-dialog";
+import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 import {
   Sheet,
   SheetContent,
@@ -73,6 +76,7 @@ const SaleScreen = () => {
   const [customerOpen, setCustomerOpen] = useState(false);
   const [heldBillsOpen, setHeldBillsOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [scannerSettingsOpen, setScannerSettingsOpen] = useState(false);
 
   const barcodeRef = useRef<HTMLInputElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -326,6 +330,32 @@ const SaleScreen = () => {
     barcodeRef.current?.focus();
   }, [items.length]);
 
+  // ---- Global HID scanner ----
+  // Catches barcode scans typed by USB-HID and Bluetooth scanners *anywhere*
+  // on the sale screen — even if no field is focused. Tuned by the cashier
+  // via the Scanner Settings dialog. Disabled while the settings dialog is
+  // open so the dialog's own test scanner has exclusive capture.
+  useBarcodeScanner({
+    enabled: !scannerSettingsOpen,
+    onScan: ({ code }) => {
+      const match = products.find(
+        (p) => (p.code ?? "").toLowerCase() === code.toLowerCase(),
+      );
+      if (!match) {
+        toast({ title: "No product matches that scan", description: code, variant: "destructive" });
+        return;
+      }
+      const variants = match.variants ?? [];
+      const inStock = variants.find((v) => (typeof v.stock === "number" ? v.stock > 0 : true)) ?? variants[0];
+      if (!inStock) {
+        toast({ title: `${match.name} has no variants`, variant: "destructive" });
+        return;
+      }
+      addVariantToCart(match, inStock);
+      setBarcode("");
+    },
+  });
+
   const change = paymentMethod === "CASH" ? Math.max(0, (parseFloat(cashReceived) || 0) - total) : 0;
   const cashShort = paymentMethod === "CASH" && cashReceived !== "" && (parseFloat(cashReceived) || 0) < total;
 
@@ -359,6 +389,16 @@ const SaleScreen = () => {
                 data-testid="pos-barcode-input"
               />
             </div>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-14 w-14 border-zinc-800"
+              onClick={() => setScannerSettingsOpen(true)}
+              title="Barcode scanner settings"
+              data-testid="pos-scanner-settings-btn"
+            >
+              <Settings2 className="h-6 w-6 text-primary" />
+            </Button>
             <Button
               variant="outline"
               size="icon"
@@ -764,6 +804,8 @@ const SaleScreen = () => {
           </div>
         </div>
       )}
+
+      <ScannerSettingsDialog open={scannerSettingsOpen} onOpenChange={setScannerSettingsOpen} />
     </div>
   );
 };
