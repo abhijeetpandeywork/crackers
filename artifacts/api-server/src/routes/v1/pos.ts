@@ -508,31 +508,18 @@ router.post("/pos/sale", authenticate, async (req: AuthRequest, res) => {
   }
 
   const tenderSum = rawTenders.reduce((s, t) => s + t.amount, 0);
-  // Cashiers commonly tender the bill rounded up to the nearest rupee
-  // (Indian retail convention — e.g. ₹248 paid for a ₹247.80 bill, with
-  // ~₹0.20 absorbed as round-off). Accept any tender within 1 paisa under
-  // total OR up to ₹1 over; reject only true short-pays or large overpays.
-  if (tenderSum < total - 0.01) {
+  // Strict: tender must equal bill total to within 1 paisa. We never
+  // collect more than the actual invoice value.
+  if (Math.abs(tenderSum - total) > 0.01) {
     res.status(400).json({
       success: false,
       error: {
-        code: "TENDER_SHORT",
-        message: `Tender total ₹${tenderSum.toFixed(2)} is short of bill total ₹${total.toFixed(2)}`,
+        code: "TENDER_MISMATCH",
+        message: `Tender total ₹${tenderSum.toFixed(2)} does not match bill total ₹${total.toFixed(2)}`,
       },
     });
     return;
   }
-  if (tenderSum > total + 1.0) {
-    res.status(400).json({
-      success: false,
-      error: {
-        code: "TENDER_OVER",
-        message: `Tender total ₹${tenderSum.toFixed(2)} exceeds bill total ₹${total.toFixed(2)} by more than ₹1`,
-      },
-    });
-    return;
-  }
-  const roundOff = Number((tenderSum - total).toFixed(2));
 
   const nonZero = rawTenders.filter((t) => t.amount > 0);
   const finalPaymentMode: "CASH" | "UPI" | "CARD" | "CREDIT" | "SPLIT" =
@@ -626,7 +613,6 @@ router.post("/pos/sale", authenticate, async (req: AuthRequest, res) => {
           cashReceived: num(cashReceived),
           change: Math.max(0, num(cashReceived) - (nonZero.find((t) => t.mode === "CASH")?.amount ?? 0)),
           discountReason: discountReason ?? null,
-          roundOff,
           ...(shipAddr ? { shippingAddress: shipAddr, address: shipAddr } : {}),
           ...(billAddr ? { billingAddress: billAddr } : {}),
           ...(shipAddr && billAddr ? { sameAsShipping: JSON.stringify(shipAddr) === JSON.stringify(billAddr) } : {}),

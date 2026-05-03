@@ -310,7 +310,14 @@ const SaleScreen = () => {
   const overTendered = tenderTotal > total + 0.5;
   const change = cashAmt > 0 ? Math.max(0, tenderTotal - total) : 0;
 
-  const setCashExact = () => setTenderCash((Math.max(0, total - upiAmt - cardAmt)).toFixed(2));
+  // Clear any partial tenders and fill cash with the precise bill total —
+  // gives the cashier a one-click way to settle exactly without having to
+  // type decimal paise. We never collect more than the invoice value.
+  const setCashExact = () => {
+    setTenderUpi("");
+    setTenderCard("");
+    setTenderCash(total.toFixed(2));
+  };
   const addCash = (amt: number) => {
     const current = parseFloat(tenderCash) || 0;
     setTenderCash((current + amt).toString());
@@ -935,7 +942,7 @@ const SaleScreen = () => {
               </Button>
             ))}
             <Button variant="outline" size="sm" className="h-9 px-3 border-primary/40 bg-zinc-950 text-sm font-bold text-primary" onClick={setCashExact} data-testid="quick-cash-exact">
-              Exact ₹{Math.max(0, total - upiAmt - cardAmt).toFixed(2)}
+              Exact ₹{total.toFixed(2)}
             </Button>
             <Button variant="ghost" size="sm" className="h-9 px-2 text-zinc-500" onClick={() => { setTenderCash(""); setTenderUpi(""); setTenderCard(""); }}>Clear</Button>
           </div>
