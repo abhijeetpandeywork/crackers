@@ -180,32 +180,63 @@ router.post("/pos/shift-open", authenticate, async (req: AuthRequest, res) => {
     }
   }
 
-  // Wrap conflict-check + insert in a transaction so two simultaneous open
-  // requests can't both succeed and leave the cashier with overlapping shifts.
+  // Conflict-check + insert in a transaction. The DB also has a partial
+  // unique index `one_open_shift_per_user` on (user_id) WHERE closed_at IS
+  // NULL, so two simultaneous opens can't both succeed even if they pass
+  // the application-level check (TOCTOU). We catch the 23505 violation
+  // below and turn it into a clean 409.
   type ShiftRow = typeof posShiftsTable.$inferSelect;
   type ConflictResult = { kind: "elsewhere" | "here"; shift: ShiftRow };
   type OpenResult = { kind: "opened"; shift: ShiftRow };
-  const result = await db.transaction(async (tx): Promise<ConflictResult | OpenResult> => {
-    const anyOpenRows = await tx
-      .select()
-      .from(posShiftsTable)
-      .where(and(eq(posShiftsTable.userId, req.user!.id), isNull(posShiftsTable.closedAt)))
-      .limit(1);
-    const anyOpenRow = anyOpenRows[0];
-    if (anyOpenRow) {
-      return { kind: anyOpenRow.locationId === locationId ? "here" : "elsewhere", shift: anyOpenRow };
+  let result: ConflictResult | OpenResult;
+  try {
+    result = await db.transaction(async (tx): Promise<ConflictResult | OpenResult> => {
+      const anyOpenRows = await tx
+        .select()
+        .from(posShiftsTable)
+        .where(and(eq(posShiftsTable.userId, req.user!.id), isNull(posShiftsTable.closedAt)))
+        .limit(1);
+      const anyOpenRow = anyOpenRows[0];
+      if (anyOpenRow) {
+        return { kind: anyOpenRow.locationId === locationId ? "here" : "elsewhere", shift: anyOpenRow };
+      }
+      const [created] = await tx
+        .insert(posShiftsTable)
+        .values({
+          locationId,
+          userId: req.user!.id,
+          openingCash: String(openingCash),
+          notes: notes ?? null,
+        })
+        .returning();
+      return { kind: "opened", shift: created };
+    });
+  } catch (err: unknown) {
+    // Postgres unique-violation. Race lost — re-read the now-existing open
+    // shift and return it as a 409 just like the app-level conflict path.
+    const code = (err as { code?: string })?.code;
+    if (code === "23505") {
+      const existing = await findOpenShift(req.user.id);
+      if (existing) {
+        const running = await computeShiftTotals(existing.id);
+        const conflictCode = existing.locationId === locationId ? "SHIFT_ALREADY_OPEN" : "SHIFT_ALREADY_OPEN_ELSEWHERE";
+        const message = existing.locationId === locationId
+          ? "A shift is already open here."
+          : "You already have an open shift at another location. Close it before opening a new one.";
+        res.status(409).json({
+          success: false,
+          error: { code: conflictCode, message },
+          data: {
+            ...existing,
+            openingCash: num(existing.openingCash),
+            running: { ...running, expectedCash: num(existing.openingCash) + running.cashSales },
+          },
+        });
+        return;
+      }
     }
-    const [created] = await tx
-      .insert(posShiftsTable)
-      .values({
-        locationId,
-        userId: req.user!.id,
-        openingCash: String(openingCash),
-        notes: notes ?? null,
-      })
-      .returning();
-    return { kind: "opened", shift: created };
-  });
+    throw err;
+  }
   if (result.kind !== "opened") {
     const running = await computeShiftTotals(result.shift.id);
     const code = result.kind === "elsewhere" ? "SHIFT_ALREADY_OPEN_ELSEWHERE" : "SHIFT_ALREADY_OPEN";

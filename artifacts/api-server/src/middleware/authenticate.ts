@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { verifyApiToken } from "../routes/v1/apiTokens.js";
 
 export interface AuthRequest extends Request {
-  user?: { id: string; role: string };
+  user?: { id: string; role: string; scopes?: string[] };
 }
 
 export function authenticate(req: AuthRequest, res: Response, next: NextFunction) {
@@ -26,7 +26,7 @@ export function authenticate(req: AuthRequest, res: Response, next: NextFunction
           res.status(401).json({ success: false, error: { code: "INVALID_TOKEN", message: "Invalid, revoked or expired API token" } });
           return;
         }
-        req.user = mapped;
+        req.user = { id: mapped.id, role: mapped.role, scopes: mapped.scopes };
         next();
       })
       .catch(() => {
@@ -96,9 +96,15 @@ export function requirePermission(permission: string) {
       res.status(401).json({ success: false, error: { code: "UNAUTHORIZED", message: "Login required" } });
       return;
     }
-    // SUPER_ADMIN and synthetic API_TOKEN users get a free pass — token-based
-    // scoping is enforced by token scopes rather than by RBAC roles.
-    if (role === "SUPER_ADMIN" || role === "API_TOKEN") return next();
+    if (role === "SUPER_ADMIN") return next();
+    // API tokens are explicitly scoped — they must list this permission key
+    // (or the wildcard "*") to be allowed in. No implicit free pass.
+    if (role === "API_TOKEN") {
+      const scopes = req.user?.scopes ?? [];
+      if (scopes.includes("*") || scopes.includes(permission)) return next();
+      res.status(403).json({ success: false, error: { code: "FORBIDDEN", message: `API token missing scope: ${permission}` } });
+      return;
+    }
     try {
       const perms = await permsForRole(role);
       if (!perms.has(permission)) {

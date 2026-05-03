@@ -111,7 +111,7 @@ router.delete("/api-tokens/:id", authenticate, async (req: AuthRequest, res) => 
 
 // Exported so the auth middleware can verify api-token Bearer headers without
 // a circular import between modules.
-export async function verifyApiToken(token: string): Promise<{ id: string; role: string } | null> {
+export async function verifyApiToken(token: string): Promise<{ id: string; role: string; scopes: string[] } | null> {
   if (!token.startsWith("rkc_")) return null;
   const hash = hashToken(token);
   const rows = await db.select().from(apiTokensTable).where(eq(apiTokensTable.tokenHash, hash)).limit(1);
@@ -121,7 +121,7 @@ export async function verifyApiToken(token: string): Promise<{ id: string; role:
   if (row.expiresAt && row.expiresAt.getTime() < Date.now()) return null;
   // Touch lastUsedAt asynchronously — do not block the request.
   db.update(apiTokensTable).set({ lastUsedAt: new Date() }).where(eq(apiTokensTable.id, row.id)).catch(() => {});
-  return { id: `apitoken:${row.id}`, role: "API_TOKEN" };
+  return { id: `apitoken:${row.id}`, role: "API_TOKEN", scopes: (row.scopes ?? []) as string[] };
 }
 
 export default router;
