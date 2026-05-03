@@ -92,4 +92,27 @@ router.get(
   },
 );
 
+// Distinct list of actors that have written to the audit log.
+// Backs the "Who" filter on the Activity page. Available to both
+// SUPER_ADMIN and ADMIN — unlike /users, which is SUPER_ADMIN-only.
+router.get(
+  "/audit-log/actors",
+  authenticate,
+  requireRole("SUPER_ADMIN", "ADMIN"),
+  async (_req, res) => {
+    const rows = await db
+      .selectDistinct({
+        id: auditLogTable.actorUserId,
+        name: usersTable.name,
+      })
+      .from(auditLogTable)
+      .leftJoin(usersTable, eq(auditLogTable.actorUserId, usersTable.id));
+    const actors = rows
+      .filter((r): r is { id: string; name: string | null } => Boolean(r.id))
+      .map((r) => ({ id: r.id, name: r.name ?? "(unknown user)" }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    res.json({ success: true, data: actors });
+  },
+);
+
 export default router;

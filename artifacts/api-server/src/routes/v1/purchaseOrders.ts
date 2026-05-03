@@ -59,6 +59,10 @@ router.put("/purchase-orders/:id/receive", authenticate, async (req: AuthRequest
   const po = poRows[0];
   const { items } = req.body as { items: Array<{ productId: string; variantId: string; receivedQty: number; batchNo?: string; damagedQty?: number }> };
 
+  const forceFail =
+    process.env["NODE_ENV"] !== "production" &&
+    (req.body as { __forceFailAfterLedger?: boolean })?.__forceFailAfterLedger === true;
+
   // Atomic: stock IN + PO status flip in one transaction.
   await db.transaction(async (tx) => {
     for (const item of items) {
@@ -79,6 +83,7 @@ router.put("/purchase-orders/:id/receive", authenticate, async (req: AuthRequest
         );
       }
     }
+    if (forceFail) throw new Error("__test_force_fail_after_ledger");
     await tx.update(purchaseOrdersTable).set({ status: "received", updatedAt: new Date() }).where(eq(purchaseOrdersTable.id, po.id));
   });
   res.json({ success: true, message: "PO received" });

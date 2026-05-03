@@ -445,6 +445,14 @@ router.post("/pos/sale", authenticate, async (req: AuthRequest, res) => {
   // Wrap stock-ledger writes and the invoice insert in a single DB transaction
   // so a failure on the parent insert rolls back the ledger rows and stock
   // levels — no orphan ledger entries, no silent stock drift.
+  // Test-only hook (NODE_ENV !== "production") that lets the verifier prove
+  // transactional rollback by forcing a throw AFTER ledger writes inside the
+  // same db.transaction. The thrown error rolls the txn back, so the ledger
+  // row count must be unchanged after the request.
+  const forceFail =
+    process.env["NODE_ENV"] !== "production" &&
+    (req.body as { __forceFailAfterLedger?: boolean })?.__forceFailAfterLedger === true;
+
   const invoice = await db.transaction(async (tx) => {
     for (const item of resolvedItems) {
       await appendLedger(
@@ -459,6 +467,9 @@ router.post("/pos/sale", authenticate, async (req: AuthRequest, res) => {
         },
         tx,
       );
+    }
+    if (forceFail) {
+      throw new Error("__test_force_fail_after_ledger");
     }
     const [inv] = await tx
       .insert(invoicesTable)

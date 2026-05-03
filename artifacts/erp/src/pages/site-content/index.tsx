@@ -496,8 +496,8 @@ export default function SiteContent() {
             </p>
             <ArrayEditor
               testId="faqs-editor"
-              value={get<Array<{ q: string; a: string }>>(draft, "faqs", [])}
-              onChange={(next) => setPath("faqs", next)}
+              value={get<Array<{ q: string; a: string }>>(draft, "homeFaqs", [])}
+              onChange={(next) => setPath("homeFaqs", next)}
               fields={[
                 { key: "q", label: "Question" },
                 { key: "a", label: "Answer", type: "textarea" },

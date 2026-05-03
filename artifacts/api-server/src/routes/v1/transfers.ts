@@ -67,6 +67,10 @@ router.put("/transfers/:id/dispatch", authenticate, async (req: AuthRequest, res
   const t = tRows[0];
   const items = (t.items ?? []) as any[];
 
+  const forceFail =
+    process.env["NODE_ENV"] !== "production" &&
+    (req.body as { __forceFailAfterLedger?: boolean })?.__forceFailAfterLedger === true;
+
   // Atomic: deduct source stock + flip transfer to in_transit together.
   await db.transaction(async (tx) => {
     for (const item of items) {
@@ -86,6 +90,7 @@ router.put("/transfers/:id/dispatch", authenticate, async (req: AuthRequest, res
         tx,
       );
     }
+    if (forceFail) throw new Error("__test_force_fail_after_ledger");
     await tx.update(transfersTable).set({
       status: "in_transit",
       vehicleNo: req.body.vehicleNo,
@@ -102,6 +107,10 @@ router.put("/transfers/:id/receive", authenticate, async (req: AuthRequest, res)
   if (!tRows[0]) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Transfer not found" } }); return; }
   const t = tRows[0];
   const { items } = req.body as { items: Array<{ productId: string; variantId: string; receivedQty: number }> };
+
+  const forceFailRecv =
+    process.env["NODE_ENV"] !== "production" &&
+    (req.body as { __forceFailAfterLedger?: boolean })?.__forceFailAfterLedger === true;
 
   // Atomic: credit destination stock + close the transfer together.
   await db.transaction(async (tx) => {
@@ -123,6 +132,7 @@ router.put("/transfers/:id/receive", authenticate, async (req: AuthRequest, res)
         );
       }
     }
+    if (forceFailRecv) throw new Error("__test_force_fail_after_ledger");
     await tx.update(transfersTable).set({
       status: "received",
       receivedAt: new Date(),

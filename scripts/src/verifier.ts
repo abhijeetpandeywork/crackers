@@ -563,36 +563,98 @@ const sections: Array<{ name: string; checks: () => Promise<CheckResult[]> }> = 
               detail: `status=${recvStatus}`,
             });
 
-            // Rollback proof for transfer dispatch / PO receive: a malformed
-            // request (missing items[]) must NOT leave a ledger row behind.
-            const ledgerCountBeforeBad = await http(
-              `/api/v1/stock/ledger?productId=${prod.id}&variantId=${encodeURIComponent(variantId)}&limit=1`,
-              { headers },
-            );
-            const ledgerBeforeBadTotal = Number(
-              (ledgerCountBeforeBad.body as { meta?: { total?: number } })?.meta?.total ?? -1,
-            );
-            // Try a malformed PO receive (no items field). Must fail before
-            // committing — we then assert ledger row count is unchanged.
-            const badPoReceive = await http("/api/v1/purchase-orders/__nonexistent__/receive", {
+          }
+
+          // Real transactional-rollback proofs for POS sale, transfer
+          // dispatch, transfer receive, and PO receive. Each route honours
+          // a NODE_ENV-gated `__forceFailAfterLedger` body flag that throws
+          // *inside* the same db.transaction, after appendLedger has run.
+          // The expectation is identical for every path: HTTP 5xx, and the
+          // stock-ledger row count is unchanged.
+          const ledgerQs2 = `?productId=${prod.id}&variantId=${encodeURIComponent(variantId)}&limit=1`;
+          const ledgerTotal = async (): Promise<number> => {
+            const r = await http(`/api/v1/stock/ledger${ledgerQs2}`, { headers });
+            return Number((r.body as { meta?: { total?: number } })?.meta?.total ?? -1);
+          };
+
+          // -- POS sale rollback --
+          const posBefore = await ledgerTotal();
+          const badPos = await http("/api/v1/pos/sale", {
+            method: "POST",
+            headers: { ...headers, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              locationId: fromId,
+              paymentMode: "CASH",
+              items: [{ productId: prod.id, variantId, qty: 1 }],
+              __forceFailAfterLedger: true,
+            }),
+          });
+          const posAfter = await ledgerTotal();
+          out.push({
+            name: "Forced-fail POS sale rolls back stock-ledger row (transactional)",
+            passed: badPos.status >= 500 && posBefore >= 0 && posAfter === posBefore,
+            detail: `pos=${badPos.status} ledger before=${posBefore} after=${posAfter}`,
+          });
+
+          // -- Transfer dispatch rollback (needs a fresh draft transfer) --
+          const draftDispatch = await http("/api/v1/transfers", {
+            method: "POST",
+            headers: { ...headers, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              fromLocationId: fromId,
+              toLocationId: toId,
+              items: [{ productId: prod.id, variantId, qty: 1 }],
+              notes: "verifier rollback dispatch",
+            }),
+          });
+          const dispDraftId = (draftDispatch.body as { data?: { id?: string } })?.data?.id;
+          if (dispDraftId) {
+            const before = await ledgerTotal();
+            const bad = await http(`/api/v1/transfers/${dispDraftId}/dispatch`, {
               method: "PUT",
               headers: { ...headers, "Content-Type": "application/json" },
-              body: JSON.stringify({}),
+              body: JSON.stringify({ vehicleNo: "TN-FAIL-1", __forceFailAfterLedger: true }),
             });
-            const ledgerCountAfterBad = await http(
-              `/api/v1/stock/ledger?productId=${prod.id}&variantId=${encodeURIComponent(variantId)}&limit=1`,
-              { headers },
-            );
-            const ledgerAfterBadTotal = Number(
-              (ledgerCountAfterBad.body as { meta?: { total?: number } })?.meta?.total ?? -2,
-            );
+            const after = await ledgerTotal();
             out.push({
-              name: "Malformed PO receive leaves stock ledger untouched (transactional)",
-              passed:
-                badPoReceive.status >= 400 &&
-                ledgerBeforeBadTotal >= 0 &&
-                ledgerAfterBadTotal === ledgerBeforeBadTotal,
-              detail: `po=${badPoReceive.status} ledger before=${ledgerBeforeBadTotal} after=${ledgerAfterBadTotal}`,
+              name: "Forced-fail transfer dispatch rolls back stock-ledger row (transactional)",
+              passed: bad.status >= 500 && before >= 0 && after === before,
+              detail: `dispatch=${bad.status} ledger before=${before} after=${after}`,
+            });
+          }
+
+          // -- Transfer receive rollback (needs an in-transit transfer) --
+          const draftReceive = await http("/api/v1/transfers", {
+            method: "POST",
+            headers: { ...headers, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              fromLocationId: fromId,
+              toLocationId: toId,
+              items: [{ productId: prod.id, variantId, qty: 1 }],
+              notes: "verifier rollback receive",
+            }),
+          });
+          const recvDraftId = (draftReceive.body as { data?: { id?: string } })?.data?.id;
+          if (recvDraftId) {
+            await http(`/api/v1/transfers/${recvDraftId}/dispatch`, {
+              method: "PUT",
+              headers: { ...headers, "Content-Type": "application/json" },
+              body: JSON.stringify({ vehicleNo: "TN-OK-1" }),
+            });
+            const before = await ledgerTotal();
+            const bad = await http(`/api/v1/transfers/${recvDraftId}/receive`, {
+              method: "PUT",
+              headers: { ...headers, "Content-Type": "application/json" },
+              body: JSON.stringify({
+                items: [{ productId: prod.id, variantId, receivedQty: 1 }],
+                __forceFailAfterLedger: true,
+              }),
+            });
+            const after = await ledgerTotal();
+            out.push({
+              name: "Forced-fail transfer receive rolls back stock-ledger row (transactional)",
+              passed: bad.status >= 500 && before >= 0 && after === before,
+              detail: `receive=${bad.status} ledger before=${before} after=${after}`,
             });
           }
 
@@ -653,6 +715,43 @@ const sections: Array<{ name: string; checks: () => Promise<CheckResult[]> }> = 
                 passed: inwardForPo,
                 detail: inwardForPo ? "ok" : `no matching ledger row (rows=${ledgerRows.length})`,
               });
+
+              // -- PO receive rollback: a fresh draft PO + force-fail flag.
+              const poDraft2 = await http("/api/v1/purchase-orders", {
+                method: "POST",
+                headers: { ...headers, "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  supplierId,
+                  warehouseId: fromId,
+                  items: [{ productId: prod.id, variantId, orderedQty: 2, unitPrice: 100 }],
+                  expectedDate: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
+                  notes: "verifier rollback PO",
+                }),
+              });
+              const poBody2 = poDraft2.body as { id?: string; data?: { id?: string } };
+              const poId2 = poBody2?.data?.id ?? poBody2?.id;
+              if (poId2) {
+                const ledgerQs3 = `?productId=${prod.id}&variantId=${encodeURIComponent(variantId)}&limit=1`;
+                const before = Number(
+                  ((await http(`/api/v1/stock/ledger${ledgerQs3}`, { headers })).body as { meta?: { total?: number } })?.meta?.total ?? -1,
+                );
+                const bad = await http(`/api/v1/purchase-orders/${poId2}/receive`, {
+                  method: "PUT",
+                  headers: { ...headers, "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    items: [{ productId: prod.id, variantId, receivedQty: 2 }],
+                    __forceFailAfterLedger: true,
+                  }),
+                });
+                const after = Number(
+                  ((await http(`/api/v1/stock/ledger${ledgerQs3}`, { headers })).body as { meta?: { total?: number } })?.meta?.total ?? -2,
+                );
+                out.push({
+                  name: "Forced-fail PO receive rolls back stock-ledger row (transactional)",
+                  passed: bad.status >= 500 && before >= 0 && after === before,
+                  detail: `po=${bad.status} ledger before=${before} after=${after}`,
+                });
+              }
             }
           }
         }

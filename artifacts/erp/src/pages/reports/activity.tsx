@@ -79,16 +79,10 @@ export default function ActivityReport() {
     api<{ success: boolean; data: string[] }>("/audit-log/entity-types")
       .then((j) => setTypes(j.data ?? []))
       .catch(() => setTypes([]));
-    // Populate the "Who" filter from the user directory so admins can pick
-    // an actor by name instead of typing a UUID.
-    api<{ success: boolean; data: Array<{ id: string; name: string }> }>("/users?limit=200")
-      .then((j) =>
-        setUsers(
-          (j.data ?? [])
-            .map((u) => ({ id: u.id, name: u.name }))
-            .sort((a, b) => a.name.localeCompare(b.name)),
-        ),
-      )
+    // Populate the "Who" filter from a dedicated audit-log actors endpoint
+    // (works for both SUPER_ADMIN and ADMIN — /users is SUPER_ADMIN-only).
+    api<{ success: boolean; data: Array<{ id: string; name: string }> }>("/audit-log/actors")
+      .then((j) => setUsers(j.data ?? []))
       .catch(() => setUsers([]));
   }, []);
 
