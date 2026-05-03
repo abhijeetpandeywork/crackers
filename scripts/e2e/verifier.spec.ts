@@ -76,6 +76,8 @@ test("ERP /verifier runs all checks and every one passes", async ({ page, baseUR
   expect(failingRows, `Failing checks:\n${failingRows.join("\n---\n")}`).toEqual([]);
   expect(passed, `Expected all checks to pass, got ${passed}/${total}`).toBe(total);
 
-  // The verifier ships with 43 checks today; allow growth but never silent regression.
-  expect(total, `Expected at least 43 verifier checks, got ${total}`).toBeGreaterThanOrEqual(43);
+  // The verifier ships with 53 checks today; allow growth but never silent regression.
+  // Bump this floor whenever new checks are added so the e2e smoke catches
+  // accidental check removals.
+  expect(total, `Expected at least 53 verifier checks, got ${total}`).toBeGreaterThanOrEqual(53);
 });
