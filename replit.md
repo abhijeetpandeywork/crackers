@@ -16,7 +16,7 @@ Key capabilities include a 5-tier pricing engine, an immutable stock ledger syst
 
 **Stock-level concurrency:** `stock_levels` has a composite primary key on `(product_id, variant_id, location_id)`. `appendLedger` upserts via `INSERT … ON CONFLICT DO UPDATE SET current_qty = current_qty + $delta`, so concurrent transactions can never lose-update each other's stock writes.
 
-**CMS form editor:** the Website Content page (ERP → Settings → Website Content) is a tabbed form (Brand / Contact / Socials / Hero & CTAs / Promo / Policies / POS) instead of a raw JSON textarea. A "JSON (advanced)" tab remains for power users to edit arrays such as FAQs, testimonials, how-it-works steps and homepage stats.
+**CMS form editor:** the Website Content page (ERP → Settings → Website Content) is a tabbed form (Brand / Contact / Socials / Hero & CTAs / Promo / Policies / POS / FAQs / How it works / Why us) instead of a raw JSON textarea. The FAQ / How-it-works / Why-us tabs each provide a non-technical list editor (add / remove / reorder rows) over their underlying arrays. A "JSON (advanced)" tab remains for power users to edit any other arrays such as testimonials and homepage stats; it stays in sync with form-tab edits unless you've started typing directly in it. The page header shows "Last edited by … on …" pulled from the audit log.
 
 The business vision is to provide a highly efficient and auditable system that supports both internal operations and external customer engagement, enhancing overall productivity and customer satisfaction in a specialized market.
 

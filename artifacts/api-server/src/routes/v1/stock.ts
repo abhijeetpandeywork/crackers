@@ -148,13 +148,20 @@ router.post("/stock/adjust", authenticate, async (req: AuthRequest, res) => {
     });
   }
 
-  await appendLedger({
-    productId: productId!, variantId: variantId!, locationId: locationId!,
-    type: "ADJUST",
-    qty: Number(qty),
-    notes: reason!,
-    refType: "MANUAL",
-    createdBy: req.user?.id,
+  // Wrap in a transaction for symmetry with other stock-mutating routes —
+  // the ledger insert and the stock_levels upsert are now committed together.
+  await db.transaction(async (tx) => {
+    await appendLedger(
+      {
+        productId: productId!, variantId: variantId!, locationId: locationId!,
+        type: "ADJUST",
+        qty: Number(qty),
+        notes: reason!,
+        refType: "MANUAL",
+        createdBy: req.user?.id,
+      },
+      tx,
+    );
   });
 
   return res.json({ success: true, message: "Stock adjusted" });

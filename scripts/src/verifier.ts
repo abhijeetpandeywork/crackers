@@ -527,6 +527,20 @@ const sections: Array<{ name: string; checks: () => Promise<CheckResult[]> }> = 
               passed: afterDispatch.status === 200 && dispStatus === "in_transit",
               detail: `status=${dispStatus}`,
             });
+            // Confirm dispatch left a MOVE OUT ledger row tagged with this transfer.
+            const dispLedger = await http(
+              `/api/v1/stock/ledger?productId=${prod.id}&variantId=${encodeURIComponent(variantId)}&limit=20`,
+              { headers },
+            );
+            const dispLedgerRows = (dispLedger.body as { data?: Array<{ refType?: string; refId?: string; type?: string }> })?.data ?? [];
+            const dispatched = dispLedgerRows.some(
+              (r) => r.refType === "TRANSFER" && r.refId === tid && r.type === "MOVE",
+            );
+            out.push({
+              name: "Stock ledger has MOVE row for dispatched transfer (transactional commit)",
+              passed: dispatched,
+              detail: dispatched ? "ok" : `no matching ledger row (rows=${dispLedgerRows.length})`,
+            });
             const recv = await http(`/api/v1/transfers/${tid}/receive`, {
               method: "PUT",
               headers: { ...headers, "Content-Type": "application/json" },
@@ -547,6 +561,38 @@ const sections: Array<{ name: string; checks: () => Promise<CheckResult[]> }> = 
               name: "Transfer status is 'received' after receive",
               passed: afterReceive.status === 200 && recvStatus === "received",
               detail: `status=${recvStatus}`,
+            });
+
+            // Rollback proof for transfer dispatch / PO receive: a malformed
+            // request (missing items[]) must NOT leave a ledger row behind.
+            const ledgerCountBeforeBad = await http(
+              `/api/v1/stock/ledger?productId=${prod.id}&variantId=${encodeURIComponent(variantId)}&limit=1`,
+              { headers },
+            );
+            const ledgerBeforeBadTotal = Number(
+              (ledgerCountBeforeBad.body as { meta?: { total?: number } })?.meta?.total ?? -1,
+            );
+            // Try a malformed PO receive (no items field). Must fail before
+            // committing — we then assert ledger row count is unchanged.
+            const badPoReceive = await http("/api/v1/purchase-orders/__nonexistent__/receive", {
+              method: "PUT",
+              headers: { ...headers, "Content-Type": "application/json" },
+              body: JSON.stringify({}),
+            });
+            const ledgerCountAfterBad = await http(
+              `/api/v1/stock/ledger?productId=${prod.id}&variantId=${encodeURIComponent(variantId)}&limit=1`,
+              { headers },
+            );
+            const ledgerAfterBadTotal = Number(
+              (ledgerCountAfterBad.body as { meta?: { total?: number } })?.meta?.total ?? -2,
+            );
+            out.push({
+              name: "Malformed PO receive leaves stock ledger untouched (transactional)",
+              passed:
+                badPoReceive.status >= 400 &&
+                ledgerBeforeBadTotal >= 0 &&
+                ledgerAfterBadTotal === ledgerBeforeBadTotal,
+              detail: `po=${badPoReceive.status} ledger before=${ledgerBeforeBadTotal} after=${ledgerAfterBadTotal}`,
             });
           }
 

@@ -96,6 +96,73 @@ function NumberField({
   );
 }
 
+function ArrayEditor<T extends Record<string, any>>({
+  value,
+  onChange,
+  fields,
+  empty,
+  testId,
+}: {
+  value: T[] | undefined;
+  onChange: (next: T[]) => void;
+  fields: Array<{ key: keyof T & string; label: string; type?: "text" | "textarea" }>;
+  empty: T;
+  testId?: string;
+}) {
+  const list: T[] = Array.isArray(value) ? value : [];
+  const update = (i: number, patch: Partial<T>) => {
+    const next = list.map((row, idx) => (idx === i ? { ...row, ...patch } : row));
+    onChange(next as T[]);
+  };
+  const remove = (i: number) => onChange(list.filter((_, idx) => idx !== i));
+  const move = (i: number, dir: -1 | 1) => {
+    const j = i + dir;
+    if (j < 0 || j >= list.length) return;
+    const next = [...list];
+    [next[i], next[j]] = [next[j]!, next[i]!];
+    onChange(next);
+  };
+  return (
+    <div className="space-y-3" data-testid={testId}>
+      {list.length === 0 && (
+        <p className="text-xs text-muted-foreground">No entries yet — click "Add" to create one.</p>
+      )}
+      {list.map((row, i) => (
+        <div key={i} className="border rounded-md p-3 space-y-2 bg-muted/30">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-muted-foreground">#{i + 1}</span>
+            <div className="flex gap-1">
+              <Button type="button" size="sm" variant="ghost" onClick={() => move(i, -1)} disabled={i === 0}>↑</Button>
+              <Button type="button" size="sm" variant="ghost" onClick={() => move(i, 1)} disabled={i === list.length - 1}>↓</Button>
+              <Button type="button" size="sm" variant="ghost" onClick={() => remove(i)}>Remove</Button>
+            </div>
+          </div>
+          {fields.map((f) =>
+            f.type === "textarea" ? (
+              <Textarea
+                key={f.key}
+                value={String(row[f.key] ?? "")}
+                placeholder={f.label}
+                onChange={(e) => update(i, { [f.key]: e.target.value } as Partial<T>)}
+              />
+            ) : (
+              <Input
+                key={f.key}
+                value={String(row[f.key] ?? "")}
+                placeholder={f.label}
+                onChange={(e) => update(i, { [f.key]: e.target.value } as Partial<T>)}
+              />
+            ),
+          )}
+        </div>
+      ))}
+      <Button type="button" variant="outline" size="sm" onClick={() => onChange([...list, { ...empty }])}>
+        + Add
+      </Button>
+    </div>
+  );
+}
+
 function ToggleField({
   label,
   value,
@@ -245,6 +312,9 @@ export default function SiteContent() {
             <TabsTrigger value="promo">Promo</TabsTrigger>
             <TabsTrigger value="policies">Policies</TabsTrigger>
             <TabsTrigger value="pos">POS</TabsTrigger>
+            <TabsTrigger value="faqs">FAQs</TabsTrigger>
+            <TabsTrigger value="how">How it works</TabsTrigger>
+            <TabsTrigger value="why">Why us</TabsTrigger>
             <TabsTrigger value="json">JSON (advanced)</TabsTrigger>
           </TabsList>
 
@@ -416,6 +486,61 @@ export default function SiteContent() {
               label="Show coupon box"
               value={get<boolean>(draft, "pos.showCouponBox", true) !== false}
               onChange={(v) => setPath("pos.showCouponBox", v)}
+            />
+          </TabsContent>
+
+          {/* FAQs ------------------------------------------------- */}
+          <TabsContent value="faqs" className="space-y-4 pt-4">
+            <p className="text-xs text-muted-foreground">
+              Frequently-asked questions shown on the website FAQ section. Each entry has a question and an answer.
+            </p>
+            <ArrayEditor
+              testId="faqs-editor"
+              value={get<Array<{ q: string; a: string }>>(draft, "faqs", [])}
+              onChange={(next) => setPath("faqs", next)}
+              fields={[
+                { key: "q", label: "Question" },
+                { key: "a", label: "Answer", type: "textarea" },
+              ]}
+              empty={{ q: "", a: "" }}
+            />
+          </TabsContent>
+
+          {/* HOW IT WORKS ----------------------------------------- */}
+          <TabsContent value="how" className="space-y-4 pt-4">
+            <p className="text-xs text-muted-foreground">
+              The numbered steps shown on the homepage explaining how customers buy from you.
+              Use any short emoji as the icon (e.g. 📦, 🚚, ✅).
+            </p>
+            <ArrayEditor
+              testId="how-editor"
+              value={get<Array<{ step: string; icon: string; title: string; desc: string }>>(draft, "howItWorks", [])}
+              onChange={(next) => setPath("howItWorks", next)}
+              fields={[
+                { key: "step", label: "Step number (e.g. 01)" },
+                { key: "icon", label: "Icon (emoji)" },
+                { key: "title", label: "Title" },
+                { key: "desc", label: "Short description", type: "textarea" },
+              ]}
+              empty={{ step: "", icon: "", title: "", desc: "" }}
+            />
+          </TabsContent>
+
+          {/* WHY US ----------------------------------------------- */}
+          <TabsContent value="why" className="space-y-4 pt-4">
+            <p className="text-xs text-muted-foreground">
+              The selling points shown in the "Why us" homepage section. Use a short emoji as the icon.
+            </p>
+            <ArrayEditor
+              testId="why-editor"
+              value={get<Array<{ icon: string; title: string; desc: string }>>(draft, "whyUs", [])}
+              onChange={(next) => setPath("whyUs", next)}
+              fields={[
+                { key: "icon", label: "Icon (emoji)" },
+                { key: "title", label: "Title" },
+                { key: "desc", label: "Short description", type: "textarea" },
+              ]}
+              empty={{ icon: "", title: "", desc: "" }}
             />
           </TabsContent>
 
