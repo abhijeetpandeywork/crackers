@@ -36,6 +36,7 @@ router.post("/users", authenticate, adminOnly, async (req, res) => {
     email: usersTable.email,
     phone: usersTable.phone,
     locationIds: usersTable.locationIds,
+    maxDiscountPct: usersTable.maxDiscountPct,
     isActive: usersTable.isActive,
     createdAt: usersTable.createdAt,
   });
@@ -59,8 +60,11 @@ router.get("/users/:id", authenticate, adminOnly, async (req, res) => {
   res.json({ success: true, data: rows[0] });
 });
 
-router.put("/users/:id", authenticate, adminOnly, async (req, res) => {
-  const { password, ...rest } = req.body as Record<string, unknown>;
+// Shared updater used by both PUT (full replace-style) and PATCH (partial).
+// The two HTTP methods are intentionally identical here: the schema is small
+// enough that we don't try to enforce required-fields on PUT.
+async function updateUser(id: string, body: Record<string, unknown>) {
+  const { password, ...rest } = body;
   const updates: Partial<typeof usersTable.$inferInsert> = {
     ...(rest as Partial<typeof usersTable.$inferInsert>),
     updatedAt: new Date(),
@@ -68,13 +72,28 @@ router.put("/users/:id", authenticate, adminOnly, async (req, res) => {
   if (typeof password === "string" && password.length > 0) {
     updates.passwordHash = await hashPassword(password);
   }
-  const [user] = await db.update(usersTable).set(updates).where(eq(usersTable.id, req.params["id"] as string)).returning({
+  const [user] = await db.update(usersTable).set(updates).where(eq(usersTable.id, id)).returning({
     id: usersTable.id,
     name: usersTable.name,
     username: usersTable.username,
     role: usersTable.role,
+    email: usersTable.email,
+    phone: usersTable.phone,
+    locationIds: usersTable.locationIds,
+    maxDiscountPct: usersTable.maxDiscountPct,
     isActive: usersTable.isActive,
   });
+  return user;
+}
+
+router.put("/users/:id", authenticate, adminOnly, async (req, res) => {
+  const user = await updateUser(req.params["id"] as string, req.body as Record<string, unknown>);
+  if (!user) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "User not found" } }); return; }
+  res.json({ success: true, data: user });
+});
+
+router.patch("/users/:id", authenticate, adminOnly, async (req, res) => {
+  const user = await updateUser(req.params["id"] as string, req.body as Record<string, unknown>);
   if (!user) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "User not found" } }); return; }
   res.json({ success: true, data: user });
 });

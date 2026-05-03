@@ -51,7 +51,7 @@ router.post("/auth/login", authLimiter, async (req, res) => {
 });
 
 router.post("/auth/pin-login", authLimiter, async (req, res) => {
-  const { username, pin } = req.body as { username: string; pin: string; locationId: string };
+  const { username, pin, locationId } = req.body as { username: string; pin: string; locationId?: string };
   if (!username || !pin) {
     res.status(400).json({ success: false, error: { code: "BAD_REQUEST", message: "username and pin required" } });
     return;
@@ -61,6 +61,15 @@ router.post("/auth/pin-login", authLimiter, async (req, res) => {
   if (!user || !user.isActive || user.pin !== pin) {
     res.status(401).json({ success: false, error: { code: "INVALID_CREDENTIALS", message: "Invalid PIN" } });
     return;
+  }
+  // Now that each cashier is scoped to specific shops, enforce shop membership
+  // server-side. Privileged roles can sign in at any shop (handy for support).
+  if (locationId && user.role !== "SUPER_ADMIN" && user.role !== "ERP_MANAGER") {
+    const allowed = (user.locationIds ?? []) as string[];
+    if (!allowed.includes(locationId)) {
+      res.status(403).json({ success: false, error: { code: "FORBIDDEN", message: "You are not assigned to this shop" } });
+      return;
+    }
   }
   const accessToken = signAccessToken({ id: user.id, role: user.role });
   res.json({

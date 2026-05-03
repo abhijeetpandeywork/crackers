@@ -20,47 +20,49 @@ const PinLogin = () => {
   const { toast } = useToast();
   const { mutate: login, isPending } = usePinLogin();
 
-  // Load real cashiers and shops from the bootstrap endpoint. Cashier/admin
-  // names are not secret in a POS context — they're printed on receipts.
+  // Load real cashiers and shops from the bootstrap endpoint. Cashier names
+  // are not secret in a POS context — they're printed on receipts.
   useEffect(() => {
     fetch("/api/v1/auth/pos-bootstrap")
       .then((r) => r.json())
       .then((res) => {
         if (res?.success) {
           const list: Cashier[] = res.data?.cashiers ?? [];
+          const shopList: Shop[] = res.data?.shops ?? [];
           setCashiers(list);
-          setShops(res.data?.shops ?? []);
-          // Restore last-used selections so cashiers don't have to re-pick
-          // every shift change.
-          const lastUser = localStorage.getItem("pos_user_id");
-          if (lastUser && list.some((c) => c.id === lastUser)) setUserId(lastUser);
+          setShops(shopList);
+          // Restore last-used selections so a returning terminal lands on
+          // the right shop+cashier combo without re-picking.
           const lastLoc = localStorage.getItem("pos_location_id");
-          if (lastLoc) setLocationId(lastLoc);
+          if (lastLoc && shopList.some((s) => s.id === lastLoc)) {
+            setLocationId(lastLoc);
+            const lastUser = localStorage.getItem("pos_user_id");
+            const cashierBelongs = lastUser && list.some(
+              (c) => c.id === lastUser && (c.locationIds ?? []).includes(lastLoc),
+            );
+            if (cashierBelongs) setUserId(lastUser as string);
+          } else if (shopList.length === 1) {
+            // Single-shop deployments: skip the shop picker entirely.
+            setLocationId(shopList[0].id);
+          }
         }
       })
       .catch(() => toast({ title: "Could not load login info", description: "Check your network and refresh.", variant: "destructive" }));
   }, [toast]);
 
-  // Locations available to the selected cashier. Privileged roles see all
-  // shops; cashiers see only their assigned ones.
-  const availableShops = useMemo(() => {
-    const cashier = cashiers.find((c) => c.id === userId);
-    if (!cashier) return shops;
-    if (cashier.role === "SUPER_ADMIN" || cashier.role === "ERP_MANAGER") return shops;
-    const allowed = new Set(cashier.locationIds ?? []);
-    return shops.filter((s) => allowed.has(s.id));
-  }, [cashiers, shops, userId]);
+  // Cashiers visible for the picked shop. Each shop has its own roster —
+  // matches the brick-and-mortar reality where Madurai's staff is different
+  // from Chennai's.
+  const availableCashiers = useMemo(() => {
+    if (!locationId) return [];
+    return cashiers.filter((c) => (c.locationIds ?? []).includes(locationId));
+  }, [cashiers, locationId]);
 
-  // Whenever the cashier changes, snap the location to the only legal choice
-  // (or clear it if the previous one is no longer valid for them).
+  // Whenever the shop changes, drop the cashier if they don't work there.
   useEffect(() => {
-    if (!userId) return;
-    if (availableShops.length === 1) {
-      setLocationId(availableShops[0].id);
-    } else if (locationId && !availableShops.some((s) => s.id === locationId)) {
-      setLocationId("");
-    }
-  }, [userId, availableShops, locationId]);
+    if (!locationId) { setUserId(""); return; }
+    if (userId && !availableCashiers.some((c) => c.id === userId)) setUserId("");
+  }, [locationId, availableCashiers, userId]);
 
   const handleNumberClick = (num: string) => {
     if (pin.length < 4) setPin((prev) => prev + num);
@@ -142,32 +144,33 @@ const PinLogin = () => {
         </div>
 
         <div className="space-y-3">
-          <Select onValueChange={setUserId} value={userId}>
-            <SelectTrigger className="w-full h-14 bg-[hsl(200,30%,10%)] border-[hsl(197,50%,22%)] text-lg text-zinc-100" data-testid="pos-cashier-select">
-              <SelectValue placeholder="Select Cashier" />
-            </SelectTrigger>
-            <SelectContent className="bg-[hsl(200,30%,10%)] border-[hsl(197,50%,22%)]">
-              {cashiers.length === 0 ? (
-                <div className="px-3 py-2 text-sm text-zinc-500">Loading…</div>
-              ) : (
-                cashiers.map((c) => (
-                  <SelectItem key={c.id} value={c.id} className="h-12">
-                    {c.name} <span className="ml-2 text-xs text-zinc-500">{c.role.replace(/_/g, " ").toLowerCase()}</span>
-                  </SelectItem>
-                ))
-              )}
-            </SelectContent>
-          </Select>
-
-          <Select onValueChange={setLocationId} value={locationId} disabled={!userId || availableShops.length <= 1}>
+          {/* Shop is picked first — each store keeps its own roster. */}
+          <Select onValueChange={setLocationId} value={locationId}>
             <SelectTrigger className="w-full h-14 bg-[hsl(200,30%,10%)] border-[hsl(197,50%,22%)] text-lg text-zinc-100" data-testid="pos-location-select">
-              <SelectValue placeholder={userId ? (availableShops.length === 0 ? "No shops assigned" : "Select Shop") : "Pick a cashier first"} />
+              <SelectValue placeholder={shops.length === 0 ? "Loading shops…" : "Select Shop"} />
             </SelectTrigger>
             <SelectContent className="bg-[hsl(200,30%,10%)] border-[hsl(197,50%,22%)]">
-              {availableShops.map((s) => (
+              {shops.map((s) => (
                 <SelectItem key={s.id} value={s.id} className="h-12">
                   {s.name}
                   {s.city ? <span className="ml-2 text-xs text-zinc-500">{s.city}</span> : null}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select onValueChange={setUserId} value={userId} disabled={!locationId}>
+            <SelectTrigger className="w-full h-14 bg-[hsl(200,30%,10%)] border-[hsl(197,50%,22%)] text-lg text-zinc-100" data-testid="pos-cashier-select">
+              <SelectValue placeholder={
+                !locationId ? "Pick a shop first" :
+                availableCashiers.length === 0 ? "No cashiers at this shop" :
+                "Select Cashier"
+              } />
+            </SelectTrigger>
+            <SelectContent className="bg-[hsl(200,30%,10%)] border-[hsl(197,50%,22%)]">
+              {availableCashiers.map((c) => (
+                <SelectItem key={c.id} value={c.id} className="h-12">
+                  {c.name} <span className="ml-2 text-xs text-zinc-500">{c.role.replace(/_/g, " ").toLowerCase()}</span>
                 </SelectItem>
               ))}
             </SelectContent>
