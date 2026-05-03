@@ -486,12 +486,7 @@ router.post("/pos/sale", authenticate, async (req: AuthRequest, res) => {
   const taxable = tx.taxable;
   const cgst = tx.cgst;
   const sgst = tx.sgst;
-  // Bill total is rounded to the nearest rupee — Indian retail standard.
-  // Display, tender input, button label, and server total all agree on whole
-  // rupees; the rounding delta is captured for the audit trail / receipt.
-  const totalRaw = tx.total;
-  const total = Math.round(totalRaw);
-  const roundOff = Number((total - totalRaw).toFixed(2));
+  const total = tx.total;
 
   // Tender validation. Strict: known modes only, non-negative finite amounts.
   const ALLOWED_MODES = new Set(["CASH", "UPI", "CARD", "CREDIT"]);
@@ -513,17 +508,31 @@ router.post("/pos/sale", authenticate, async (req: AuthRequest, res) => {
   }
 
   const tenderSum = rawTenders.reduce((s, t) => s + t.amount, 0);
-  // 1-paisa tolerance only.
-  if (Math.abs(tenderSum - total) > 0.01) {
+  // Cashiers commonly tender the bill rounded up to the nearest rupee
+  // (Indian retail convention — e.g. ₹248 paid for a ₹247.80 bill, with
+  // ~₹0.20 absorbed as round-off). Accept any tender within 1 paisa under
+  // total OR up to ₹1 over; reject only true short-pays or large overpays.
+  if (tenderSum < total - 0.01) {
     res.status(400).json({
       success: false,
       error: {
-        code: "TENDER_MISMATCH",
-        message: `Tender total ₹${tenderSum.toFixed(2)} does not match bill total ₹${total.toFixed(2)}`,
+        code: "TENDER_SHORT",
+        message: `Tender total ₹${tenderSum.toFixed(2)} is short of bill total ₹${total.toFixed(2)}`,
       },
     });
     return;
   }
+  if (tenderSum > total + 1.0) {
+    res.status(400).json({
+      success: false,
+      error: {
+        code: "TENDER_OVER",
+        message: `Tender total ₹${tenderSum.toFixed(2)} exceeds bill total ₹${total.toFixed(2)} by more than ₹1`,
+      },
+    });
+    return;
+  }
+  const roundOff = Number((tenderSum - total).toFixed(2));
 
   const nonZero = rawTenders.filter((t) => t.amount > 0);
   const finalPaymentMode: "CASH" | "UPI" | "CARD" | "CREDIT" | "SPLIT" =
