@@ -47,32 +47,32 @@ router.get("/products/public", async (req, res) => {
 });
 
 router.get("/products/:id", authenticate, async (req, res) => {
-  const rows = await db.select().from(productsTable).where(eq(productsTable.id, req.params["id"]!)).limit(1);
+  const rows = await db.select().from(productsTable).where(eq(productsTable.id, req.params["id"] as string)).limit(1);
   if (!rows[0]) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Product not found" } }); return; }
-  res.json({ success: true, data: rows[0] });
+  res.json(rows[0]);
 });
 
 router.post("/products", authenticate, async (req, res) => {
   const body = req.body;
   const id = crypto.randomUUID();
   const [product] = await db.insert(productsTable).values({ ...body, id }).returning();
-  res.status(201).json({ success: true, data: product });
+  res.status(201).json(product);
 });
 
 router.put("/products/:id", authenticate, async (req, res) => {
-  const [product] = await db.update(productsTable).set({ ...req.body, updatedAt: new Date() }).where(eq(productsTable.id, req.params["id"]!)).returning();
+  const [product] = await db.update(productsTable).set({ ...req.body, updatedAt: new Date() }).where(eq(productsTable.id, req.params["id"] as string)).returning();
   if (!product) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Product not found" } }); return; }
-  res.json({ success: true, data: product });
+  res.json(product);
 });
 
 router.delete("/products/:id", authenticate, async (req, res) => {
-  await db.update(productsTable).set({ status: "Discontinued", updatedAt: new Date() }).where(eq(productsTable.id, req.params["id"]!));
+  await db.update(productsTable).set({ status: "Discontinued", updatedAt: new Date() }).where(eq(productsTable.id, req.params["id"] as string));
   res.json({ success: true, message: "Product discontinued" });
 });
 
 router.get("/products/:id/price", authenticate, async (req, res) => {
   const { variantId, qty, channel } = req.query as Record<string, string>;
-  const rows = await db.select().from(productsTable).where(eq(productsTable.id, req.params["id"]!)).limit(1);
+  const rows = await db.select().from(productsTable).where(eq(productsTable.id, req.params["id"] as string)).limit(1);
   const product = rows[0];
   if (!product) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Product not found" } }); return; }
 

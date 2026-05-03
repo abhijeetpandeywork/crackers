@@ -12,12 +12,12 @@ import { generateInvoicePdf, savePdf } from "@workspace/pdf";
 export default function InvoiceDetail() {
   const [, params] = useRoute("/invoices/:id");
   const { toast } = useToast();
-  const { data, isLoading } = useGetInvoice(params?.id as string);
+  const { data: invoice, isLoading } = useGetInvoice(params?.id as string);
   const shareMutation = useShareInvoice();
 
   const handleShare = async () => {
     try {
-      await shareMutation.mutateAsync({ invoiceId: params?.id as string });
+      await shareMutation.mutateAsync({ id: params?.id as string });
       toast({ title: "Success", description: "Invoice shared successfully" });
     } catch (error) {
       toast({ title: "Error", description: "Failed to share invoice", variant: "destructive" });
@@ -25,10 +25,9 @@ export default function InvoiceDetail() {
   };
 
   const handleDownloadPdf = () => {
-    const inv = data?.data;
-    if (!inv) return;
-    const doc = generateInvoicePdf(inv as any);
-    savePdf(doc, `invoice-${inv.invoiceNumber || inv.id.slice(0, 8)}`);
+    if (!invoice) return;
+    const doc = generateInvoicePdf(invoice as any);
+    savePdf(doc, `invoice-${invoice.invoiceNo || invoice.id?.slice(0, 8)}`);
     toast({ title: "PDF downloaded" });
   };
 
@@ -45,12 +44,11 @@ export default function InvoiceDetail() {
     );
   }
 
-  const invoice = data?.data;
   if (!invoice) return <div>Invoice not found.</div>;
 
-  const subtotal = invoice.items?.reduce((sum: number, item: any) => sum + (item.qty * item.unitPrice), 0) || 0;
-  const cgst = invoice.taxAmount ? invoice.taxAmount / 2 : 0;
-  const sgst = cgst;
+  const subtotal = invoice.subtotal ?? 0;
+  const cgst = invoice.cgst ?? 0;
+  const sgst = invoice.sgst ?? 0;
 
   return (
     <div className="space-y-6">
@@ -62,10 +60,10 @@ export default function InvoiceDetail() {
             </Link>
           </Button>
           <div>
-            <h2 className="text-3xl font-bold tracking-tight">Invoice #{invoice.invoiceNumber || invoice.id.slice(0,8)}</h2>
+            <h2 className="text-3xl font-bold tracking-tight">Invoice #{invoice.invoiceNo || invoice.id?.slice(0,8)}</h2>
             <div className="flex gap-2 mt-1">
-              <Badge variant={invoice.paymentStatus === 'Paid' ? 'default' : 'destructive'}>
-                {invoice.paymentStatus}
+              <Badge variant={invoice.status === 'paid' ? 'default' : 'destructive'}>
+                {invoice.status}
               </Badge>
               <Badge variant="outline">{invoice.channel}</Badge>
             </div>
@@ -110,7 +108,7 @@ export default function InvoiceDetail() {
             <div className="font-bold text-lg">{invoice.customerName}</div>
             <p>ID: {invoice.customerId}</p>
             {invoice.customerGstin && <p>GSTIN: {invoice.customerGstin}</p>}
-            <p>Date: {new Date(invoice.createdAt).toLocaleDateString('en-IN')}</p>
+            <p>Date: {invoice.createdAt ? new Date(invoice.createdAt).toLocaleDateString('en-IN') : ''}</p>
           </CardContent>
         </Card>
       </div>
@@ -131,13 +129,13 @@ export default function InvoiceDetail() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {invoice.items?.map((item: any, i: number) => (
+              {invoice.items?.map((item, i: number) => (
                 <TableRow key={i}>
                   <TableCell className="font-medium">{item.productName}</TableCell>
-                  <TableCell>{item.variantLabel}</TableCell>
+                  <TableCell>{item.variantSize}</TableCell>
                   <TableCell className="text-right">{item.qty}</TableCell>
-                  <TableCell className="text-right">₹{item.unitPrice?.toLocaleString('en-IN')}</TableCell>
-                  <TableCell className="text-right font-medium">₹{(item.qty * item.unitPrice)?.toLocaleString('en-IN')}</TableCell>
+                  <TableCell className="text-right">₹{item.resolvedPrice?.toLocaleString('en-IN')}</TableCell>
+                  <TableCell className="text-right font-medium">₹{item.amount?.toLocaleString('en-IN')}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -159,7 +157,7 @@ export default function InvoiceDetail() {
               </div>
               <div className="flex justify-between text-lg font-bold pt-2">
                 <span>Grand Total:</span>
-                <span className="text-primary">₹{invoice.totalAmount?.toLocaleString('en-IN')}</span>
+                <span className="text-primary">₹{invoice.total?.toLocaleString('en-IN')}</span>
               </div>
             </div>
           </div>

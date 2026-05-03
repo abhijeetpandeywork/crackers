@@ -47,14 +47,14 @@ export default function StockLevels() {
     lowStockOnly: lowStockOnly || undefined
   });
 
-  const filteredStock = stockData?.data.filter(item => 
-    item.productName.toLowerCase().includes(search.toLowerCase()) ||
-    item.productCode.toLowerCase().includes(search.toLowerCase())
+  const filteredStock = stockData?.data?.filter(item => 
+    (item.productName ?? "").toLowerCase().includes(search.toLowerCase()) ||
+    (item.productCode ?? "").toLowerCase().includes(search.toLowerCase())
   ) || [];
 
   const getStatusBadge = (qty: number, reorderLevel: number) => {
     if (qty <= 0) return <Badge variant="destructive">Critical</Badge>;
-    if (qty <= reorderLevel) return <Badge variant="warning" className="bg-amber-500 text-white">Low</Badge>;
+    if (qty <= reorderLevel) return <Badge variant="outline" className="bg-amber-500 text-white">Low</Badge>;
     return <Badge variant="secondary" className="bg-green-500 text-white hover:bg-green-600">OK</Badge>;
   };
 
@@ -129,12 +129,12 @@ export default function StockLevels() {
                   <TableRow key={idx}>
                     <TableCell className="font-mono text-xs">{item.productCode}</TableCell>
                     <TableCell className="font-medium">{item.productName}</TableCell>
-                    <TableCell>{item.variantName}</TableCell>
+                    <TableCell>{item.variantSize}</TableCell>
                     <TableCell>{item.locationName}</TableCell>
-                    <TableCell className="text-right font-bold">{item.quantity}</TableCell>
+                    <TableCell className="text-right font-bold">{item.currentQty}</TableCell>
                     <TableCell className="text-right text-muted-foreground">{item.reorderLevel}</TableCell>
                     <TableCell className="text-center">
-                      {getStatusBadge(item.quantity || 0, item.reorderLevel || 0)}
+                      {getStatusBadge(item.currentQty || 0, item.reorderLevel || 0)}
                     </TableCell>
                   </TableRow>
                 ))}

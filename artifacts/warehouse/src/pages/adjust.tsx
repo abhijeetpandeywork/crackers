@@ -29,7 +29,8 @@ export default function StockAdjust() {
     locationId: locationId || undefined,
   }, {
     query: {
-      enabled: !!locationId && !!variantId
+      enabled: !!locationId && !!variantId,
+      queryKey: ["stockLevels", locationId, variantId],
     }
   });
 
@@ -60,14 +61,15 @@ export default function StockAdjust() {
     .catch(() => {});
   }, []);
 
-  const currentStockItem = stockLevels?.data.find(s => s.variantId === variantId);
-  const currentQty = currentStockItem?.quantity || 0;
+  const currentStockItem = stockLevels?.data?.find(s => s.variantId === variantId);
+  const currentQty = currentStockItem?.currentQty || 0;
   const newQty = currentQty + adjustment;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!locationId || !productId || !variantId || adjustment === 0 || !reason) {
-      return toast({ title: "Required", description: "Please fill all fields" });
+      toast({ title: "Required", description: "Please fill all fields" });
+      return;
     }
 
     adjustMutation.mutate({
@@ -75,7 +77,7 @@ export default function StockAdjust() {
         locationId,
         productId,
         variantId,
-        adjustment,
+        qty: adjustment,
         reason
       }
     });
@@ -116,8 +118,8 @@ export default function StockAdjust() {
                       <SelectValue placeholder="Select Product" />
                     </SelectTrigger>
                     <SelectContent>
-                      {productsData?.data.map(p => (
-                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                      {productsData?.data?.map(p => (
+                        <SelectItem key={p.id} value={p.id ?? ""}>{p.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -132,9 +134,9 @@ export default function StockAdjust() {
                   </SelectTrigger>
                   <SelectContent>
                     {productsData?.data
-                      .find(p => p.id === productId)
-                      ?.variants.map(v => (
-                        <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>
+                      ?.find(p => p.id === productId)
+                      ?.variants?.map(v => (
+                        <SelectItem key={v.variantId} value={v.variantId ?? ""}>{v.size}</SelectItem>
                       ))}
                   </SelectContent>
                 </Select>

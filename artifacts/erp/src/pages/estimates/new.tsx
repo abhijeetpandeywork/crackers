@@ -4,7 +4,8 @@ import {
   useListAgents, 
   useListProducts, 
   useResolveProductPrice, 
-  useCreateEstimate 
+  useCreateEstimate,
+  type Product,
 } from "@workspace/api-client-react";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,8 +25,16 @@ export default function NewEstimate() {
   const [customerId, setCustomerId] = useState<string>("");
   const [agentId, setAgentId] = useState<string>("");
   const [notes, setNotes] = useState("");
-  const [validUntil, setValidUntil] = useState("");
-  const [items, setItems] = useState<any[]>([]);
+  type EstimateLine = {
+    productId: string;
+    variantId: string;
+    qty: number;
+    unitPrice: number;
+    total: number;
+    variantLabel: string;
+    tier?: string;
+  };
+  const [items, setItems] = useState<EstimateLine[]>([]);
 
   const { data: customers } = useListCustomers({ limit: 100 });
   const { data: agents } = useListAgents({ limit: 100 });
@@ -41,9 +50,9 @@ export default function NewEstimate() {
     setItems(items.filter((_, i) => i !== index));
   };
 
-  const updateItem = (index: number, field: string, value: any) => {
+  const replaceItem = (index: number, value: EstimateLine) => {
     const newItems = [...items];
-    newItems[index][field] = value;
+    newItems[index] = value;
     setItems(newItems);
   };
 
@@ -53,12 +62,19 @@ export default function NewEstimate() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customerId) return toast({ title: "Error", description: "Please select a customer", variant: "destructive" });
-    if (items.length === 0) return toast({ title: "Error", description: "Please add at least one item", variant: "destructive" });
+    if (!customerId) {
+      toast({ title: "Error", description: "Please select a customer", variant: "destructive" });
+      return;
+    }
+    if (items.length === 0) {
+      toast({ title: "Error", description: "Please add at least one item", variant: "destructive" });
+      return;
+    }
 
     try {
       await createEstimateMutation.mutateAsync({
         data: {
+          type: "RETAIL",
           customerId,
           agentId: agentId || undefined,
           items: items.map(item => ({
@@ -67,7 +83,6 @@ export default function NewEstimate() {
             qty: item.qty
           })),
           notes,
-          validUntil: validUntil || undefined
         }
       });
       toast({ title: "Success", description: "Estimate created successfully" });
@@ -98,8 +113,8 @@ export default function NewEstimate() {
                     <SelectValue placeholder="Select Customer" />
                   </SelectTrigger>
                   <SelectContent>
-                    {customers?.data?.map((c: any) => (
-                      <SelectItem key={c.id} value={c.id}>{c.name} ({c.type})</SelectItem>
+                    {customers?.data?.map((c) => (
+                      <SelectItem key={c.id} value={c.id!}>{c.name} ({c.customerType})</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -111,8 +126,8 @@ export default function NewEstimate() {
                     <SelectValue placeholder="Select Agent" />
                   </SelectTrigger>
                   <SelectContent>
-                    {agents?.data?.map((a: any) => (
-                      <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                    {agents?.data?.map((a) => (
+                      <SelectItem key={a.id} value={a.id!}>{a.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -125,15 +140,6 @@ export default function NewEstimate() {
               <CardTitle>Validity & Notes</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="validUntil">Valid Until</Label>
-                <Input 
-                  id="validUntil" 
-                  type="date" 
-                  value={validUntil} 
-                  onChange={(e) => setValidUntil(e.target.value)} 
-                />
-              </div>
               <div className="space-y-2">
                 <Label htmlFor="notes">Notes</Label>
                 <Textarea 
@@ -173,7 +179,7 @@ export default function NewEstimate() {
                     item={item} 
                     products={products?.data || []}
                     customerId={customerId}
-                    onChange={(updatedItem) => updateItem(index, "", updatedItem)}
+                    onChange={(updatedItem: EstimateLine) => replaceItem(index, updatedItem)}
                     onRemove={() => removeItem(index)}
                   />
                 ))}
@@ -216,27 +222,44 @@ export default function NewEstimate() {
   );
 }
 
-function LineItemRow({ item, products, customerId, onChange, onRemove }: any) {
-  const selectedProduct = products.find((p: any) => p.id === item.productId);
+type LineItemRowProps = {
+  item: {
+    productId: string;
+    variantId: string;
+    qty: number;
+    unitPrice: number;
+    total: number;
+    variantLabel: string;
+    tier?: string;
+  };
+  products: Product[];
+  customerId: string;
+  onChange: (updated: LineItemRowProps["item"]) => void;
+  onRemove: () => void;
+};
+
+function LineItemRow({ item, products, customerId, onChange, onRemove }: LineItemRowProps) {
+  const selectedProduct = products.find((p) => p.id === item.productId);
   
   const { data: priceData, isFetching: isResolving } = useResolveProductPrice(
+    item.productId,
     { 
-      productId: item.productId, 
-      variantId: item.variantId, 
+      variantId: item.variantId,
       customerId,
-      qty: item.qty 
+      qty: item.qty,
+      channel: "estimate",
     },
-    { query: { enabled: !!(item.productId && item.variantId && customerId) } }
+    { query: { enabled: !!(item.productId && item.variantId && customerId), queryKey: ["resolvePrice", item.productId, item.variantId, item.qty, customerId] } }
   );
 
   useEffect(() => {
     if (priceData?.data) {
-      const unitPrice = priceData.data.unitPrice;
+      const unitPrice = priceData.data.resolvedPrice ?? 0;
       onChange({ 
         ...item, 
         unitPrice, 
         total: unitPrice * item.qty,
-        tier: priceData.data.tierLabel
+        tier: priceData.data.tier
       });
     }
   }, [priceData]);
@@ -252,8 +275,8 @@ function LineItemRow({ item, products, customerId, onChange, onRemove }: any) {
             <SelectValue placeholder="Select Product" />
           </SelectTrigger>
           <SelectContent>
-            {products.map((p: any) => (
-              <SelectItem key={p.id} value={p.id}>{p.name} ({p.code})</SelectItem>
+            {products.map((p) => (
+              <SelectItem key={p.id} value={p.id!}>{p.name} ({p.code})</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -268,8 +291,8 @@ function LineItemRow({ item, products, customerId, onChange, onRemove }: any) {
             <SelectValue placeholder="Select Variant" />
           </SelectTrigger>
           <SelectContent>
-            {selectedProduct?.variants?.map((v: any) => (
-              <SelectItem key={v.id} value={v.id}>{v.label} ({v.packContents})</SelectItem>
+            {selectedProduct?.variants?.map((v) => (
+              <SelectItem key={v.variantId} value={v.variantId!}>{v.size} ({v.packContent})</SelectItem>
             ))}
           </SelectContent>
         </Select>

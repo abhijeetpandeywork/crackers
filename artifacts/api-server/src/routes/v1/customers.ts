@@ -27,29 +27,29 @@ router.get("/customers", authenticate, async (req, res) => {
 
 router.post("/customers", authenticate, async (req, res) => {
   const [customer] = await db.insert(customersTable).values({ ...req.body, id: crypto.randomUUID() }).returning();
-  res.status(201).json({ success: true, data: customer });
+  res.status(201).json(customer);
 });
 
 router.get("/customers/:id", authenticate, async (req, res) => {
-  const rows = await db.select().from(customersTable).where(eq(customersTable.id, req.params["id"]!)).limit(1);
+  const rows = await db.select().from(customersTable).where(eq(customersTable.id, req.params["id"] as string)).limit(1);
   if (!rows[0]) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Customer not found" } }); return; }
-  res.json({ success: true, data: rows[0] });
+  res.json(rows[0]);
 });
 
 router.put("/customers/:id", authenticate, async (req, res) => {
-  const [customer] = await db.update(customersTable).set({ ...req.body, updatedAt: new Date() }).where(eq(customersTable.id, req.params["id"]!)).returning();
+  const [customer] = await db.update(customersTable).set({ ...req.body, updatedAt: new Date() }).where(eq(customersTable.id, req.params["id"] as string)).returning();
   if (!customer) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Customer not found" } }); return; }
-  res.json({ success: true, data: customer });
+  res.json(customer);
 });
 
 router.get("/customers/:id/statement", authenticate, async (req, res) => {
   const entries = await db
     .select()
     .from(creditLedgerTable)
-    .where(eq(creditLedgerTable.customerId, req.params["id"]!))
+    .where(eq(creditLedgerTable.customerId, req.params["id"] as string))
     .orderBy(desc(creditLedgerTable.createdAt))
     .limit(100);
-  const customerRows = await db.select().from(customersTable).where(eq(customersTable.id, req.params["id"]!)).limit(1);
+  const customerRows = await db.select().from(customersTable).where(eq(customersTable.id, req.params["id"] as string)).limit(1);
   const balance = Number(customerRows[0]?.outstandingBalance ?? 0);
   res.json({ success: true, data: { entries, currentBalance: balance } });
 });
@@ -58,17 +58,17 @@ router.get("/customers/:id/loyalty", authenticate, async (req, res) => {
   const entries = await db
     .select()
     .from(loyaltyLedgerTable)
-    .where(eq(loyaltyLedgerTable.customerId, req.params["id"]!))
+    .where(eq(loyaltyLedgerTable.customerId, req.params["id"] as string))
     .orderBy(desc(loyaltyLedgerTable.createdAt))
     .limit(100);
-  const customerRows = await db.select().from(customersTable).where(eq(customersTable.id, req.params["id"]!)).limit(1);
+  const customerRows = await db.select().from(customersTable).where(eq(customersTable.id, req.params["id"] as string)).limit(1);
   const totalPoints = customerRows[0]?.loyaltyPoints ?? 0;
   res.json({ success: true, data: { entries, totalPoints } });
 });
 
 router.post("/customers/:id/payment", authenticate, async (req, res) => {
   const { amount, date, reference, notes } = req.body as { amount: number; date: string; reference?: string; notes?: string };
-  const cid = req.params["id"]!;
+  const cid = req.params["id"] as string;
   const customerRows = await db.select().from(customersTable).where(eq(customersTable.id, cid)).limit(1);
   if (!customerRows[0]) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Customer not found" } }); return; }
   const newBalance = Number(customerRows[0].outstandingBalance) - amount;

@@ -157,7 +157,7 @@ router.post("/stock/adjust", authenticate, async (req: AuthRequest, res) => {
     createdBy: req.user?.id,
   });
 
-  res.json({ success: true, message: "Stock adjusted" });
+  return res.json({ success: true, message: "Stock adjusted" });
 });
 
 export default router;

@@ -57,13 +57,13 @@ export default function Transfers() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="pending">Pending ({pendingTransfers?.data.length || 0})</TabsTrigger>
+          <TabsTrigger value="pending">Pending ({pendingTransfers?.data?.length || 0})</TabsTrigger>
           <TabsTrigger value="all">All Transfers</TabsTrigger>
         </TabsList>
         
         <TabsContent value="pending" className="mt-6">
           <div className="grid gap-4">
-            {pendingTransfers?.data.map((transfer) => (
+            {pendingTransfers?.data?.map((transfer) => (
               <Card key={transfer.id}>
                 <CardContent className="p-6">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -78,27 +78,38 @@ export default function Transfers() {
                           <span className="font-bold">{transfer.toLocationName}</span>
                         </div>
                         <p className="text-sm text-muted-foreground">
-                          {transfer.items.length} items • Created by {transfer.createdByName}
+                          {transfer.items?.length ?? 0} items
                         </p>
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <Badge variant="outline" className="mr-4 capitalize">{transfer.status.toLowerCase()}</Badge>
-                      {transfer.status === "PENDING" && (
+                      <Badge variant="outline" className="mr-4 capitalize">{(transfer.status ?? "").toLowerCase()}</Badge>
+                      {transfer.status === "draft" && (
                         <Button 
                           size="sm" 
                           className="bg-blue-600 hover:bg-blue-700 text-white"
-                          onClick={() => dispatchMutation.mutate({ transferId: transfer.id })}
+                          onClick={() => dispatchMutation.mutate({ id: transfer.id ?? "", data: {} })}
                           disabled={dispatchMutation.isPending}
                         >
                           <Truck className="h-4 w-4 mr-2" /> Dispatch
                         </Button>
                       )}
-                      {transfer.status === "DISPATCHED" && (
+                      {transfer.status === "in_transit" && (
                         <Button 
                           size="sm" 
                           className="bg-teal-600 hover:bg-teal-700 text-white"
-                          onClick={() => receiveMutation.mutate({ transferId: transfer.id })}
+                          onClick={() => receiveMutation.mutate({
+                            id: transfer.id ?? "",
+                            data: {
+                              items: (transfer.items ?? [])
+                                .filter((it) => it.productId && it.variantId)
+                                .map((it) => ({
+                                  productId: it.productId as string,
+                                  variantId: it.variantId as string,
+                                  receivedQty: Number(it.qty ?? 0),
+                                })),
+                            },
+                          })}
                           disabled={receiveMutation.isPending}
                         >
                           <CheckCircle2 className="h-4 w-4 mr-2" /> Receive
@@ -109,7 +120,7 @@ export default function Transfers() {
                 </CardContent>
               </Card>
             ))}
-            {pendingTransfers?.data.length === 0 && (
+            {pendingTransfers?.data?.length === 0 && (
               <div className="text-center py-12 bg-white rounded-lg border border-dashed">
                 <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-lg font-medium">No pending transfers</h3>
@@ -133,18 +144,18 @@ export default function Transfers() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {allTransfers?.data.map((transfer) => (
+                  {allTransfers?.data?.map((transfer) => (
                     <TableRow key={transfer.id}>
                       <TableCell className="text-sm">
-                        {new Date(transfer.createdAt).toLocaleDateString()}
+                        {transfer.createdAt ? new Date(transfer.createdAt).toLocaleDateString() : ''}
                       </TableCell>
                       <TableCell>{transfer.fromLocationName}</TableCell>
                       <TableCell>{transfer.toLocationName}</TableCell>
-                      <TableCell>{transfer.items.length}</TableCell>
+                      <TableCell>{transfer.items?.length ?? 0}</TableCell>
                       <TableCell>
                         <Badge variant={
-                          transfer.status === 'RECEIVED' ? 'default' : 
-                          transfer.status === 'DISPATCHED' ? 'secondary' : 
+                          transfer.status === 'received' ? 'default' : 
+                          transfer.status === 'in_transit' ? 'secondary' : 
                           'outline'
                         }>
                           {transfer.status}

@@ -22,7 +22,7 @@ export default function CustomersList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
 
-  const queryParams: any = { limit: 50 };
+  const queryParams: { limit: number; search?: string; type?: string } = { limit: 50 };
   if (search) queryParams.search = search;
   if (type !== "ALL") queryParams.type = type;
 
@@ -36,7 +36,7 @@ export default function CustomersList() {
       name: formData.get("name") as string,
       phone: formData.get("phone") as string,
       email: formData.get("email") as string,
-      type: formData.get("type") as any,
+      customerType: formData.get("type") as string,
       city: formData.get("city") as string,
       gstin: (formData.get("gstin") as string) || undefined,
       creditLimit: parseFloat(formData.get("creditLimit") as string) || 0,
@@ -183,11 +183,11 @@ export default function CustomersList() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="secondary">{customer.type}</Badge>
+                    <Badge variant="secondary">{customer.customerType}</Badge>
                   </TableCell>
                   <TableCell>{customer.city || 'N/A'}</TableCell>
                   <TableCell>
-                    <span className={customer.outstandingBalance > 0 ? "text-destructive font-bold" : "text-green-600"}>
+                    <span className={(customer.outstandingBalance ?? 0) > 0 ? "text-destructive font-bold" : "text-green-600"}>
                       ₹{customer.outstandingBalance?.toLocaleString('en-IN') || 0}
                     </span>
                   </TableCell>

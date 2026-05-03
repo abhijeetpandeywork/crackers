@@ -52,17 +52,17 @@ router.post("/transfers", authenticate, async (req: AuthRequest, res) => {
     status: "draft",
     createdBy: req.user?.id,
   }).returning();
-  res.status(201).json({ success: true, data: transfer });
+  res.status(201).json(transfer);
 });
 
 router.get("/transfers/:id", authenticate, async (req, res) => {
-  const rows = await db.select().from(transfersTable).where(eq(transfersTable.id, req.params["id"]!)).limit(1);
+  const rows = await db.select().from(transfersTable).where(eq(transfersTable.id, req.params["id"] as string)).limit(1);
   if (!rows[0]) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Transfer not found" } }); return; }
   res.json({ success: true, data: rows[0] });
 });
 
 router.put("/transfers/:id/dispatch", authenticate, async (req: AuthRequest, res) => {
-  const tRows = await db.select().from(transfersTable).where(eq(transfersTable.id, req.params["id"]!)).limit(1);
+  const tRows = await db.select().from(transfersTable).where(eq(transfersTable.id, req.params["id"] as string)).limit(1);
   if (!tRows[0]) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Transfer not found" } }); return; }
   const t = tRows[0];
   const items = (t.items ?? []) as any[];
@@ -90,11 +90,11 @@ router.put("/transfers/:id/dispatch", authenticate, async (req: AuthRequest, res
     updatedAt: new Date(),
   }).where(eq(transfersTable.id, t.id)).returning();
 
-  res.json({ success: true, data: updated });
+  res.json({ success: true, message: "Transfer dispatched" });
 });
 
 router.put("/transfers/:id/receive", authenticate, async (req: AuthRequest, res) => {
-  const tRows = await db.select().from(transfersTable).where(eq(transfersTable.id, req.params["id"]!)).limit(1);
+  const tRows = await db.select().from(transfersTable).where(eq(transfersTable.id, req.params["id"] as string)).limit(1);
   if (!tRows[0]) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Transfer not found" } }); return; }
   const t = tRows[0];
   const { items } = req.body as { items: Array<{ productId: string; variantId: string; receivedQty: number }> };
@@ -121,7 +121,7 @@ router.put("/transfers/:id/receive", authenticate, async (req: AuthRequest, res)
     updatedAt: new Date(),
   }).where(eq(transfersTable.id, t.id)).returning();
 
-  res.json({ success: true, data: updated });
+  res.json({ success: true, message: "Transfer received" });
 });
 
 export default router;

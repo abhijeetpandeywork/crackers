@@ -62,13 +62,16 @@ export default function NewTransfer() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!fromLocationId || !toLocationId) {
-      return toast({ title: "Error", description: "Please select both locations", variant: "destructive" });
+      toast({ title: "Error", description: "Please select both locations", variant: "destructive" });
+      return;
     }
     if (fromLocationId === toLocationId) {
-      return toast({ title: "Error", description: "Source and destination must be different", variant: "destructive" });
+      toast({ title: "Error", description: "Source and destination must be different", variant: "destructive" });
+      return;
     }
     if (items.length === 0) {
-      return toast({ title: "Error", description: "Please add at least one item", variant: "destructive" });
+      toast({ title: "Error", description: "Please add at least one item", variant: "destructive" });
+      return;
     }
 
     try {

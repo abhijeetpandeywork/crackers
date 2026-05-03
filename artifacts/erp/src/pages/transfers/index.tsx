@@ -28,7 +28,7 @@ export default function TransfersList() {
 
   const handleDispatch = async (id: string) => {
     try {
-      await dispatchMutation.mutateAsync({ transferId: id, data: {} });
+      await dispatchMutation.mutateAsync({ id, data: {} });
       toast({ title: "Success", description: "Transfer dispatched successfully" });
       refetchPending();
       refetchAll();
@@ -37,9 +37,17 @@ export default function TransfersList() {
     }
   };
 
-  const handleReceive = async (id: string) => {
+  const handleReceive = async (transfer: { id?: string; items?: Array<{ productId?: string; variantId?: string; qty?: number }> }) => {
+    if (!transfer.id) return;
+    const items = (transfer.items ?? [])
+      .filter((it) => it.productId && it.variantId)
+      .map((it) => ({
+        productId: it.productId as string,
+        variantId: it.variantId as string,
+        receivedQty: Number(it.qty ?? 0),
+      }));
     try {
-      await receiveMutation.mutateAsync({ transferId: id, data: {} });
+      await receiveMutation.mutateAsync({ id: transfer.id, data: { items } });
       toast({ title: "Success", description: "Transfer received successfully" });
       refetchPending();
       refetchAll();
@@ -129,7 +137,7 @@ export default function TransfersList() {
                           <Button 
                             variant="outline" 
                             size="sm" 
-                            onClick={() => handleReceive(transfer.id)}
+                            onClick={() => handleReceive(transfer)}
                             disabled={receiveMutation.isPending}
                           >
                             <PackageCheck className="mr-2 h-4 w-4" /> Receive

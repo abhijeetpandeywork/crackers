@@ -5,13 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Truck, Phone, Mail, Building, MapPin, Package } from "lucide-react";
+import { ArrowLeft, Truck, Phone, Mail, Building, MapPin, Package, User } from "lucide-react";
 
 export default function SupplierDetail() {
   const [, params] = useRoute("/suppliers/:id");
   const supplierId = params?.id as string;
   
-  const { data: supplierData, isLoading: loadingSupplier } = useGetSupplier(supplierId);
+  const { data: supplier, isLoading: loadingSupplier } = useGetSupplier(supplierId);
   const { data: poData, isLoading: loadingPO } = useListPurchaseOrders({ supplierId });
 
   if (loadingSupplier) {
@@ -24,7 +24,6 @@ export default function SupplierDetail() {
     );
   }
 
-  const supplier = supplierData?.data;
   if (!supplier) return <div>Supplier not found.</div>;
 
   return (
@@ -100,13 +99,13 @@ export default function SupplierDetail() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  poData?.data?.map((po: any) => (
+                  poData?.data?.map((po) => (
                     <TableRow key={po.id}>
-                      <TableCell className="font-mono text-xs">{po.poNumber || po.id.slice(0,8)}</TableCell>
-                      <TableCell>{new Date(po.createdAt).toLocaleDateString('en-IN')}</TableCell>
+                      <TableCell className="font-mono text-xs">{po.poNumber || po.id?.slice(0,8)}</TableCell>
+                      <TableCell>{po.createdAt ? new Date(po.createdAt).toLocaleDateString('en-IN') : ''}</TableCell>
                       <TableCell>₹{po.totalAmount?.toLocaleString('en-IN')}</TableCell>
                       <TableCell>
-                        <Badge variant={po.status === 'Received' ? 'default' : 'outline'}>{po.status}</Badge>
+                        <Badge variant={po.status === 'received' ? 'default' : 'outline'}>{po.status}</Badge>
                       </TableCell>
                       <TableCell className="text-right">
                         <Button variant="ghost" size="sm" asChild>

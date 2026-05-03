@@ -92,17 +92,17 @@ router.post("/estimates", authenticate, async (req: AuthRequest, res) => {
     createdBy: req.user?.id,
   }).returning();
 
-  res.status(201).json({ success: true, data: estimate });
+  res.status(201).json(estimate);
 });
 
 router.get("/estimates/:id", authenticate, async (req, res) => {
-  const rows = await db.select().from(estimatesTable).where(eq(estimatesTable.id, req.params["id"]!)).limit(1);
+  const rows = await db.select().from(estimatesTable).where(eq(estimatesTable.id, req.params["id"] as string)).limit(1);
   if (!rows[0]) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Estimate not found" } }); return; }
-  res.json({ success: true, data: rows[0] });
+  res.json(rows[0]);
 });
 
 router.put("/estimates/:id/convert", authenticate, async (req: AuthRequest, res) => {
-  const estimateRows = await db.select().from(estimatesTable).where(eq(estimatesTable.id, req.params["id"]!)).limit(1);
+  const estimateRows = await db.select().from(estimatesTable).where(eq(estimatesTable.id, req.params["id"] as string)).limit(1);
   if (!estimateRows[0]) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Estimate not found" } }); return; }
   const est = estimateRows[0];
 
@@ -143,7 +143,7 @@ router.put("/estimates/:id/convert", authenticate, async (req: AuthRequest, res)
 
   await db.update(estimatesTable).set({ status: "converted", convertedInvoiceId: invoice!.id }).where(eq(estimatesTable.id, est.id));
 
-  res.json({ success: true, data: invoice });
+  res.json(invoice);
 });
 
 router.post("/estimates/from-brochure", authenticate, async (req, res) => {

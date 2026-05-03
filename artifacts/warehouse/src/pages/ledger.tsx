@@ -39,8 +39,14 @@ export default function StockLedger() {
 
   const { data: ledgerData, isLoading } = useGetStockLedger({
     locationId: locationId === "all" ? undefined : locationId,
-    type: type === "all" ? undefined : type as any,
-    search: search || undefined
+    type: type === "all" ? undefined : type,
+  });
+  const searchLower = search.trim().toLowerCase();
+  const filteredEntries = (ledgerData?.data ?? []).filter((entry) => {
+    if (!searchLower) return true;
+    const name = (entry.productName ?? "").toLowerCase();
+    const variant = (entry.variantId ?? "").toLowerCase();
+    return name.includes(searchLower) || variant.includes(searchLower);
   });
 
   return (
@@ -115,21 +121,21 @@ export default function StockLedger() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {ledgerData?.data.map((entry) => (
+                {filteredEntries.map((entry) => (
                   <TableRow key={entry.id}>
                     <TableCell className="text-sm">
-                      {new Date(entry.createdAt).toLocaleDateString('en-IN', {
+                      {entry.ts ? new Date(entry.ts).toLocaleDateString('en-IN', {
                         day: '2-digit',
                         month: '2-digit',
                         year: 'numeric',
                         hour: '2-digit',
                         minute: '2-digit'
-                      })}
+                      }) : ''}
                     </TableCell>
                     <TableCell>
                       <Badge variant={
-                        entry.type === 'INWARD' ? 'default' : 
-                        entry.type === 'OUTWARD' ? 'destructive' : 
+                        entry.type === 'IN' ? 'default' : 
+                        entry.type === 'OUT' ? 'destructive' : 
                         'outline'
                       } className="text-[10px] px-1.5 py-0">
                         {entry.type}
@@ -137,21 +143,21 @@ export default function StockLedger() {
                     </TableCell>
                     <TableCell className="font-medium">
                       {entry.productName}
-                      <div className="text-xs text-muted-foreground">{entry.variantName}</div>
+                      <div className="text-xs text-muted-foreground">{entry.variantId}</div>
                     </TableCell>
-                    <TableCell>{entry.locationName}</TableCell>
-                    <TableCell className={`text-right font-bold ${entry.quantityChange > 0 ? "text-green-600" : "text-red-600"}`}>
-                      {entry.quantityChange > 0 ? "+" : ""}{entry.quantityChange}
+                    <TableCell>{entry.locationId}</TableCell>
+                    <TableCell className={`text-right font-bold ${(entry.qty ?? 0) > 0 ? "text-green-600" : "text-red-600"}`}>
+                      {(entry.qty ?? 0) > 0 ? "+" : ""}{entry.qty ?? 0}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground max-w-[150px] truncate">
-                      {entry.reference || "-"}
+                      {entry.refId || "-"}
                     </TableCell>
                     <TableCell className="text-sm">
-                      {entry.createdByName}
+                      {entry.refType}
                     </TableCell>
                   </TableRow>
                 ))}
-                {(!ledgerData?.data || ledgerData.data.length === 0) && (
+                {filteredEntries.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
                       No ledger entries found matching your criteria.

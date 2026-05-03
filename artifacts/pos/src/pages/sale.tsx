@@ -9,7 +9,7 @@ import {
   useCloseShift,
   useListCustomers
 } from "@workspace/api-client-react";
-import { useCart } from "@/context/cart";
+import { useCart, type CouponData } from "@/context/cart";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -79,13 +79,13 @@ const SaleScreen = () => {
 
   const { data: productsData } = useGetPosProducts(
     { locationId: activeLocationId },
-    { query: { enabled: !!activeLocationId } }
+    { query: { enabled: !!activeLocationId, queryKey: ["pos-products", activeLocationId] } }
   );
 
   const { mutate: holdBill } = useHoldBill();
   const { data: heldBillsResponse, refetch: refetchHeldBills } = useListHeldBills(
     { locationId: activeLocationId },
-    { query: { enabled: !!activeLocationId } }
+    { query: { enabled: !!activeLocationId, queryKey: ["held-bills", activeLocationId] } }
   );
   const { mutate: validateCoupon, isPending: validatingCoupon } = useValidateCoupon();
   const { mutate: createSale, isPending: checkingOut } = usePosCreateSale();
@@ -93,7 +93,7 @@ const SaleScreen = () => {
 
   const { data: customersData } = useListCustomers(
     { search: customerSearch || undefined, limit: 10 },
-    { query: { enabled: customerSearch.length >= 2 } }
+    { query: { enabled: customerSearch.length >= 2, queryKey: ["customers", customerSearch] } }
   );
 
   const handleApplyCoupon = () => {
@@ -170,7 +170,7 @@ const SaleScreen = () => {
             unitPrice: i.unitPrice,
           })),
           // Include coupon so Resume can rehydrate the discount too.
-          coupon: coupon ?? undefined,
+          coupon: coupon ? ({ ...coupon } as Record<string, unknown>) : undefined,
         },
       },
       {
@@ -437,10 +437,10 @@ const SaleScreen = () => {
                   {customerSearch.length < 2 && (
                     <p className="text-xs text-zinc-500 p-3">Type at least 2 characters to search</p>
                   )}
-                  {customerSearch.length >= 2 && (customersData?.data?.items ?? []).length === 0 && (
+                  {customerSearch.length >= 2 && (customersData?.data ?? []).length === 0 && (
                     <p className="text-xs text-zinc-500 p-3">No customers found</p>
                   )}
-                  {(customersData?.data?.items ?? []).map((c: any) => (
+                  {(customersData?.data ?? []).map((c) => (
                     <button
                       key={c.id}
                       onClick={() => { setCustomer(c); setCustomerSearch(""); }}
@@ -448,7 +448,7 @@ const SaleScreen = () => {
                       data-testid={`customer-option-${c.id}`}
                     >
                       <p className="font-bold text-sm">{c.name}</p>
-                      <p className="text-xs text-zinc-500">{c.phone} {c.type ? `• ${c.type}` : ""}</p>
+                      <p className="text-xs text-zinc-500">{c.phone} {c.customerType ? `• ${c.customerType}` : ""}</p>
                     </button>
                   ))}
                 </div>

@@ -26,7 +26,7 @@ export default function TransferDetail() {
   const { toast } = useToast();
 
   const { data, isLoading, refetch } = useGetTransfer(id, {
-    query: { enabled: !!id },
+    query: { enabled: !!id, queryKey: ["transfer", id] },
   });
   const dispatchM = useDispatchTransfer();
   const receiveM = useReceiveTransfer();
@@ -34,7 +34,7 @@ export default function TransferDetail() {
   const t: Transfer | undefined = data?.data;
   const items: TransferItem[] = t?.items ?? [];
 
-  const statusBadge = (status: string) => {
+  const statusBadge = (status: string | undefined) => {
     const label = (status ?? "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
     switch (status) {
       case "draft": return <Badge variant="outline">{label}</Badge>;
@@ -55,7 +55,7 @@ export default function TransferDetail() {
 
   const handleDispatch = async () => {
     try {
-      await dispatchM.mutateAsync({ transferId: id, data: {} });
+      await dispatchM.mutateAsync({ id, data: {} });
       toast({ title: "Transfer dispatched" });
       refetch();
     } catch {
@@ -72,7 +72,7 @@ export default function TransferDetail() {
           receivedQty: i.qty ?? 0,
         })),
       };
-      await receiveM.mutateAsync({ transferId: id, data: body });
+      await receiveM.mutateAsync({ id, data: body });
       toast({ title: "Transfer received" });
       refetch();
     } catch {
@@ -198,7 +198,7 @@ export default function TransferDetail() {
               ) : items.map((i, idx) => (
                 <TableRow key={`${i.productId}-${i.variantId}-${idx}`}>
                   <TableCell className="font-medium">{i.productName ?? i.productId}</TableCell>
-                  <TableCell>{i.variantLabel ?? i.variantId}</TableCell>
+                  <TableCell>{i.variantId}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">{i.batchNo ?? "—"}</TableCell>
                   <TableCell className="text-right font-bold">{i.qty}</TableCell>
                   <TableCell className="text-right">{i.receivedQty ?? 0}</TableCell>

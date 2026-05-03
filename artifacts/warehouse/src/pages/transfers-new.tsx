@@ -77,9 +77,9 @@ export default function NewTransfer() {
     newItems[index] = { ...newItems[index], [field]: value };
     
     if (field === "productId") {
-      const product = productsData?.data.find(p => p.id === value);
+      const product = productsData?.data?.find(p => p.id === value);
       if (product && product.variants && product.variants.length > 0) {
-        newItems[index].variantId = product.variants[0].id;
+        newItems[index].variantId = product.variants[0].variantId ?? "";
       }
     }
     setItems(newItems);
@@ -87,13 +87,16 @@ export default function NewTransfer() {
 
   const handleSubmit = () => {
     if (!fromLocationId || !toLocationId) {
-      return toast({ title: "Required", description: "Select source and destination locations" });
+      toast({ title: "Required", description: "Select source and destination locations" });
+      return;
     }
     if (fromLocationId === toLocationId) {
-      return toast({ title: "Invalid", description: "Source and destination cannot be the same" });
+      toast({ title: "Invalid", description: "Source and destination cannot be the same" });
+      return;
     }
     if (items.length === 0) {
-      return toast({ title: "Required", description: "Add at least one item" });
+      toast({ title: "Required", description: "Add at least one item" });
+      return;
     }
 
     createMutation.mutate({
@@ -103,7 +106,7 @@ export default function NewTransfer() {
         items: items.map(i => ({
           productId: i.productId,
           variantId: i.variantId,
-          quantity: i.quantity
+          qty: i.quantity,
         }))
       }
     });
@@ -187,8 +190,8 @@ export default function NewTransfer() {
                           <SelectValue placeholder="Product" />
                         </SelectTrigger>
                         <SelectContent>
-                          {productsData?.data.map(p => (
-                            <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                          {productsData?.data?.map(p => (
+                            <SelectItem key={p.id} value={p.id ?? ""}>{p.name}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -204,9 +207,9 @@ export default function NewTransfer() {
                         </SelectTrigger>
                         <SelectContent>
                           {productsData?.data
-                            .find(p => p.id === item.productId)
-                            ?.variants.map(v => (
-                              <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>
+                            ?.find(p => p.id === item.productId)
+                            ?.variants?.map(v => (
+                              <SelectItem key={v.variantId} value={v.variantId ?? ""}>{v.size}</SelectItem>
                             ))}
                         </SelectContent>
                       </Select>

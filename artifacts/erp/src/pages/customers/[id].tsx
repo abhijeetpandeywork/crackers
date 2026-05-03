@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, User, Phone, Mail, MapPin, Building, Wallet, Star, Loader2, IndianRupee } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -25,7 +26,7 @@ export default function CustomerDetail() {
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
 
   const customerId = params?.id as string;
-  const { data: customerData, isLoading: loadingCustomer } = useGetCustomer(customerId);
+  const { data: customer, isLoading: loadingCustomer } = useGetCustomer(customerId);
   const { data: statementData, isLoading: loadingStatement, refetch: refetchStatement } = useGetCustomerStatement(customerId);
   const { data: loyaltyData, isLoading: loadingLoyalty } = useGetCustomerLoyalty(customerId);
   
@@ -38,10 +39,10 @@ export default function CustomerDetail() {
 
     try {
       await paymentMutation.mutateAsync({
-        customerId,
+        id: customerId,
         data: {
           amount,
-          method: formData.get("method") as any,
+          date: new Date().toISOString().slice(0, 10),
           reference: formData.get("reference") as string,
         }
       });
@@ -68,7 +69,6 @@ export default function CustomerDetail() {
     );
   }
 
-  const customer = customerData?.data;
   if (!customer) return <div>Customer not found.</div>;
 
   return (
@@ -83,7 +83,7 @@ export default function CustomerDetail() {
           <div>
             <h2 className="text-3xl font-bold tracking-tight">{customer.name}</h2>
             <div className="flex gap-2 mt-1">
-              <Badge variant="secondary">{customer.type}</Badge>
+              <Badge variant="secondary">{customer.customerType}</Badge>
               {customer.gstin && <Badge variant="outline">GSTIN: {customer.gstin}</Badge>}
             </div>
           </div>
@@ -140,7 +140,7 @@ export default function CustomerDetail() {
             <CardTitle className="text-xs font-medium uppercase text-muted-foreground">Outstanding Balance</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${customer.outstandingBalance > 0 ? "text-destructive" : "text-green-600"}`}>
+            <div className={`text-2xl font-bold ${(customer.outstandingBalance ?? 0) > 0 ? "text-destructive" : "text-green-600"}`}>
               ₹{customer.outstandingBalance?.toLocaleString('en-IN') || 0}
             </div>
           </CardContent>
@@ -151,9 +151,9 @@ export default function CustomerDetail() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {loyaltyData?.data?.points || 0}
+              {loyaltyData?.data?.totalPoints || 0}
             </div>
-            <p className="text-[10px] text-muted-foreground">Tier: {loyaltyData?.data?.tier || 'Silver'}</p>
+            <p className="text-[10px] text-muted-foreground">Entries: {loyaltyData?.data?.entries?.length ?? 0}</p>
           </CardContent>
         </Card>
         <Card>

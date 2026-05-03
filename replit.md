@@ -165,3 +165,16 @@ pnpm run typecheck                               # Full type check
 - Added **in-app Help & Guide** to every panel (ERP, POS, Warehouse, Website) with contextual topics and FAQ.
 - Hardened `POST /api/v1/stock/adjust` to validate required fields server-side and return 400 (not 500).
 - Fixed nested `<a>` hydration warnings in warehouse sidebar and website help (wouter `Link` no longer wraps an extra `<a>`).
+
+## Type System Status (May 2026 cleanup pass)
+
+Cleaned up the easy-win TypeScript warnings across ERP / POS / Warehouse / api-server:
+- Fixed all `TS7030` "Not all code paths return a value" warnings in handler bodies that used the `if (!x) return toast({...})` short-circuit pattern. Converted them to explicit `{ toast({...}); return; }` blocks in: `erp/estimates/new`, `erp/purchase-orders/new`, `erp/transfers/new`, `warehouse/adjust`, `warehouse/receive`, `warehouse/transfers-new`, and `api-server/routes/v1/stock.ts` (`POST /stock/adjust`).
+- Fixed `TS7006` implicit-any callback parameter on the `LineItemRow` `onChange` prop in `erp/estimates/new.tsx` with an explicit annotation (no `as any` cast added).
+- Restored the missing `User` icon import in `erp/suppliers/[id].tsx` (lucide-react).
+
+## Type System Status (May 2026 — typecheck:0 across the repo)
+
+`pnpm run typecheck` now exits **0** at the repo root across libs, api-server, ERP, POS, Warehouse, website, mockup-sandbox, and scripts. The cleanup aligned the client code to the generated `@workspace/api-client-react` types rather than introducing any new `as any` casts (existing pre-task `as any` casts in PDF generators, reports, and a couple of badge-variant fallbacks remain untouched). The orphan `scripts/seed.ts` (references missing `@workspace/db` / `bcryptjs`, pre-existing) stays excluded via `scripts/tsconfig.json`.
+
+To make the UI's "use the entity returned by `useGet*` directly" pattern correct at runtime as well as at the type level, the api-server detail/create/update routes for `customers`, `agents`, `suppliers`, `products`, `invoices`, `estimates`, `purchase-orders`, `coupons`, and `transfers` POST were changed to return the bare entity (matching `Promise<Customer>` / `Promise<Product>` / etc.). List endpoints still return `{ success, data, meta }` to match `*ListResponse`. The spec's two transfer outliers — `getTransfer` (typed as `TransferResponse` wrapper) and `dispatchTransfer` / `receiveTransfer` (`SuccessMessage`) — keep their wrapped shapes. 404 error bodies retain the `{ success: false, error }` envelope.

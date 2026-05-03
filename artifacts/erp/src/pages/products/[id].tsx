@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation, useParams } from "wouter";
-import { useGetProduct, useUpdateProduct, useCreateProduct } from "@workspace/api-client-react";
+import { useGetProduct, useUpdateProduct, useCreateProduct, type ProductVariant, type CreateProductBody } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,13 +19,13 @@ export default function ProductDetail() {
   const isNew = !id || id === "new";
   
   const { data: product, isLoading } = useGetProduct(id || "", {
-    query: { enabled: !isNew }
+    query: { enabled: !isNew, queryKey: ["product", id] }
   });
   
   const updateMutation = useUpdateProduct();
   const createMutation = useCreateProduct();
   
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<CreateProductBody & { status: string }>({
     code: "",
     name: "",
     category: "Ground",
@@ -33,39 +33,40 @@ export default function ProductDetail() {
     hsnCode: "",
     onlineDisplay: true,
     status: "Active",
-    variants: [] as any[]
+    variants: [] as ProductVariant[],
   });
 
   useEffect(() => {
-    if (product?.data) {
+    if (product) {
       setFormData({
-        code: product.data.code || "",
-        name: product.data.name || "",
-        category: product.data.category || "Ground",
-        description: product.data.description || "",
-        hsnCode: product.data.hsnCode || "",
-        onlineDisplay: product.data.onlineDisplay ?? true,
-        status: product.data.status || "Active",
-        variants: product.data.variants || []
+        code: product.code || "",
+        name: product.name || "",
+        category: (product.category as string) || "Ground",
+        description: product.description || "",
+        hsnCode: product.hsnCode || "",
+        onlineDisplay: product.onlineDisplay ?? true,
+        status: (product.status as string) || "Active",
+        variants: product.variants || []
       });
     }
   }, [product]);
 
   const handleSave = () => {
     if (isNew) {
+      const { status: _status, ...createData } = formData;
       createMutation.mutate({
-        data: formData
+        data: createData
       }, {
         onSuccess: (res) => {
           toast({ title: "Product created successfully" });
-          setLocation(`/products/${res.data?.id}`);
+          setLocation(`/products/${res?.id ?? ""}`);
         },
         onError: () => toast({ title: "Error creating product", variant: "destructive" })
       });
     } else {
       updateMutation.mutate({
-        id,
-        data: formData
+        id: id!,
+        data: formData,
       }, {
         onSuccess: () => toast({ title: "Product updated successfully" }),
         onError: () => toast({ title: "Error updating product", variant: "destructive" })
@@ -98,15 +99,19 @@ export default function ProductDetail() {
     }));
   };
 
-  const updateVariant = (index: number, field: string, value: any) => {
+  const updateVariant = (index: number, field: string, value: unknown) => {
     setFormData(prev => {
       const newVariants = [...prev.variants];
       const keys = field.split('.');
+      const variant = { ...newVariants[index] } as Record<string, unknown>;
       if (keys.length === 2) {
-        newVariants[index][keys[0]][keys[1]] = value;
+        const nested = { ...((variant[keys[0]] as Record<string, unknown>) ?? {}) };
+        nested[keys[1]] = value;
+        variant[keys[0]] = nested;
       } else {
-        newVariants[index][field] = value;
+        variant[field] = value;
       }
+      newVariants[index] = variant as ProductVariant;
       return { ...prev, variants: newVariants };
     });
   };

@@ -11,8 +11,8 @@ export default function AgentDetail() {
   const [, params] = useRoute("/agents/:id");
   const agentId = params?.id as string;
   
-  const { data: agentData, isLoading: loadingAgent } = useGetAgent(agentId);
-  const { data: commissionData, isLoading: loadingCommission } = useGetAgentCommission({ agentId });
+  const { data: agent, isLoading: loadingAgent } = useGetAgent(agentId);
+  const { data: commissionData, isLoading: loadingCommission } = useGetAgentCommission(agentId);
 
   if (loadingAgent) {
     return (
@@ -28,7 +28,6 @@ export default function AgentDetail() {
     );
   }
 
-  const agent = agentData?.data;
   if (!agent) return <div>Agent not found.</div>;
 
   return (
@@ -72,7 +71,7 @@ export default function AgentDetail() {
             <Wallet className="h-4 w-4 text-accent" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-accent">₹{commissionData?.data?.totalEarned?.toLocaleString('en-IN') || 0}</div>
+            <div className="text-2xl font-bold text-accent">₹{commissionData?.data?.totalCommission?.toLocaleString('en-IN') || 0}</div>
             <p className="text-xs text-muted-foreground">Total payout pending</p>
           </CardContent>
         </Card>
@@ -92,9 +91,9 @@ export default function AgentDetail() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {agent.commissionTiers?.map((tier: any, i: number) => (
+                {agent.commissionTiers?.map((tier, i: number) => (
                   <TableRow key={i}>
-                    <TableCell>₹{tier.minSales.toLocaleString('en-IN')} +</TableCell>
+                    <TableCell>₹{tier.from?.toLocaleString('en-IN')} +</TableCell>
                     <TableCell className="text-right font-bold">{tier.rate}%</TableCell>
                   </TableRow>
                 )) || (
@@ -118,11 +117,11 @@ export default function AgentDetail() {
             </div>
             <div className="flex justify-between items-center border-b pb-2">
               <span className="text-sm text-muted-foreground">Orders Placed</span>
-              <span className="font-bold">{commissionData?.data?.orderCount || 0}</span>
+              <span className="font-bold">{commissionData?.data?.items?.length || 0}</span>
             </div>
             <div className="flex justify-between items-center border-b pb-2">
               <span className="text-sm text-muted-foreground">Avg. Order Value</span>
-              <span className="font-bold">₹{(commissionData?.data?.totalSales / (commissionData?.data?.orderCount || 1))?.toLocaleString('en-IN') || 0}</span>
+              <span className="font-bold">₹{((commissionData?.data?.totalSales ?? 0) / (commissionData?.data?.items?.length || 1)).toLocaleString('en-IN')}</span>
             </div>
             <div className="pt-2">
               <div className="flex justify-between text-xs mb-1">

@@ -23,19 +23,19 @@ router.get("/suppliers", authenticate, async (req, res) => {
 
 router.post("/suppliers", authenticate, async (req, res) => {
   const [supplier] = await db.insert(suppliersTable).values({ ...req.body, id: crypto.randomUUID() }).returning();
-  res.status(201).json({ success: true, data: supplier });
+  res.status(201).json(supplier);
 });
 
 router.get("/suppliers/:id", authenticate, async (req, res) => {
-  const rows = await db.select().from(suppliersTable).where(eq(suppliersTable.id, req.params["id"]!)).limit(1);
+  const rows = await db.select().from(suppliersTable).where(eq(suppliersTable.id, req.params["id"] as string)).limit(1);
   if (!rows[0]) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Supplier not found" } }); return; }
-  res.json({ success: true, data: rows[0] });
+  res.json(rows[0]);
 });
 
 router.put("/suppliers/:id", authenticate, async (req, res) => {
-  const [supplier] = await db.update(suppliersTable).set(req.body).where(eq(suppliersTable.id, req.params["id"]!)).returning();
+  const [supplier] = await db.update(suppliersTable).set(req.body).where(eq(suppliersTable.id, req.params["id"] as string)).returning();
   if (!supplier) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Supplier not found" } }); return; }
-  res.json({ success: true, data: supplier });
+  res.json(supplier);
 });
 
 export default router;

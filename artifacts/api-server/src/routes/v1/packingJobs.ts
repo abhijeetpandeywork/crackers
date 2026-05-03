@@ -41,7 +41,7 @@ router.post("/packing-jobs", authenticate, async (req: AuthRequest, res) => {
 });
 
 router.put("/packing-jobs/:id/complete", authenticate, async (req: AuthRequest, res) => {
-  const rows = await db.select().from(packingJobsTable).where(eq(packingJobsTable.id, req.params["id"]!)).limit(1);
+  const rows = await db.select().from(packingJobsTable).where(eq(packingJobsTable.id, req.params["id"] as string)).limit(1);
   if (!rows[0]) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Job not found" } }); return; }
   const job = rows[0];
 

@@ -14,22 +14,21 @@ export default function EstimateDetail() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   
-  const { data, isLoading, refetch } = useGetEstimate(params?.id as string);
+  const { data: estimate, isLoading, refetch } = useGetEstimate(params?.id as string);
   const convertMutation = useConvertEstimateToInvoice();
 
   const handleDownloadPdf = () => {
-    const est = data?.data;
-    if (!est) return;
-    const doc = generateEstimatePdf(est as any);
-    savePdf(doc, `estimate-${est.estimateNumber || est.id.slice(0, 8)}`);
+    if (!estimate) return;
+    const doc = generateEstimatePdf(estimate as any);
+    savePdf(doc, `estimate-${estimate.estimateNo || estimate.id?.slice(0, 8)}`);
     toast({ title: "PDF downloaded" });
   };
 
   const handleConvert = async () => {
     try {
       await convertMutation.mutateAsync({ 
-        estimateId: params?.id as string,
-        data: {} 
+        id: params?.id as string,
+        data: { paymentMode: "CASH" } 
       });
       toast({ title: "Success", description: "Estimate converted to invoice successfully" });
       refetch();
@@ -52,7 +51,6 @@ export default function EstimateDetail() {
     );
   }
 
-  const estimate = data?.data;
   if (!estimate) return <div>Estimate not found.</div>;
 
   return (
@@ -65,10 +63,10 @@ export default function EstimateDetail() {
             </Link>
           </Button>
           <div>
-            <h2 className="text-3xl font-bold tracking-tight">Estimate #{estimate.estimateNumber || estimate.id.slice(0,8)}</h2>
+            <h2 className="text-3xl font-bold tracking-tight">Estimate #{estimate.estimateNo || estimate.id?.slice(0,8)}</h2>
             <div className="flex gap-2 mt-1">
               <Badge variant="outline">{estimate.status}</Badge>
-              {estimate.channel && <Badge variant="secondary">{estimate.channel}</Badge>}
+              {estimate.type && <Badge variant="secondary">{estimate.type}</Badge>}
             </div>
           </div>
         </div>
@@ -76,7 +74,7 @@ export default function EstimateDetail() {
           <Button variant="outline" onClick={handleDownloadPdf} data-testid="estimate-download-pdf">
             <Download className="mr-2 h-4 w-4" /> Download PDF
           </Button>
-          {estimate.status !== 'Converted' && (
+          {estimate.status !== 'converted' && (
             <Button onClick={handleConvert} disabled={convertMutation.isPending}>
               <ArrowRightLeft className="mr-2 h-4 w-4" /> Convert to Invoice
             </Button>
@@ -101,8 +99,8 @@ export default function EstimateDetail() {
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-lg font-bold">{new Date(estimate.createdAt).toLocaleDateString('en-IN')}</div>
-            <p className="text-xs text-muted-foreground">Valid until: {estimate.validUntil ? new Date(estimate.validUntil).toLocaleDateString('en-IN') : 'N/A'}</p>
+            <div className="text-lg font-bold">{estimate.createdAt ? new Date(estimate.createdAt).toLocaleDateString('en-IN') : 'N/A'}</div>
+            <p className="text-xs text-muted-foreground">Status: {estimate.status ?? 'draft'}</p>
           </CardContent>
         </Card>
         <Card>
@@ -111,7 +109,7 @@ export default function EstimateDetail() {
             <IndianRupee className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-lg font-bold">₹{estimate.totalAmount?.toLocaleString('en-IN')}</div>
+            <div className="text-lg font-bold">₹{estimate.total?.toLocaleString('en-IN')}</div>
             <p className="text-xs text-muted-foreground">Includes GST 18%</p>
           </CardContent>
         </Card>
@@ -133,13 +131,13 @@ export default function EstimateDetail() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {estimate.items?.map((item: any, i: number) => (
+              {estimate.items?.map((item, i: number) => (
                 <TableRow key={i}>
                   <TableCell className="font-medium">{item.productName}</TableCell>
-                  <TableCell>{item.variantLabel}</TableCell>
+                  <TableCell>{item.variantSize}</TableCell>
                   <TableCell className="text-right">{item.qty}</TableCell>
-                  <TableCell className="text-right">₹{item.unitPrice?.toLocaleString('en-IN')}</TableCell>
-                  <TableCell className="text-right font-medium">₹{(item.qty * item.unitPrice)?.toLocaleString('en-IN')}</TableCell>
+                  <TableCell className="text-right">₹{item.resolvedPrice?.toLocaleString('en-IN')}</TableCell>
+                  <TableCell className="text-right font-medium">₹{item.amount?.toLocaleString('en-IN')}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

@@ -13,22 +13,28 @@ export default function PurchaseOrderDetail() {
   const [, params] = useRoute("/purchase-orders/:id");
   const { toast } = useToast();
   
-  const { data, isLoading, refetch } = useGetPurchaseOrder(params?.id as string);
+  const { data: po, isLoading, refetch } = useGetPurchaseOrder(params?.id as string);
   const receiveMutation = useReceivePurchaseOrder();
 
   const handleDownloadPdf = () => {
-    const po = data?.data;
     if (!po) return;
     const doc = generatePurchaseOrderPdf(po as any);
-    savePdf(doc, `purchase-order-${po.poNumber || po.id.slice(0, 8)}`);
+    savePdf(doc, `purchase-order-${po.poNumber || po.id?.slice(0, 8)}`);
     toast({ title: "PDF downloaded" });
   };
 
   const handleReceive = async () => {
+    if (!po) return;
     try {
       await receiveMutation.mutateAsync({ 
-        purchaseOrderId: params?.id as string,
-        data: {} // Assumes empty body if not specified
+        id: params?.id as string,
+        data: {
+          items: (po.items ?? []).map((it) => ({
+            productId: it.productId,
+            variantId: it.variantId,
+            receivedQty: it.orderedQty,
+          })),
+        }
       });
       toast({ title: "Success", description: "Purchase order marked as received and stock updated" });
       refetch();
@@ -51,7 +57,6 @@ export default function PurchaseOrderDetail() {
     );
   }
 
-  const po = data?.data;
   if (!po) return <div>Purchase order not found.</div>;
 
   return (
@@ -64,9 +69,9 @@ export default function PurchaseOrderDetail() {
             </Link>
           </Button>
           <div>
-            <h2 className="text-3xl font-bold tracking-tight">PO #{po.poNumber || po.id.slice(0,8)}</h2>
+            <h2 className="text-3xl font-bold tracking-tight">PO #{po.poNumber || po.id?.slice(0,8)}</h2>
             <div className="flex gap-2 mt-1">
-              <Badge variant={po.status === 'Received' ? 'default' : 'secondary'}>{po.status}</Badge>
+              <Badge variant={po.status === 'received' ? 'default' : 'secondary'}>{po.status}</Badge>
             </div>
           </div>
         </div>
@@ -74,7 +79,7 @@ export default function PurchaseOrderDetail() {
           <Button variant="outline" onClick={handleDownloadPdf} data-testid="po-download-pdf">
             <Download className="mr-2 h-4 w-4" /> Download PDF
           </Button>
-          {po.status === 'Sent' && (
+          {po.status === 'sent' && (
             <Button onClick={handleReceive} disabled={receiveMutation.isPending}>
               {receiveMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PackageCheck className="mr-2 h-4 w-4" />}
               Mark as Received
@@ -101,9 +106,9 @@ export default function PurchaseOrderDetail() {
           </CardHeader>
           <CardContent>
             <div className="text-lg font-bold">
-              {po.expectedDeliveryDate ? new Date(po.expectedDeliveryDate).toLocaleDateString('en-IN') : 'N/A'}
+              {po.expectedDate ? new Date(po.expectedDate).toLocaleDateString('en-IN') : 'N/A'}
             </div>
-            <p className="text-xs text-muted-foreground">Ordered: {new Date(po.createdAt).toLocaleDateString('en-IN')}</p>
+            <p className="text-xs text-muted-foreground">Ordered: {po.createdAt ? new Date(po.createdAt).toLocaleDateString('en-IN') : ''}</p>
           </CardContent>
         </Card>
         <Card>
@@ -133,13 +138,13 @@ export default function PurchaseOrderDetail() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {po.items?.map((item: any, i: number) => (
+              {po.items?.map((item, i: number) => (
                 <TableRow key={i}>
                   <TableCell className="font-medium">{item.productName}</TableCell>
-                  <TableCell>{item.variantLabel}</TableCell>
-                  <TableCell className="text-right">{item.qty}</TableCell>
-                  <TableCell className="text-right">₹{item.unitCost?.toLocaleString('en-IN')}</TableCell>
-                  <TableCell className="text-right font-medium">₹{(item.qty * item.unitCost)?.toLocaleString('en-IN')}</TableCell>
+                  <TableCell>{item.variantId}</TableCell>
+                  <TableCell className="text-right">{item.orderedQty}</TableCell>
+                  <TableCell className="text-right">₹{item.unitPrice?.toLocaleString('en-IN')}</TableCell>
+                  <TableCell className="text-right font-medium">₹{((item.orderedQty ?? 0) * (item.unitPrice ?? 0)).toLocaleString('en-IN')}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

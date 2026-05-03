@@ -17,7 +17,12 @@ export default function Login() {
   const loginMutation = useLogin({
     mutation: {
       onSuccess: (response) => {
-        localStorage.setItem("wh_token", response.data.accessToken);
+        const token = response.data?.accessToken;
+        if (!token) {
+          toast({ title: "Login failed", description: "No token received", variant: "destructive" });
+          return;
+        }
+        localStorage.setItem("wh_token", token);
         setAuthTokenGetter(() => localStorage.getItem("wh_token"));
         toast({
           title: "Login successful",

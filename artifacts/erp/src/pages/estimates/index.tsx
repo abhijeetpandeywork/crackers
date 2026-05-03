@@ -28,8 +28,8 @@ export default function EstimatesList() {
   const handleConvert = async (id: string) => {
     try {
       await convertMutation.mutateAsync({ 
-        estimateId: id,
-        data: {} // Empty body as per common pattern if not specified
+        id,
+        data: { paymentMode: "CASH" }
       });
       toast({
         title: "Success",
@@ -129,16 +129,16 @@ export default function EstimatesList() {
                 </TableCell>
               </TableRow>
             ) : (
-              data?.data?.map((estimate: any) => (
+              data?.data?.map((estimate) => (
                 <TableRow key={estimate.id}>
-                  <TableCell className="font-mono text-sm">{estimate.estimateNumber || estimate.id.slice(0,8)}</TableCell>
+                  <TableCell className="font-mono text-sm">{estimate.estimateNo || estimate.id?.slice(0,8)}</TableCell>
                   <TableCell className="font-medium">{estimate.customerName}</TableCell>
-                  <TableCell>{new Date(estimate.createdAt).toLocaleDateString('en-IN')}</TableCell>
-                  <TableCell>₹{estimate.totalAmount?.toLocaleString('en-IN')}</TableCell>
+                  <TableCell>{estimate.createdAt ? new Date(estimate.createdAt).toLocaleDateString('en-IN') : ''}</TableCell>
+                  <TableCell>₹{estimate.total?.toLocaleString('en-IN')}</TableCell>
                   <TableCell>
-                    <Badge variant="outline">{estimate.channel || 'Manual'}</Badge>
+                    <Badge variant="outline">{estimate.type || 'Manual'}</Badge>
                   </TableCell>
-                  <TableCell>{getStatusBadge(estimate.status)}</TableCell>
+                  <TableCell>{getStatusBadge(estimate.status ?? '')}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <Button variant="ghost" size="sm" asChild title="View">
@@ -146,12 +146,12 @@ export default function EstimatesList() {
                           <Eye className="h-4 w-4" />
                         </Link>
                       </Button>
-                      {estimate.status !== 'Converted' && (
+                      {estimate.status !== 'converted' && (
                         <Button 
                           variant="ghost" 
                           size="sm" 
                           title="Convert to Invoice"
-                          onClick={() => handleConvert(estimate.id)}
+                          onClick={() => handleConvert(estimate.id!)}
                           disabled={convertMutation.isPending}
                         >
                           <ArrowRightLeft className="h-4 w-4" />

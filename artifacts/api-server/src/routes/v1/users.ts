@@ -51,7 +51,7 @@ router.get("/users/:id", authenticate, async (req, res) => {
     maxDiscountPct: usersTable.maxDiscountPct,
     isActive: usersTable.isActive,
     createdAt: usersTable.createdAt,
-  }).from(usersTable).where(eq(usersTable.id, req.params["id"]!)).limit(1);
+  }).from(usersTable).where(eq(usersTable.id, req.params["id"] as string)).limit(1);
   if (!rows[0]) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "User not found" } }); return; }
   res.json({ success: true, data: rows[0] });
 });
@@ -60,7 +60,7 @@ router.put("/users/:id", authenticate, async (req, res) => {
   const { password, ...rest } = req.body;
   const updates: any = { ...rest, updatedAt: new Date() };
   if (password) updates.passwordHash = await hashPassword(password);
-  const [user] = await db.update(usersTable).set(updates).where(eq(usersTable.id, req.params["id"]!)).returning({
+  const [user] = await db.update(usersTable).set(updates).where(eq(usersTable.id, req.params["id"] as string)).returning({
     id: usersTable.id,
     name: usersTable.name,
     username: usersTable.username,

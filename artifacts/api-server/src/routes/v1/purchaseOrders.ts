@@ -42,17 +42,17 @@ router.post("/purchase-orders", authenticate, async (req: AuthRequest, res) => {
     notes,
     createdBy: req.user?.id,
   }).returning();
-  res.status(201).json({ success: true, data: po });
+  res.status(201).json(po);
 });
 
 router.get("/purchase-orders/:id", authenticate, async (req, res) => {
-  const rows = await db.select().from(purchaseOrdersTable).where(eq(purchaseOrdersTable.id, req.params["id"]!)).limit(1);
+  const rows = await db.select().from(purchaseOrdersTable).where(eq(purchaseOrdersTable.id, req.params["id"] as string)).limit(1);
   if (!rows[0]) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "PO not found" } }); return; }
-  res.json({ success: true, data: rows[0] });
+  res.json(rows[0]);
 });
 
 router.put("/purchase-orders/:id/receive", authenticate, async (req: AuthRequest, res) => {
-  const poRows = await db.select().from(purchaseOrdersTable).where(eq(purchaseOrdersTable.id, req.params["id"]!)).limit(1);
+  const poRows = await db.select().from(purchaseOrdersTable).where(eq(purchaseOrdersTable.id, req.params["id"] as string)).limit(1);
   if (!poRows[0]) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "PO not found" } }); return; }
   const po = poRows[0];
   const { items } = req.body as { items: Array<{ productId: string; variantId: string; receivedQty: number; batchNo?: string; damagedQty?: number }> };

@@ -161,7 +161,7 @@ router.post("/invoices", authenticate, async (req: AuthRequest, res) => {
     }
   }
 
-  res.status(201).json({ success: true, data: invoice });
+  res.status(201).json(invoice);
 });
 
 router.get("/invoices/gst-report", authenticate, async (req, res) => {
@@ -176,9 +176,9 @@ router.get("/invoices/gst-report", authenticate, async (req, res) => {
 });
 
 router.get("/invoices/:id", authenticate, async (req, res) => {
-  const rows = await db.select().from(invoicesTable).where(eq(invoicesTable.id, req.params["id"]!)).limit(1);
+  const rows = await db.select().from(invoicesTable).where(eq(invoicesTable.id, req.params["id"] as string)).limit(1);
   if (!rows[0]) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Invoice not found" } }); return; }
-  res.json({ success: true, data: rows[0] });
+  res.json(rows[0]);
 });
 
 router.post("/invoices/:id/share", authenticate, async (_req, res) => {

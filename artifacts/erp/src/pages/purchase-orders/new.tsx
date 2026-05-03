@@ -2,7 +2,9 @@ import { useState } from "react";
 import { 
   useListSuppliers, 
   useListProducts, 
-  useCreatePurchaseOrder 
+  useListLocations,
+  useCreatePurchaseOrder,
+  type Location,
 } from "@workspace/api-client-react";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,12 +22,14 @@ export default function NewPurchaseOrder() {
   const { toast } = useToast();
   
   const [supplierId, setSupplierId] = useState<string>("");
+  const [warehouseId, setWarehouseId] = useState<string>("");
   const [expectedDelivery, setExpectedDelivery] = useState("");
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<any[]>([]);
 
   const { data: suppliers } = useListSuppliers({ limit: 100 });
   const { data: products } = useListProducts({ limit: 1000 });
+  const { data: locations } = useListLocations();
 
   const createMutation = useCreatePurchaseOrder();
 
@@ -47,20 +51,31 @@ export default function NewPurchaseOrder() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!supplierId) return toast({ title: "Error", description: "Please select a supplier", variant: "destructive" });
-    if (items.length === 0) return toast({ title: "Error", description: "Please add at least one item", variant: "destructive" });
+    if (!supplierId) {
+      toast({ title: "Error", description: "Please select a supplier", variant: "destructive" });
+      return;
+    }
+    if (!warehouseId) {
+      toast({ title: "Error", description: "Please select a destination warehouse", variant: "destructive" });
+      return;
+    }
+    if (items.length === 0) {
+      toast({ title: "Error", description: "Please add at least one item", variant: "destructive" });
+      return;
+    }
 
     try {
       await createMutation.mutateAsync({
         data: {
           supplierId,
-          expectedDeliveryDate: expectedDelivery || undefined,
+          warehouseId,
+          expectedDate: expectedDelivery || undefined,
           notes,
           items: items.map(item => ({
             productId: item.productId,
             variantId: item.variantId,
-            qty: item.qty,
-            unitCost: item.unitCost
+            orderedQty: item.qty,
+            unitPrice: item.unitCost,
           }))
         }
       });
@@ -94,6 +109,19 @@ export default function NewPurchaseOrder() {
                   <SelectContent>
                     {suppliers?.data?.map((s: any) => (
                       <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="warehouse">Destination Warehouse</Label>
+                <Select value={warehouseId} onValueChange={setWarehouseId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Warehouse" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {locations?.data?.map((l: Location) => (
+                      <SelectItem key={l.id} value={l.id ?? ""}>{l.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

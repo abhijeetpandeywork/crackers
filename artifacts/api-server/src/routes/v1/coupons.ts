@@ -78,19 +78,19 @@ router.post("/coupons/validate", async (req, res) => {
 
 router.post("/coupons", authenticate, async (req, res) => {
   const [coupon] = await db.insert(couponsTable).values({ ...req.body, id: crypto.randomUUID(), code: req.body.code.toUpperCase() }).returning();
-  res.status(201).json({ success: true, data: coupon });
+  res.status(201).json(coupon);
 });
 
 router.get("/coupons/:id", authenticate, async (req, res) => {
-  const rows = await db.select().from(couponsTable).where(eq(couponsTable.id, req.params["id"]!)).limit(1);
+  const rows = await db.select().from(couponsTable).where(eq(couponsTable.id, req.params["id"] as string)).limit(1);
   if (!rows[0]) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Coupon not found" } }); return; }
-  res.json({ success: true, data: rows[0] });
+  res.json(rows[0]);
 });
 
 router.put("/coupons/:id", authenticate, async (req, res) => {
-  const [coupon] = await db.update(couponsTable).set(req.body).where(eq(couponsTable.id, req.params["id"]!)).returning();
+  const [coupon] = await db.update(couponsTable).set(req.body).where(eq(couponsTable.id, req.params["id"] as string)).returning();
   if (!coupon) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Coupon not found" } }); return; }
-  res.json({ success: true, data: coupon });
+  res.json(coupon);
 });
 
 export default router;

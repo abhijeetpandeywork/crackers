@@ -13,7 +13,7 @@ const ReceiptScreen = () => {
   const params = new URLSearchParams(searchString);
   const invoiceId = params.get("id");
 
-  const { data: invoiceData, isLoading } = useGetInvoice(invoiceId || "");
+  const { data: invoice, isLoading } = useGetInvoice(invoiceId || "");
 
   const handleNewSale = () => {
     setLocation("/sale");
@@ -26,7 +26,7 @@ const ReceiptScreen = () => {
   const handleDownloadPdf = () => {
     if (!invoice) return;
     const doc = generateInvoicePdf(invoice as any);
-    savePdf(doc, `invoice-${invoice.invoiceNumber || invoiceId?.slice(0, 8) || "receipt"}`);
+    savePdf(doc, `invoice-${invoice.invoiceNo || invoiceId?.slice(0, 8) || "receipt"}`);
   };
 
   if (isLoading) {
@@ -37,8 +37,6 @@ const ReceiptScreen = () => {
     );
   }
 
-  const invoice = invoiceData?.invoice;
-
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-[#0d0d0d]">
       <div className="w-full max-w-lg animate-in zoom-in-95 duration-300">
@@ -47,7 +45,7 @@ const ReceiptScreen = () => {
             <CheckCircle2 className="h-16 w-16 text-green-500" />
           </div>
           <h1 className="text-4xl font-black">SALE COMPLETE</h1>
-          <p className="text-zinc-500 mt-2">Invoice #{invoice?.invoiceNumber || invoiceId?.slice(0, 8)}</p>
+          <p className="text-zinc-500 mt-2">Invoice #{invoice?.invoiceNo || invoiceId?.slice(0, 8)}</p>
         </div>
 
         <Card className="bg-zinc-900 border-zinc-800 text-white mb-8 overflow-hidden">
@@ -60,20 +58,20 @@ const ReceiptScreen = () => {
                 </div>
                 <div className="text-right">
                   <p className="text-xs text-zinc-500 uppercase font-black">Amount</p>
-                  <p className="text-3xl font-black text-primary">₹{invoice?.totalAmount?.toLocaleString('en-IN')}</p>
+                  <p className="text-3xl font-black text-primary">₹{invoice?.total?.toLocaleString('en-IN')}</p>
                 </div>
               </div>
             </div>
 
             <ScrollArea className="max-h-[300px]">
               <div className="p-6 space-y-4">
-                {invoice?.items?.map((item: any, idx: number) => (
+                {invoice?.items?.map((item, idx: number) => (
                   <div key={idx} className="flex justify-between items-center text-sm">
                     <div className="flex-1">
                       <p className="font-bold">{item.productName}</p>
-                      <p className="text-zinc-500">{item.variantLabel} x {item.quantity}</p>
+                      <p className="text-zinc-500">{item.variantSize} x {item.qty}</p>
                     </div>
-                    <p className="font-black">₹{item.lineTotal?.toLocaleString('en-IN')}</p>
+                    <p className="font-black">₹{item.amount?.toLocaleString('en-IN')}</p>
                   </div>
                 ))}
               </div>
@@ -82,7 +80,7 @@ const ReceiptScreen = () => {
             <div className="p-6 border-t border-zinc-800 bg-zinc-900/50 flex justify-between items-center">
               <div>
                 <p className="text-xs text-zinc-500 uppercase font-black">Payment Method</p>
-                <p className="font-bold">{invoice?.paymentMethod || "CASH"}</p>
+                <p className="font-bold">{invoice?.paymentMode || "CASH"}</p>
               </div>
               <div className="text-right">
                 <p className="text-xs text-zinc-500 uppercase font-black">Date</p>
@@ -133,7 +131,7 @@ const ReceiptScreen = () => {
         </div>
         <div className="flex justify-between mb-4">
           <div>
-            <p>Invoice: {invoice?.invoiceNumber}</p>
+            <p>Invoice: {invoice?.invoiceNo}</p>
             <p>Date: {new Date(invoice?.createdAt || Date.now()).toLocaleString()}</p>
           </div>
           <div className="text-right">
@@ -150,20 +148,20 @@ const ReceiptScreen = () => {
             </tr>
           </thead>
           <tbody>
-            {invoice?.items?.map((item: any, idx: number) => (
+            {invoice?.items?.map((item, idx: number) => (
               <tr key={idx}>
-                <td className="py-1">{item.productName} ({item.variantLabel})</td>
-                <td className="text-center py-1">{item.quantity}</td>
-                <td className="text-right py-1">{item.unitPrice}</td>
-                <td className="text-right py-1">{item.lineTotal}</td>
+                <td className="py-1">{item.productName} ({item.variantSize})</td>
+                <td className="text-center py-1">{item.qty}</td>
+                <td className="text-right py-1">{item.resolvedPrice}</td>
+                <td className="text-right py-1">{item.amount}</td>
               </tr>
             ))}
           </tbody>
         </table>
         <div className="flex flex-col items-end">
-          <p>Subtotal: ₹{invoice?.subtotalAmount}</p>
-          <p>GST (18%): ₹{invoice?.taxAmount}</p>
-          <p className="text-xl font-bold">Total: ₹{invoice?.totalAmount}</p>
+          <p>Subtotal: ₹{invoice?.subtotal}</p>
+          <p>GST (18%): ₹{(invoice?.cgst ?? 0) + (invoice?.sgst ?? 0) + (invoice?.igst ?? 0)}</p>
+          <p className="text-xl font-bold">Total: ₹{invoice?.total}</p>
         </div>
         <div className="mt-8 text-center text-xs">
           <p>Thank you for shopping with us!</p>

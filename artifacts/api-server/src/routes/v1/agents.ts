@@ -23,24 +23,24 @@ router.get("/agents", authenticate, async (req, res) => {
 
 router.post("/agents", authenticate, async (req, res) => {
   const [agent] = await db.insert(agentsTable).values({ ...req.body, id: crypto.randomUUID() }).returning();
-  res.status(201).json({ success: true, data: agent });
+  res.status(201).json(agent);
 });
 
 router.get("/agents/:id", authenticate, async (req, res) => {
-  const rows = await db.select().from(agentsTable).where(eq(agentsTable.id, req.params["id"]!)).limit(1);
+  const rows = await db.select().from(agentsTable).where(eq(agentsTable.id, req.params["id"] as string)).limit(1);
   if (!rows[0]) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Agent not found" } }); return; }
-  res.json({ success: true, data: rows[0] });
+  res.json(rows[0]);
 });
 
 router.put("/agents/:id", authenticate, async (req, res) => {
-  const [agent] = await db.update(agentsTable).set(req.body).where(eq(agentsTable.id, req.params["id"]!)).returning();
+  const [agent] = await db.update(agentsTable).set(req.body).where(eq(agentsTable.id, req.params["id"] as string)).returning();
   if (!agent) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Agent not found" } }); return; }
-  res.json({ success: true, data: agent });
+  res.json(agent);
 });
 
 router.get("/agents/:id/commission", authenticate, async (req, res) => {
   const { dateFrom, dateTo } = req.query as Record<string, string>;
-  const agentId = req.params["id"]!;
+  const agentId = req.params["id"] as string;
   const agentRows = await db.select().from(agentsTable).where(eq(agentsTable.id, agentId)).limit(1);
   if (!agentRows[0]) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Agent not found" } }); return; }
   const agent = agentRows[0];

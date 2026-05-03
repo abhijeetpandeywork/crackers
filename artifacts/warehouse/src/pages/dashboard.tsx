@@ -20,9 +20,9 @@ export default function Dashboard() {
   const { data: pendingPOs } = useListPurchaseOrders({ status: "Sent" });
   const { data: ledgerEntries } = useGetStockLedger({ limit: 10 });
 
-  const lowStockCount = stockLevels?.data.filter(s => (s.quantity || 0) <= (s.reorderLevel || 0)).length || 0;
-  const pendingTransferCount = pendingTransfers?.data.length || 0;
-  const pendingPOCount = pendingPOs?.data.length || 0;
+  const lowStockCount = stockLevels?.data?.filter(s => (s.currentQty || 0) <= (s.reorderLevel || 0)).length || 0;
+  const pendingTransferCount = pendingTransfers?.data?.length || 0;
+  const pendingPOCount = pendingPOs?.data?.length || 0;
 
   const quickActions = [
     { label: "Receive Stock", icon: ArrowDownToLine, href: "/receive", color: "bg-teal-500" },
@@ -113,21 +113,21 @@ export default function Dashboard() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {ledgerEntries?.data.map((entry) => (
+              {ledgerEntries?.data?.map((entry) => (
                 <TableRow key={entry.id}>
                   <TableCell className="text-sm">
-                    {new Date(entry.createdAt).toLocaleDateString('en-IN', {
+                    {entry.ts ? new Date(entry.ts).toLocaleDateString('en-IN', {
                       day: '2-digit',
                       month: '2-digit',
                       year: 'numeric',
                       hour: '2-digit',
                       minute: '2-digit'
-                    })}
+                    }) : ''}
                   </TableCell>
                   <TableCell>
                     <Badge variant={
-                      entry.type === 'INWARD' ? 'default' : 
-                      entry.type === 'OUTWARD' ? 'destructive' : 
+                      entry.type === 'IN' ? 'default' : 
+                      entry.type === 'OUT' ? 'destructive' : 
                       'outline'
                     } className="text-[10px] px-1.5 py-0">
                       {entry.type}
@@ -135,11 +135,11 @@ export default function Dashboard() {
                   </TableCell>
                   <TableCell className="font-medium">
                     {entry.productName}
-                    <div className="text-xs text-muted-foreground">{entry.variantName}</div>
+                    <div className="text-xs text-muted-foreground">{entry.variantId}</div>
                   </TableCell>
-                  <TableCell>{entry.locationName}</TableCell>
-                  <TableCell className={`text-right font-semibold ${entry.quantityChange > 0 ? "text-green-600" : "text-red-600"}`}>
-                    {entry.quantityChange > 0 ? "+" : ""}{entry.quantityChange}
+                  <TableCell>{entry.locationId}</TableCell>
+                  <TableCell className={`text-right font-semibold ${(entry.qty ?? 0) > 0 ? "text-green-600" : "text-red-600"}`}>
+                    {(entry.qty ?? 0) > 0 ? "+" : ""}{entry.qty ?? 0}
                   </TableCell>
                 </TableRow>
               ))}

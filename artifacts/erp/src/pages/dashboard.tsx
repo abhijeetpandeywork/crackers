@@ -64,23 +64,23 @@ export default function Dashboard() {
               <div className="text-2xl font-bold">₹{summary?.data?.todaySales?.toLocaleString() || 0}</div>
             )}
             <p className="text-xs text-muted-foreground mt-1">
-              +{summary?.data?.salesGrowthPct || 0}% from yesterday
+              {summary?.data?.todayInvoices || 0} invoices today
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Estimates</CardTitle>
+            <CardTitle className="text-sm font-medium">Active Transfers</CardTitle>
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             {loadingSummary ? (
               <Skeleton className="h-7 w-[100px]" />
             ) : (
-              <div className="text-2xl font-bold">{summary?.data?.activeEstimates || 0}</div>
+              <div className="text-2xl font-bold">{summary?.data?.activeTransfers || 0}</div>
             )}
-            <p className="text-xs text-muted-foreground mt-1">Awaiting conversion</p>
+            <p className="text-xs text-muted-foreground mt-1">In-transit transfers</p>
           </CardContent>
         </Card>
 
@@ -108,7 +108,7 @@ export default function Dashboard() {
             {loadingSummary ? (
               <Skeleton className="h-7 w-[100px]" />
             ) : (
-              <div className="text-2xl font-bold text-accent">₹{summary?.data?.totalOutstanding?.toLocaleString() || 0}</div>
+              <div className="text-2xl font-bold text-accent">₹{summary?.data?.outstandingTotal?.toLocaleString() || 0}</div>
             )}
             <p className="text-xs text-muted-foreground mt-1">Across all customers</p>
           </CardContent>
@@ -126,7 +126,7 @@ export default function Dashboard() {
             ) : (
               <div className="h-[350px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={sales?.data?.items || []}>
+                  <BarChart data={sales?.data || []}>
                     <XAxis 
                       dataKey="channel" 
                       stroke="#888888" 
@@ -142,7 +142,7 @@ export default function Dashboard() {
                       tickFormatter={(value) => `₹${value}`}
                     />
                     <RechartsTooltip cursor={{fill: 'transparent'}} />
-                    <Bar dataKey="amount" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -161,7 +161,7 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className="space-y-4">
-                {topProducts?.data?.items?.map((item: any, i: number) => (
+                {topProducts?.data?.map((item, i: number) => (
                   <div key={i} className="flex items-center">
                     <div className="bg-primary/10 p-2 rounded-md mr-4">
                       <Box className="h-4 w-4 text-primary" />
@@ -169,10 +169,10 @@ export default function Dashboard() {
                     <div className="flex-1 space-y-1">
                       <p className="text-sm font-medium leading-none">{item.productName}</p>
                       <p className="text-xs text-muted-foreground">
-                        {item.qtySold} units sold
+                        {item.totalQty} units sold
                       </p>
                     </div>
-                    <div className="font-medium">₹{item.revenue?.toLocaleString()}</div>
+                    <div className="font-medium">₹{item.totalRevenue?.toLocaleString()}</div>
                   </div>
                 ))}
               </div>

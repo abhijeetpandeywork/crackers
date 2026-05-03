@@ -21,17 +21,18 @@ export default function CouponsList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
 
-  const { data, isLoading, refetch } = useListCoupons({ search });
+  const { data, isLoading, refetch } = useListCoupons();
   const updateMutation = useUpdateCoupon();
   const createMutation = useCreateCoupon();
 
   const handleToggleActive = async (coupon: any) => {
     try {
+      const isActive = coupon.status === 'active';
       await updateMutation.mutateAsync({
-        couponId: coupon.id,
-        data: { active: !coupon.active }
+        id: coupon.id,
+        data: { status: isActive ? 'paused' : 'active' }
       });
-      toast({ title: "Success", description: `Coupon ${!coupon.active ? 'activated' : 'deactivated'}` });
+      toast({ title: "Success", description: `Coupon ${!isActive ? 'activated' : 'deactivated'}` });
       refetch();
     } catch (error) {
       toast({ title: "Error", description: "Failed to update coupon status", variant: "destructive" });
@@ -41,14 +42,16 @@ export default function CouponsList() {
   const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+    const validFromRaw = formData.get("validFrom") as string;
+    const validUntilRaw = formData.get("expiryDate") as string;
     const payload = {
       code: formData.get("code") as string,
-      type: formData.get("type") as any,
-      value: parseFloat(formData.get("value") as string) || 0,
-      minOrderAmount: parseFloat(formData.get("minOrderAmount") as string) || 0,
-      maxUses: parseInt(formData.get("maxUses") as string) || undefined,
-      expiryDate: formData.get("expiryDate") as string || undefined,
-      active: true
+      type: formData.get("type") as string,
+      discountValue: parseFloat(formData.get("value") as string) || 0,
+      minOrderValue: parseFloat(formData.get("minOrderAmount") as string) || 0,
+      usageLimit: parseInt(formData.get("maxUses") as string) || undefined,
+      validFrom: validFromRaw || new Date().toISOString().slice(0, 10),
+      validUntil: validUntilRaw || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
     };
 
     try {
@@ -194,7 +197,7 @@ export default function CouponsList() {
                   </TableCell>
                   <TableCell>
                     <Switch 
-                      checked={coupon.active} 
+                      checked={coupon.status === 'active'} 
                       onCheckedChange={() => handleToggleActive(coupon)}
                       disabled={updateMutation.isPending}
                     />
