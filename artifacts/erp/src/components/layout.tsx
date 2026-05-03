@@ -37,6 +37,7 @@ const reportItems = [
 const settingsItems = [
   { label: "Users", href: "/users" },
   { label: "Roles & Permissions", href: "/system/roles" },
+  { label: "Notifications", href: "/system/notifications" },
   { label: "Locations", href: "/locations" },
   { label: "Website Content", href: "/site-content" },
   { label: "Product Reviews", href: "/reviews" },

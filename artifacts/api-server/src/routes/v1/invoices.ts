@@ -5,6 +5,7 @@ import { authenticate } from "../../middleware/authenticate.js";
 import { nextInvoiceNo } from "../../lib/counter.js";
 import { resolvePrice, type PricingChannel } from "../../lib/pricing.js";
 import { appendLedger } from "../../lib/stockService.js";
+import { sendEmail, sendWhatsapp } from "../../lib/notifier.js";
 import type { AuthRequest } from "../../middleware/authenticate.js";
 
 const router = Router();
@@ -235,8 +236,75 @@ router.get("/invoices/:id", authenticate, async (req, res) => {
   res.json({ ...inv, customerName, customerPhone });
 });
 
-router.post("/invoices/:id/share", authenticate, async (_req, res) => {
-  res.json({ success: true, message: "Invoice shared (notification queued)" });
+// Share an invoice over email and/or WhatsApp. The body lets the caller
+// override the recipient, otherwise we fall back to the invoice customer's
+// stored details. Each channel runs independently and the response reports
+// per-channel success/failure so the UI can surface real errors instead of
+// an opaque "queued" message.
+router.post("/invoices/:id/share", authenticate, async (req: AuthRequest, res) => {
+  const id = req.params["id"] as string;
+  const { channels, email, phone, message } = req.body as {
+    channels?: Array<"email" | "whatsapp">;
+    email?: string;
+    phone?: string;
+    message?: string;
+  };
+  const inv = (await db.select().from(invoicesTable).where(eq(invoicesTable.id, id)).limit(1))[0];
+  if (!inv) {
+    res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Invoice not found" } });
+    return;
+  }
+  let custEmail: string | null = email ?? null;
+  let custPhone: string | null = phone ?? null;
+  let custName: string | null = null;
+  if (inv.customerId) {
+    const c = (await db.select().from(customersTable).where(eq(customersTable.id, inv.customerId)).limit(1))[0];
+    if (c) {
+      custName = c.name;
+      if (!custEmail) custEmail = c.email;
+      if (!custPhone) custPhone = c.phone;
+    }
+  }
+  const total = Number(inv.total ?? 0).toFixed(2);
+  const greeting = custName ? `Hi ${custName},` : "Hi,";
+  const summary = `${greeting}\n\nYour invoice ${inv.invoiceNo} for ₹${total} is ready.${
+    message ? `\n\n${message}` : ""
+  }\n\nThanks,\nRathinam Crackers`;
+
+  const wanted = channels?.length ? channels : (["email", "whatsapp"] as const);
+  const results: Record<string, { ok: boolean; error?: string; id?: string }> = {};
+  if (wanted.includes("email")) {
+    if (!custEmail) {
+      results["email"] = { ok: false, error: "No email address on file" };
+    } else {
+      const r = await sendEmail({
+        eventType: "invoice.share",
+        to: custEmail,
+        subject: `Invoice ${inv.invoiceNo} from Rathinam Crackers`,
+        text: summary,
+        html: `<p>${summary.replace(/\n/g, "<br/>")}</p>`,
+        recipientId: inv.customerId,
+        recipientType: "customer",
+      });
+      results["email"] = r.ok ? { ok: true, id: r.id } : { ok: false, error: r.error };
+    }
+  }
+  if (wanted.includes("whatsapp")) {
+    if (!custPhone) {
+      results["whatsapp"] = { ok: false, error: "No phone number on file" };
+    } else {
+      const r = await sendWhatsapp({
+        eventType: "invoice.share",
+        to: custPhone.startsWith("+") ? custPhone : `+91${custPhone.replace(/\D/g, "")}`,
+        body: summary,
+        recipientId: inv.customerId,
+        recipientType: "customer",
+      });
+      results["whatsapp"] = r.ok ? { ok: true, id: r.id } : { ok: false, error: r.error };
+    }
+  }
+  const anyOk = Object.values(results).some((r) => r.ok);
+  res.status(anyOk ? 200 : 400).json({ success: anyOk, data: { results } });
 });
 
 export default router;

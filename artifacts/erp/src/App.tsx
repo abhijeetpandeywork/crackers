@@ -43,6 +43,7 @@ import UsersList from "@/pages/users/index";
 import LocationsList from "@/pages/locations/index";
 import Settings from "@/pages/settings/index";
 import RolesPage from "@/pages/system/roles";
+import NotificationsPage from "@/pages/system/notifications";
 import ProfilePage from "@/pages/profile";
 import SiteContent from "@/pages/site-content/index";
 import ReviewsModeration from "@/pages/reviews/index";
@@ -166,6 +167,9 @@ function Router() {
       </Route>
       <Route path="/system/roles">
         {(params) => <ProtectedRoute component={RolesPage} {...params} />}
+      </Route>
+      <Route path="/system/notifications">
+        {(params) => <ProtectedRoute component={NotificationsPage} {...params} />}
       </Route>
       <Route path="/profile">
         {(params) => <ProtectedRoute component={ProfilePage} {...params} />}
