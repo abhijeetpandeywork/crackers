@@ -1,14 +1,21 @@
-import { useGetStockLedger, useGetStockLevels, useListPendingTransfers, useListPurchaseOrders } from "@workspace/api-client-react";
+import {
+  useGetStockLedger,
+  useGetStockLevels,
+  useListPendingTransfers,
+  useListPurchaseOrders,
+  useListLocations,
+  useGetDashboardByLocation,
+} from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { 
-  ArrowDownToLine, 
-  ArrowLeftRight, 
-  Settings2, 
-  History, 
-  AlertCircle, 
-  ArrowUpRight,
+import {
+  ArrowDownToLine,
+  ArrowLeftRight,
+  Settings2,
+  History,
+  AlertCircle,
   ClipboardList,
-  PackageCheck
+  MapPin,
+  Building2,
 } from "lucide-react";
 import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
@@ -19,10 +26,16 @@ export default function Dashboard() {
   const { data: pendingTransfers } = useListPendingTransfers({});
   const { data: pendingPOs } = useListPurchaseOrders({ status: "Sent" });
   const { data: ledgerEntries } = useGetStockLedger({ limit: 10 });
+  const { data: locations } = useListLocations();
+  const { data: byLocation } = useGetDashboardByLocation();
 
   const lowStockCount = stockLevels?.data?.filter(s => (s.currentQty || 0) <= (s.reorderLevel || 0)).length || 0;
   const pendingTransferCount = pendingTransfers?.data?.length || 0;
   const pendingPOCount = pendingPOs?.data?.length || 0;
+  const activeLocations = (locations?.data ?? []).filter((l) => l.isActive !== false);
+  const locationCount = activeLocations.length;
+  const locationRows = byLocation?.data ?? [];
+  const locationNameMap = new Map((locations?.data ?? []).map((l) => [l.id, l.name]));
 
   const quickActions = [
     { label: "Receive Stock", icon: ArrowDownToLine, href: "/receive", color: "bg-teal-500" },
@@ -72,11 +85,11 @@ export default function Dashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Locations</CardTitle>
-            <Warehouse className="h-4 w-4 text-muted-foreground" />
+            <Building2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">4</div>
-            <p className="text-xs text-muted-foreground">Active warehouses/shops</p>
+            <div className="text-2xl font-bold" data-testid="warehouse-location-count">{locationCount}</div>
+            <p className="text-xs text-muted-foreground">Active warehouses & shops</p>
           </CardContent>
         </Card>
       </div>
@@ -98,6 +111,57 @@ export default function Dashboard() {
           ))}
         </div>
       </div>
+
+      <Card data-testid="warehouse-by-location">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>By Location</CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              Low stock and activity for every active location.
+            </p>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Location</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead className="text-right">Low stock</TableHead>
+                <TableHead className="text-right">Today invoices</TableHead>
+                <TableHead className="text-right">Open shifts</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {locationRows.map((r) => (
+                <TableRow key={r.locationId}>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-3 w-3 text-muted-foreground" />
+                      {r.locationName ?? locationNameMap.get(r.locationId ?? "") ?? r.locationId}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="secondary">{r.type}</Badge>
+                  </TableCell>
+                  <TableCell className={`text-right font-semibold ${(r.lowStockCount ?? 0) > 0 ? "text-red-600" : ""}`}>
+                    {r.lowStockCount ?? 0}
+                  </TableCell>
+                  <TableCell className="text-right">{r.todayInvoices ?? 0}</TableCell>
+                  <TableCell className="text-right">{r.openShifts ?? 0}</TableCell>
+                </TableRow>
+              ))}
+              {locationRows.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                    No location data available.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -128,8 +192,8 @@ export default function Dashboard() {
                   </TableCell>
                   <TableCell>
                     <Badge variant={
-                      entry.type === 'IN' ? 'default' : 
-                      entry.type === 'OUT' ? 'destructive' : 
+                      entry.type === 'IN' ? 'default' :
+                      entry.type === 'OUT' ? 'destructive' :
                       'outline'
                     } className="text-[10px] px-1.5 py-0">
                       {entry.type}
@@ -139,7 +203,9 @@ export default function Dashboard() {
                     {entry.productName}
                     <div className="text-xs text-muted-foreground">{entry.variantId}</div>
                   </TableCell>
-                  <TableCell>{entry.locationId}</TableCell>
+                  <TableCell>
+                    {locationNameMap.get(entry.locationId ?? "") ?? entry.locationId}
+                  </TableCell>
                   <TableCell className={`text-right font-semibold ${(entry.qty ?? 0) > 0 ? "text-green-600" : "text-red-600"}`}>
                     {(entry.qty ?? 0) > 0 ? "+" : ""}{entry.qty ?? 0}
                   </TableCell>
@@ -157,28 +223,5 @@ export default function Dashboard() {
         </CardContent>
       </Card>
     </div>
-  );
-}
-
-function Warehouse({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="M22 22H2V10l10-8 10 8v12Z" />
-      <path d="M6 14v4" />
-      <path d="M10 14v4" />
-      <path d="M14 14v4" />
-      <path d="M18 14v4" />
-    </svg>
   );
 }
