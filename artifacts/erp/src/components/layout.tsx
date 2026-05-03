@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import logoUrl from "@assets/rathinam_logo.png";
 
 const navItems = [
   { icon: BarChart3, label: "Dashboard", href: "/" },
@@ -50,8 +51,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
     <div className="flex h-screen overflow-hidden bg-background">
       {/* Sidebar */}
       <aside className="w-64 flex-shrink-0 border-r bg-sidebar text-sidebar-foreground flex flex-col">
-        <div className="h-14 flex items-center px-4 font-bold text-lg border-b border-sidebar-border text-primary-foreground tracking-tight">
-          RATHINAM ERP
+        <div className="h-16 flex items-center gap-2.5 px-4 border-b border-sidebar-border bg-sidebar-accent/40">
+          <img src={logoUrl} alt="" className="h-9 w-9 rounded bg-white/95 p-0.5 object-contain" />
+          <div className="flex flex-col leading-tight">
+            <span className="font-extrabold text-sm text-sidebar-foreground tracking-wide">RATHINAM</span>
+            <span className="text-[10px] font-semibold tracking-[0.18em] uppercase text-amber-300/90">ERP Console</span>
+          </div>
         </div>
         
         <ScrollArea className="flex-1 py-4">

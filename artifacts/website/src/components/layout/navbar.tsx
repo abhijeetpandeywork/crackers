@@ -4,6 +4,7 @@ import { useShopAuth } from "@/context/auth";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart, Menu, X, Phone, Sparkles, User, LogOut, Package, Heart, MapPin, ChevronDown } from "lucide-react";
 import { useState } from "react";
+import logoUrl from "@assets/rathinam_logo.png";
 
 export function Navbar() {
   const { totalItems } = useCart();
@@ -21,7 +22,7 @@ export function Navbar() {
   return (
     <>
       {/* Top promo bar */}
-      <div className="bg-gradient-to-r from-red-700 via-red-600 to-amber-600 text-white text-xs sm:text-sm">
+      <div className="bg-gradient-to-r from-[hsl(197,65%,18%)] via-[hsl(197,71%,28%)] to-[hsl(41,89%,45%)] text-white text-xs sm:text-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <Sparkles className="h-3.5 w-3.5 text-amber-200 animate-pulse" />
@@ -38,11 +39,9 @@ export function Navbar() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
             <div className="flex items-center">
-              <Link href="/" className="flex items-center gap-2">
-                <span className="text-2xl font-extrabold bg-gradient-to-r from-red-600 to-amber-500 bg-clip-text text-transparent">
-                  🎆 RATHINAM
-                </span>
-                <span className="hidden sm:inline text-[10px] font-bold tracking-[0.2em] text-gray-400 uppercase pt-0.5">Crackers · Est. 1985</span>
+              <Link href="/" className="flex items-center gap-2.5">
+                <img src={logoUrl} alt="Rathinam Crackers" className="h-10 w-auto" />
+                <span className="hidden sm:inline text-[10px] font-bold tracking-[0.2em] text-gray-400 uppercase pt-0.5">Est. 1985</span>
               </Link>
             </div>
 
@@ -52,8 +51,8 @@ export function Navbar() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`text-sm font-medium transition-colors hover:text-red-600 ${
-                    location === link.href ? "text-red-600" : "text-gray-600"
+                  className={`text-sm font-medium transition-colors hover:text-primary ${
+                    location === link.href ? "text-primary" : "text-gray-600"
                   }`}
                 >
                   {link.label}
@@ -71,7 +70,7 @@ export function Navbar() {
                 <Button variant="ghost" size="icon" className="relative">
                   <ShoppingCart className="h-5 w-5" />
                   {totalItems > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                    <span className="absolute -top-1 -right-1 bg-amber-500 text-[hsl(197,65%,12%)] text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
                       {totalItems}
                     </span>
                   )}
@@ -81,7 +80,7 @@ export function Navbar() {
                 <div className="relative">
                   <button
                     onClick={() => setAccountOpen((v) => !v)}
-                    className="flex items-center gap-1.5 text-sm font-medium text-gray-700 hover:text-red-600"
+                    className="flex items-center gap-1.5 text-sm font-medium text-gray-700 hover:text-primary"
                     data-testid="account-menu-trigger"
                   >
                     <User className="h-4 w-4" />
@@ -98,7 +97,7 @@ export function Navbar() {
                         <Link href="/account/addresses" onClick={() => setAccountOpen(false)} className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-50"><MapPin className="h-4 w-4" /> Addresses</Link>
                         <button
                           onClick={() => { logout(); setAccountOpen(false); navigate("/"); }}
-                          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-red-600 hover:bg-red-50"
+                          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-destructive hover:bg-destructive/10"
                           data-testid="navbar-logout"
                         >
                           <LogOut className="h-4 w-4" /> Logout
@@ -122,7 +121,7 @@ export function Navbar() {
                 <Button variant="ghost" size="icon" className="relative">
                   <ShoppingCart className="h-5 w-5" />
                   {totalItems > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                    <span className="absolute -top-1 -right-1 bg-amber-500 text-[hsl(197,65%,12%)] text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
                       {totalItems}
                     </span>
                   )}
@@ -144,7 +143,7 @@ export function Navbar() {
                 href={link.href}
                 onClick={() => setIsMenuOpen(false)}
                 className={`block px-3 py-2 rounded-md text-base font-medium ${
-                  location === link.href ? "bg-red-50 text-red-600" : "text-gray-700 hover:bg-gray-50"
+                  location === link.href ? "bg-primary/10 text-primary" : "text-gray-700 hover:bg-gray-50"
                 }`}
               >
                 {link.label}
@@ -162,11 +161,11 @@ export function Navbar() {
               <>
                 <Link href="/account" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50">My account</Link>
                 <Link href="/account/orders" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50">My orders</Link>
-                <button onClick={() => { logout(); setIsMenuOpen(false); }} className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-red-600 hover:bg-red-50">Logout</button>
+                <button onClick={() => { logout(); setIsMenuOpen(false); }} className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-destructive hover:bg-destructive/10">Logout</button>
               </>
             ) : (
               <>
-                <Link href="/login" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-red-700 hover:bg-red-50">Login</Link>
+                <Link href="/login" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-primary hover:bg-primary/10">Login</Link>
                 <Link href="/signup" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50">Create account</Link>
               </>
             )}

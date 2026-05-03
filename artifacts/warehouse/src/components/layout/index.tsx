@@ -1,18 +1,17 @@
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
-import { 
-  LayoutDashboard, 
-  Package, 
-  ArrowDownToLine, 
-  ArrowLeftRight, 
-  History, 
-  Settings2, 
+import {
+  LayoutDashboard,
+  Package,
+  ArrowDownToLine,
+  ArrowLeftRight,
+  History,
+  Settings2,
   LogOut,
-  Warehouse,
-  Menu,
   ChevronLeft,
   HelpCircle
 } from "lucide-react";
+import logoUrl from "@assets/rathinam_logo.png";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -48,13 +47,18 @@ export function Sidebar({ className }: SidebarProps) {
 
   return (
     <div className={cn(
-      "relative flex flex-col h-screen border-r bg-[#1e293b] text-white transition-all duration-300",
+      "relative flex flex-col h-screen border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-all duration-300",
       isCollapsed ? "w-16" : "w-64",
       className
     )}>
-      <div className="flex items-center h-16 px-4 border-b border-white/10">
-        <Warehouse className="h-6 w-6 text-teal-400" />
-        {!isCollapsed && <span className="ml-3 font-bold text-lg tracking-tight">RATHINAM WH</span>}
+      <div className="flex items-center h-16 px-3 border-b border-sidebar-border bg-sidebar-accent/40">
+        <img src={logoUrl} alt="" className="h-9 w-9 rounded bg-white/95 p-0.5 object-contain shrink-0" />
+        {!isCollapsed && (
+          <div className="ml-2.5 flex flex-col leading-tight">
+            <span className="font-extrabold text-sm tracking-wide">RATHINAM</span>
+            <span className="text-[10px] font-semibold tracking-[0.18em] uppercase text-amber-300/90">Warehouse</span>
+          </div>
+        )}
       </div>
 
       <nav className="flex-1 py-4 space-y-1">
@@ -62,8 +66,8 @@ export function Sidebar({ className }: SidebarProps) {
           const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href));
           return (
             <Link key={item.href} href={item.href} className={cn(
-              "flex items-center px-4 py-3 transition-colors hover:bg-white/10",
-              isActive ? "bg-white/10 text-teal-400 border-r-4 border-teal-400" : "text-gray-300",
+              "flex items-center px-4 py-3 transition-colors hover:bg-sidebar-accent",
+              isActive ? "bg-sidebar-accent text-amber-300 border-r-4 border-amber-400" : "text-sidebar-foreground/85",
               isCollapsed && "justify-center"
             )}>
               <item.icon className={cn("h-5 w-5", !isCollapsed && "mr-3")} />
@@ -73,11 +77,11 @@ export function Sidebar({ className }: SidebarProps) {
         })}
       </nav>
 
-      <div className="p-4 border-t border-white/10">
+      <div className="p-4 border-t border-sidebar-border">
         <button
           onClick={handleLogout}
           className={cn(
-            "flex items-center w-full px-4 py-3 text-gray-300 transition-colors hover:bg-white/10 rounded-md",
+            "flex items-center w-full px-4 py-3 text-sidebar-foreground/85 transition-colors hover:bg-destructive hover:text-destructive-foreground rounded-md",
             isCollapsed && "justify-center"
           )}
         >
@@ -107,7 +111,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className="flex h-screen bg-background overflow-hidden">
       <Sidebar />
       <main className="flex-1 overflow-y-auto p-4 md:p-8">
         <div className="max-w-7xl mx-auto">

@@ -386,7 +386,7 @@ export default function ProductDetail() {
     return (
       <Layout>
         <div className="max-w-7xl mx-auto px-4 py-20 flex flex-col items-center">
-          <div className="h-10 w-10 border-4 border-red-600 border-t-transparent rounded-full animate-spin mb-4" />
+          <div className="h-10 w-10 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4" />
           <p className="text-gray-500">Discovering product details...</p>
         </div>
       </Layout>
@@ -401,7 +401,7 @@ export default function ProductDetail() {
           <h2 className="text-2xl font-bold mb-2">Product Not Found</h2>
           <p className="text-gray-500 mb-8">The product you're looking for doesn't exist or has been removed.</p>
           <Link href="/catalogue">
-            <Button className="bg-red-600">Back to Catalogue</Button>
+            <Button className="bg-primary">Back to Catalogue</Button>
           </Link>
         </div>
       </Layout>
@@ -479,23 +479,23 @@ export default function ProductDetail() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Breadcrumb */}
           <nav className="flex items-center text-sm text-gray-500 mb-8" data-testid="breadcrumb">
-            <Link href="/" className="hover:text-red-600 transition-colors">Home</Link>
+            <Link href="/" className="hover:text-primary transition-colors">Home</Link>
             <span className="mx-2">/</span>
-            <Link href="/catalogue" className="hover:text-red-600 transition-colors">Catalogue</Link>
+            <Link href="/catalogue" className="hover:text-primary transition-colors">Catalogue</Link>
             <span className="mx-2">/</span>
-            <span className="hover:text-red-600 transition-colors">{product.category}</span>
+            <span className="hover:text-primary transition-colors">{product.category}</span>
             <span className="mx-2">/</span>
             <span className="text-gray-900 font-medium truncate">{product.name}</span>
           </nav>
 
-          <Link href="/catalogue" className="inline-flex items-center text-sm text-gray-500 hover:text-red-600 mb-6 transition-colors">
+          <Link href="/catalogue" className="inline-flex items-center text-sm text-gray-500 hover:text-primary mb-6 transition-colors">
             <ChevronLeft className="h-4 w-4 mr-1" /> Back to Catalogue
           </Link>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20">
             {/* ---------- Gallery ---------- */}
             <div>
-              <div className="aspect-square rounded-3xl bg-gradient-to-br from-red-500/10 via-amber-500/10 to-yellow-300/10 flex items-center justify-center relative overflow-hidden group">
+              <div className="aspect-square rounded-3xl bg-gradient-to-br from-primary/10 via-amber-500/10 to-yellow-300/10 flex items-center justify-center relative overflow-hidden group">
                 <span
                   key={activeImage}
                   className="text-[12rem] transform group-hover:scale-110 transition-transform duration-700 animate-in fade-in zoom-in"
@@ -504,7 +504,7 @@ export default function ProductDetail() {
                   {galleryFrames[activeImage]}
                 </span>
                 <div className="absolute top-6 left-6 flex flex-col gap-2">
-                  <Badge className="bg-red-600 hover:bg-red-700 text-white px-4 py-1.5 rounded-full text-xs uppercase tracking-widest border-none">
+                  <Badge className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-1.5 rounded-full text-xs uppercase tracking-widest border-none">
                     {product.category}
                   </Badge>
                   {(product as any).featured && (
@@ -541,7 +541,7 @@ export default function ProductDetail() {
                     className="bg-white/90 backdrop-blur p-2.5 rounded-full hover:bg-white shadow-sm transition-all"
                     data-testid="wishlist-btn"
                   >
-                    <Heart className={`h-5 w-5 ${wishlisted ? "fill-red-600 text-red-600" : "text-gray-700"}`} />
+                    <Heart className={`h-5 w-5 ${wishlisted ? "fill-red-600 text-primary" : "text-gray-700"}`} />
                   </button>
                   <button
                     onClick={handleShare}
@@ -560,7 +560,7 @@ export default function ProductDetail() {
                     onClick={() => setActiveImage(idx)}
                     className={`aspect-square rounded-xl flex items-center justify-center text-3xl transition-all ${
                       activeImage === idx
-                        ? "bg-red-50 border-2 border-red-600"
+                        ? "bg-primary/10 border-2 border-primary"
                         : "bg-gray-50 border-2 border-transparent hover:border-gray-200"
                     }`}
                     data-testid={`thumbnail-${idx}`}
@@ -594,8 +594,8 @@ export default function ProductDetail() {
                   <p className="text-sm font-bold text-gray-900">{attrs.soundLevel} dB</p>
                   <Progress value={attrs.soundLevel} className="h-1.5 mt-2" />
                 </div>
-                <div className="rounded-2xl bg-gradient-to-br from-red-50 to-rose-50 p-4 border border-red-100">
-                  <div className="flex items-center text-red-700 mb-2">
+                <div className="rounded-2xl bg-gradient-to-br from-primary/5 to-amber-50 p-4 border border-primary/15">
+                  <div className="flex items-center text-primary mb-2">
                     <Flame className="h-4 w-4 mr-2" />
                     <span className="text-[10px] font-bold uppercase tracking-widest">Fuse Time</span>
                   </div>
@@ -619,7 +619,7 @@ export default function ProductDetail() {
                       />
                     ))}
                     <span className="ml-2 font-bold text-gray-900">{avgRating > 0 ? avgRating.toFixed(1) : "—"}</span>
-                    <a href="#reviews" className="ml-1 text-xs text-gray-500 hover:text-red-600">({totalReviews} review{totalReviews === 1 ? "" : "s"})</a>
+                    <a href="#reviews" className="ml-1 text-xs text-gray-500 hover:text-primary">({totalReviews} review{totalReviews === 1 ? "" : "s"})</a>
                   </div>
                   <Separator orientation="vertical" className="h-4" />
                   <span className="flex items-center text-xs text-gray-500">
@@ -644,7 +644,7 @@ export default function ProductDetail() {
                   </span>
                   {isMultiBrand && (
                     <span className="flex items-center">
-                      <Award className="h-3.5 w-3.5 mr-1 text-red-600" />
+                      <Award className="h-3.5 w-3.5 mr-1 text-primary" />
                       {brandGroups.length} brands available
                     </span>
                   )}
@@ -652,7 +652,7 @@ export default function ProductDetail() {
               </div>
 
               {/* Effect highlight pill */}
-              <div className="mb-6 rounded-2xl bg-gradient-to-r from-red-50 via-amber-50 to-yellow-50 border border-amber-100 p-4 flex items-start">
+              <div className="mb-6 rounded-2xl bg-gradient-to-r from-primary/5 via-amber-50 to-yellow-50 border border-amber-100 p-4 flex items-start">
                 <Zap className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5 mr-3" />
                 <div>
                   <p className="text-xs font-bold text-amber-700 uppercase tracking-widest mb-1">Effect</p>
@@ -664,7 +664,7 @@ export default function ProductDetail() {
               {isMultiBrand && (
                 <div className="mb-6" data-testid="brand-selector">
                   <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest mb-3 flex items-center">
-                    <Award className="h-4 w-4 mr-2 text-red-600" /> Choose Brand
+                    <Award className="h-4 w-4 mr-2 text-primary" /> Choose Brand
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {brandGroups.map(({ brand }) => {
@@ -677,7 +677,7 @@ export default function ProductDetail() {
                           onClick={() => setSelectedBrand(brand)}
                           className={`relative px-4 py-3 rounded-2xl border-2 transition-all text-left overflow-hidden ${
                             isActive
-                              ? "border-red-600 bg-red-50 ring-2 ring-red-100"
+                              ? "border-primary bg-primary/10 ring-2 ring-primary/20"
                               : "border-gray-100 bg-gray-50 hover:border-gray-200"
                           }`}
                           data-testid={`brand-${brand.replace(/\s+/g, "-").toLowerCase()}`}
@@ -686,7 +686,7 @@ export default function ProductDetail() {
                             <div className="flex items-center">
                               <span className="text-2xl mr-2">{info.emoji}</span>
                               <div>
-                                <span className={`block text-sm font-bold ${isActive ? "text-red-600" : "text-gray-900"}`}>
+                                <span className={`block text-sm font-bold ${isActive ? "text-primary" : "text-gray-900"}`}>
                                   {brand}
                                 </span>
                                 <span className="block text-[10px] text-gray-500 leading-tight">
@@ -694,7 +694,7 @@ export default function ProductDetail() {
                                 </span>
                               </div>
                             </div>
-                            {isActive && <CheckCircle2 className="h-4 w-4 text-red-600 flex-shrink-0" />}
+                            {isActive && <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0" />}
                           </div>
                           <div className="flex items-center justify-between text-[11px]">
                             <span className="flex items-center text-amber-600">
@@ -732,7 +732,7 @@ export default function ProductDetail() {
                         onClick={() => setSelectedVariantId(v.variantId ?? null)}
                         className={`px-5 py-3 rounded-2xl border-2 transition-all text-sm font-bold text-left min-w-[120px] ${
                           isActive
-                            ? "border-red-600 bg-red-50 text-red-600"
+                            ? "border-primary bg-primary/10 text-primary"
                             : "border-gray-100 bg-gray-50 text-gray-600 hover:border-gray-200"
                         }`}
                         data-testid={`variant-${v.variantId}`}
@@ -756,7 +756,7 @@ export default function ProductDetail() {
               {selectedVariant && (
                 <div className="mb-4 flex items-center text-sm" data-testid="stock-indicator">
                   <span className={`inline-block h-2 w-2 rounded-full mr-2 ${
-                    stockState === "high" ? "bg-green-500" : stockState === "medium" ? "bg-amber-500" : "bg-red-500"
+                    stockState === "high" ? "bg-green-500" : stockState === "medium" ? "bg-amber-500" : "bg-primary/100"
                   }`} />
                   <span className="font-semibold text-gray-700">
                     {stockState === "high" ? "In Stock" : stockState === "medium" ? "Limited Stock" : "Hurry – Low Stock"}
@@ -791,7 +791,7 @@ export default function ProductDetail() {
                       <p className="text-xs text-gray-500 uppercase tracking-tighter">Contents</p>
                       <p className="font-bold text-gray-700">{selectedVariant.packContent ?? "1 Pack"}</p>
                       {selectedVariant.brand && (
-                        <p className="text-xs text-red-600 font-semibold mt-1">{selectedVariant.brand}</p>
+                        <p className="text-xs text-primary font-semibold mt-1">{selectedVariant.brand}</p>
                       )}
                     </div>
                   </div>
@@ -833,7 +833,7 @@ export default function ProductDetail() {
 
                     {onlinePrice > 0 ? (
                       <Button
-                        className="flex-grow h-14 bg-red-600 hover:bg-red-700 text-white rounded-full font-bold text-lg shadow-lg shadow-red-900/10"
+                        className="flex-grow h-14 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full font-bold text-lg shadow-lg shadow-[hsl(197,65%,12%)]/10"
                         onClick={handleAddToCart}
                         data-testid="add-to-cart"
                       >
@@ -914,7 +914,7 @@ export default function ProductDetail() {
                   <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Pan-India Delivery</span>
                 </div>
                 <div className="flex flex-col items-center text-center">
-                  <Package className="h-6 w-6 text-red-500 mb-2" />
+                  <Package className="h-6 w-6 text-primary mb-2" />
                   <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Secure Packaging</span>
                 </div>
               </div>
@@ -970,7 +970,7 @@ export default function ProductDetail() {
                       <li className="flex"><span className="text-amber-600 mr-2 font-bold">•</span>Store cool & dry, away from heat</li>
                     </ul>
                     <Separator className="my-4" />
-                    <a href="tel:+919876543210" className="flex items-center text-xs text-gray-600 hover:text-red-600">
+                    <a href="tel:+919876543210" className="flex items-center text-xs text-gray-600 hover:text-primary">
                       <Phone className="h-4 w-4 mr-2" /> Help: <span className="font-bold ml-1">+91 98765 43210</span>
                     </a>
                   </div>
@@ -1092,7 +1092,7 @@ export default function ProductDetail() {
                         <div key={r.id ?? i} className="rounded-2xl border border-gray-100 p-5 bg-white" data-testid={`review-${i}`}>
                           <div className="flex items-start justify-between mb-2">
                             <div className="flex items-center">
-                              <div className="h-10 w-10 rounded-full bg-gradient-to-br from-red-500 to-amber-500 text-white font-bold flex items-center justify-center mr-3">
+                              <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-amber-500 text-white font-bold flex items-center justify-center mr-3">
                                 {(r.authorName || "·").charAt(0)}
                               </div>
                               <div>
@@ -1225,15 +1225,15 @@ export default function ProductDetail() {
                       href={`/product/${rp.id}`}
                       className="group flex items-center rounded-2xl border border-gray-100 hover:border-red-200 hover:shadow-md transition-all overflow-hidden bg-white p-4"
                     >
-                      <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-red-500/10 to-amber-500/10 flex items-center justify-center text-4xl mr-4 flex-shrink-0">
+                      <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-primary/10 to-amber-500/10 flex items-center justify-center text-4xl mr-4 flex-shrink-0">
                         {categoryEmoji(rp.category)}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-[10px] uppercase tracking-widest text-red-600 font-bold mb-1">{rp.category}</p>
-                        <h3 className="font-bold text-gray-900 text-sm line-clamp-1 mb-1 group-hover:text-red-600 transition-colors">{rp.name}</h3>
+                        <p className="text-[10px] uppercase tracking-widest text-primary font-bold mb-1">{rp.category}</p>
+                        <h3 className="font-bold text-gray-900 text-sm line-clamp-1 mb-1 group-hover:text-primary transition-colors">{rp.name}</h3>
                         <p className="text-sm font-extrabold text-gray-900">{formatPrice(startPrice)}</p>
                       </div>
-                      <Plus className="h-5 w-5 text-gray-400 group-hover:text-red-600 transition-colors flex-shrink-0" />
+                      <Plus className="h-5 w-5 text-gray-400 group-hover:text-primary transition-colors flex-shrink-0" />
                     </Link>
                   );
                 })}
@@ -1259,11 +1259,11 @@ export default function ProductDetail() {
                       className="group rounded-2xl border border-gray-100 hover:border-red-200 hover:shadow-md transition-all overflow-hidden bg-white"
                       data-testid={`related-${rp.id}`}
                     >
-                      <div className="aspect-square bg-gradient-to-br from-red-500/10 to-amber-500/10 flex items-center justify-center text-6xl group-hover:scale-105 transition-transform">
+                      <div className="aspect-square bg-gradient-to-br from-primary/10 to-amber-500/10 flex items-center justify-center text-6xl group-hover:scale-105 transition-transform">
                         {categoryEmoji(rp.category)}
                       </div>
                       <div className="p-4">
-                        <p className="text-[10px] uppercase tracking-widest text-red-600 font-bold mb-1">{rp.category}</p>
+                        <p className="text-[10px] uppercase tracking-widest text-primary font-bold mb-1">{rp.category}</p>
                         <h3 className="font-bold text-gray-900 text-sm line-clamp-2 mb-1">{rp.name}</h3>
                         <div className="flex items-center justify-between">
                           <p className="text-sm font-extrabold text-gray-900">{formatPrice(startPrice)}</p>

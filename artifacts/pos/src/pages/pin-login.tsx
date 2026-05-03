@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Delete } from "lucide-react";
+import logoUrl from "@assets/rathinam_logo.png";
 
 const PinLogin = () => {
   const [pin, setPin] = useState("");
@@ -82,30 +83,32 @@ const PinLogin = () => {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-[#0d0d0d]">
-      <div className="w-full max-w-sm space-y-8">
+    <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gradient-to-br from-[hsl(197,65%,12%)] via-[hsl(200,35%,7%)] to-[hsl(200,35%,5%)]">
+      <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
-          <h1 className="text-5xl font-black tracking-tighter text-primary">RATHINAM</h1>
-          <p className="mt-2 text-zinc-400 font-medium">Cashier Login</p>
+          <div className="mx-auto mb-3 inline-flex items-center justify-center h-28 w-28 rounded-3xl bg-white/95 p-3 shadow-2xl shadow-black/40 ring-1 ring-amber-300/40">
+            <img src={logoUrl} alt="Rathinam Crackers" className="h-full w-full object-contain" />
+          </div>
+          <p className="mt-1 text-amber-300 font-semibold tracking-[0.25em] uppercase text-xs">Cashier Login</p>
         </div>
 
         <div className="space-y-4">
           <Select onValueChange={setUserId} value={userId}>
-            <SelectTrigger className="w-full h-14 bg-zinc-900 border-zinc-800 text-lg">
+            <SelectTrigger className="w-full h-14 bg-[hsl(200,30%,10%)] border-[hsl(197,50%,22%)] text-lg text-zinc-100">
               <SelectValue placeholder="Select Cashier" />
             </SelectTrigger>
-            <SelectContent className="bg-zinc-900 border-zinc-800">
+            <SelectContent className="bg-[hsl(200,30%,10%)] border-[hsl(197,50%,22%)]">
               {cashiers.map(c => (
                 <SelectItem key={c.id} value={c.id} className="h-12">{c.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
 
-          <div className="flex justify-center gap-4 py-8">
+          <div className="flex justify-center gap-4 py-6">
             {[0, 1, 2, 3].map(i => (
-              <div 
-                key={i} 
-                className={`w-4 h-4 rounded-full border-2 border-primary ${pin.length > i ? 'bg-primary' : 'bg-transparent'}`}
+              <div
+                key={i}
+                className={`w-4 h-4 rounded-full border-2 border-amber-400 transition-colors ${pin.length > i ? 'bg-amber-400' : 'bg-transparent'}`}
               />
             ))}
           </div>
@@ -115,7 +118,7 @@ const PinLogin = () => {
               <Button
                 key={num}
                 variant="outline"
-                className="h-20 text-2xl font-bold bg-zinc-900 border-zinc-800 hover:bg-zinc-800 hover:text-primary active:scale-95"
+                className="h-20 text-2xl font-bold bg-[hsl(200,30%,10%)] border-[hsl(197,50%,22%)] text-zinc-100 hover:bg-[hsl(197,55%,24%)] hover:text-amber-300 active:scale-95"
                 onClick={() => handleNumberClick(num.toString())}
               >
                 {num}
@@ -123,29 +126,29 @@ const PinLogin = () => {
             ))}
             <Button
               variant="outline"
-              className="h-20 text-2xl font-bold bg-zinc-900 border-zinc-800 hover:bg-zinc-800 text-primary"
+              className="h-20 text-2xl font-bold bg-[hsl(200,30%,10%)] border-[hsl(197,50%,22%)] hover:bg-[hsl(197,55%,24%)] text-amber-300"
               onClick={() => setPin("")}
             >
               C
             </Button>
             <Button
               variant="outline"
-              className="h-20 text-2xl font-bold bg-zinc-900 border-zinc-800 hover:bg-zinc-800 hover:text-primary active:scale-95"
+              className="h-20 text-2xl font-bold bg-[hsl(200,30%,10%)] border-[hsl(197,50%,22%)] text-zinc-100 hover:bg-[hsl(197,55%,24%)] hover:text-amber-300 active:scale-95"
               onClick={() => handleNumberClick("0")}
             >
               0
             </Button>
             <Button
               variant="outline"
-              className="h-20 text-2xl font-bold bg-zinc-900 border-zinc-800 hover:bg-zinc-800 text-red-500"
+              className="h-20 text-2xl font-bold bg-[hsl(200,30%,10%)] border-[hsl(197,50%,22%)] hover:bg-[hsl(197,55%,24%)] text-red-400"
               onClick={handleDelete}
             >
               <Delete className="w-8 h-8" />
             </Button>
           </div>
 
-          <Button 
-            className="w-full h-16 text-xl font-bold mt-4" 
+          <Button
+            className="w-full h-16 text-xl font-bold mt-4 bg-amber-400 text-[hsl(197,65%,12%)] hover:bg-amber-300 disabled:opacity-50"
             disabled={pin.length < 4 || !userId || isPending}
             onClick={handleLogin}
           >

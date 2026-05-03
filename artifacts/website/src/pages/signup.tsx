@@ -59,13 +59,13 @@ export default function Signup() {
               <Label>Password (6+ chars)</Label>
               <Input type="password" value={form.password} onChange={handle("password")} required data-testid="signup-password" />
             </div>
-            <Button type="submit" className="w-full bg-red-600 hover:bg-red-700 h-12" disabled={signup.isPending} data-testid="signup-submit">
+            <Button type="submit" className="w-full bg-primary hover:bg-primary/90 h-12 text-primary-foreground" disabled={signup.isPending} data-testid="signup-submit">
               {signup.isPending ? "Creating…" : "Create account"}
             </Button>
           </form>
           <p className="text-sm text-gray-600 mt-6 text-center">
             Already a customer?{" "}
-            <Link href="/login" className="text-red-600 font-semibold hover:underline">
+            <Link href="/login" className="text-primary font-semibold hover:underline">
               Sign in
             </Link>
           </p>

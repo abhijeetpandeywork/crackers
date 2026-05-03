@@ -85,7 +85,7 @@ export default function Checkout() {
           </div>
           <h1 className="text-4xl font-extrabold text-gray-900 mb-4">Order placed!</h1>
           <p className="text-xl text-gray-600 mb-8">
-            Your order ID is <span className="font-bold text-red-600">#{placedOrder.invoiceNo}</span>.
+            Your order ID is <span className="font-bold text-primary">#{placedOrder.invoiceNo}</span>.
           </p>
           <div className="bg-amber-50 border border-amber-100 rounded-3xl p-8 mb-10 text-left">
             <h3 className="font-bold text-amber-900 mb-2 flex items-center">
@@ -97,7 +97,7 @@ export default function Checkout() {
           </div>
           <div className="flex flex-wrap justify-center gap-3">
             <Link href={`/account/orders/${placedOrder.id}`}>
-              <Button className="bg-red-600 hover:bg-red-700 h-14 px-10 rounded-full text-lg font-bold">View order</Button>
+              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground h-14 px-10 rounded-full text-lg font-bold">View order</Button>
             </Link>
             <Link href="/catalogue">
               <Button variant="outline" className="h-14 px-10 rounded-full text-lg font-bold">Continue shopping</Button>
@@ -113,7 +113,7 @@ export default function Checkout() {
       <Layout>
         <div className="max-w-3xl mx-auto px-4 py-20 text-center">
           <h1 className="text-3xl font-extrabold mb-4">Your cart is empty</h1>
-          <Link href="/catalogue"><Button className="bg-red-600 hover:bg-red-700">Browse catalogue</Button></Link>
+          <Link href="/catalogue"><Button className="bg-primary hover:bg-primary/90 text-primary-foreground">Browse catalogue</Button></Link>
         </div>
       </Layout>
     );
@@ -123,7 +123,7 @@ export default function Checkout() {
     <Layout>
       <div className="bg-gray-50 min-h-screen py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <Link href="/cart" className="inline-flex items-center text-sm text-gray-500 hover:text-red-600 mb-8 transition-colors">
+          <Link href="/cart" className="inline-flex items-center text-sm text-gray-500 hover:text-primary mb-8 transition-colors">
             <ChevronLeft className="h-4 w-4 mr-1" /> Back to cart
           </Link>
           <h1 className="text-3xl font-bold text-gray-900 mb-10">Checkout</h1>
@@ -131,12 +131,12 @@ export default function Checkout() {
           <form onSubmit={handlePlace} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-6">
               <section className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
-                <h2 className="text-xl font-bold mb-6 flex items-center"><MapPin className="h-5 w-5 mr-2 text-red-600" /> Delivery address</h2>
+                <h2 className="text-xl font-bold mb-6 flex items-center"><MapPin className="h-5 w-5 mr-2 text-primary" /> Delivery address</h2>
 
                 {addresses.length > 0 && !showNewAddr && (
                   <div className="space-y-3 mb-4">
                     {addresses.map((a) => (
-                      <label key={a.id} className={`block p-4 rounded-2xl border cursor-pointer transition ${selectedAddr === a.id ? "border-red-500 bg-red-50/50" : "border-gray-200 hover:border-gray-300"}`}>
+                      <label key={a.id} className={`block p-4 rounded-2xl border cursor-pointer transition ${selectedAddr === a.id ? "border-primary bg-primary/5" : "border-gray-200 hover:border-gray-300"}`}>
                         <div className="flex items-start gap-3">
                           <input type="radio" name="addr" checked={selectedAddr === a.id} onChange={() => setSelectedAddr(a.id)} className="mt-1" data-testid={`addr-radio-${a.id}`} />
                           <div className="flex-1">
@@ -179,7 +179,7 @@ export default function Checkout() {
                     { v: "UPI", label: "UPI / QR", desc: "We'll share UPI / QR during the verification call." },
                     { v: "BANK", label: "Bank transfer", desc: "We'll share bank details during the verification call." },
                   ].map((opt) => (
-                    <label key={opt.v} className={`block p-4 rounded-2xl border cursor-pointer transition ${paymentMode === opt.v ? "border-red-500 bg-red-50/50" : "border-gray-200"}`}>
+                    <label key={opt.v} className={`block p-4 rounded-2xl border cursor-pointer transition ${paymentMode === opt.v ? "border-primary bg-primary/5" : "border-gray-200"}`}>
                       <div className="flex items-start gap-3">
                         <input type="radio" name="pay" checked={paymentMode === opt.v} onChange={() => setPaymentMode(opt.v as any)} className="mt-1" data-testid={`payment-${opt.v}`} />
                         <div>
@@ -217,7 +217,7 @@ export default function Checkout() {
                 </div>
                 <Button
                   type="submit"
-                  className="w-full h-16 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-bold text-xl shadow-lg shadow-red-900/10"
+                  className="w-full h-16 bg-primary hover:bg-primary/90 text-primary-foreground rounded-2xl font-bold text-xl shadow-lg shadow-[hsl(197,65%,12%)]/10"
                   disabled={placeOrder.isPending || createAddr.isPending}
                   data-testid="checkout-place-order"
                 >

@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Warehouse } from "lucide-react";
+import logoUrl from "@assets/rathinam_logo.png";
 
 export default function Login() {
   const [, setLocation] = useLocation();
@@ -46,21 +46,19 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[hsl(197,65%,18%)] via-[hsl(200,30%,12%)] to-[hsl(200,35%,5%)] px-4">
+      <Card className="w-full max-w-md border-[hsl(197,50%,22%)] bg-[hsl(200,30%,10%)] text-zinc-100 shadow-2xl">
         <CardHeader className="text-center">
-          <div className="flex justify-center mb-2">
-            <div className="p-3 bg-primary/10 rounded-full">
-              <Warehouse className="h-10 w-10 text-primary" />
-            </div>
+          <div className="mx-auto mb-3 inline-flex items-center justify-center h-24 w-24 rounded-3xl bg-white/95 p-3 shadow-xl shadow-black/30 ring-1 ring-amber-300/40">
+            <img src={logoUrl} alt="Rathinam Crackers" className="h-full w-full object-contain" />
           </div>
-          <CardTitle className="text-2xl font-bold">RATHINAM WAREHOUSE</CardTitle>
-          <CardDescription>Enter your credentials to access the warehouse system</CardDescription>
+          <CardTitle className="text-xl font-bold tracking-wide text-amber-300 uppercase">Warehouse Operations</CardTitle>
+          <CardDescription className="text-zinc-400">Enter your credentials to access the warehouse system</CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="username" className="text-zinc-300">Username</Label>
               <Input
                 id="username"
                 type="text"
@@ -68,10 +66,11 @@ export default function Login() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
+                className="bg-[hsl(200,35%,7%)] border-[hsl(197,50%,22%)] text-zinc-100 focus-visible:ring-amber-400"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password" className="text-zinc-300">Password</Label>
               <Input
                 id="password"
                 type="password"
@@ -79,13 +78,14 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                className="bg-[hsl(200,35%,7%)] border-[hsl(197,50%,22%)] text-zinc-100 focus-visible:ring-amber-400"
               />
             </div>
           </CardContent>
           <CardFooter>
-            <Button 
-              type="submit" 
-              className="w-full bg-primary hover:bg-primary/90" 
+            <Button
+              type="submit"
+              className="w-full bg-amber-400 text-[hsl(197,65%,12%)] hover:bg-amber-300 font-semibold"
               disabled={loginMutation.isPending}
             >
               {loginMutation.isPending ? "Logging in..." : "Login"}

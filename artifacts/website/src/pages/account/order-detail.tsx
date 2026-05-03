@@ -12,7 +12,7 @@ export default function OrderDetail() {
 
   return (
     <AccountShell>
-      <Link href="/account/orders" className="text-sm text-red-600 font-semibold inline-flex items-center gap-1 mb-4">
+      <Link href="/account/orders" className="text-sm text-primary font-semibold inline-flex items-center gap-1 mb-4">
         <ArrowLeft className="h-3.5 w-3.5" /> Back to orders
       </Link>
       {isLoading ? (

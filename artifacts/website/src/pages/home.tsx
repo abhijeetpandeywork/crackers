@@ -89,7 +89,7 @@ const DEFAULT_HOW_IT_WORKS = [
 ];
 
 const DEFAULT_WHY_US = [
-  { icon: "Award",       title: "Premium quality",       desc: "Every batch hand-checked at our Sivakasi unit. Fresh stock for every season — no leftover inventory.", iconBg: "bg-red-50 text-red-600" },
+  { icon: "Award",       title: "Premium quality",       desc: "Every batch hand-checked at our Sivakasi unit. Fresh stock for every season — no leftover inventory.", iconBg: "bg-primary/10 text-primary" },
   { icon: "Truck",       title: "Pan-India delivery",     desc: "Specialised, licensed cracker logistics. Tracked, insured and delivered to 120+ cities across India.", iconBg: "bg-amber-50 text-amber-600" },
   { icon: "ShieldCheck", title: "GST & PESO compliant",   desc: "Every product PESO-licensed. Every invoice GST-compliant. 100% legal, 100% transparent.", iconBg: "bg-green-50 text-green-600" },
   { icon: "Heart",       title: "Family-run since 1985",  desc: "Three generations, one promise — to treat every customer's home like our own celebration.", iconBg: "bg-pink-50 text-pink-600" },
@@ -150,7 +150,7 @@ export default function Home() {
         </div>
         {/* Decorative glows */}
         <div className="absolute -top-20 -right-20 w-96 h-96 rounded-full bg-amber-500/20 blur-3xl" />
-        <div className="absolute -bottom-20 -left-20 w-96 h-96 rounded-full bg-red-500/20 blur-3xl" />
+        <div className="absolute -bottom-20 -left-20 w-96 h-96 rounded-full bg-[hsl(197,71%,45%)]/25 blur-3xl" />
 
         <div className="relative z-10 text-center px-4 max-w-5xl">
           <div className="inline-flex items-center gap-2 bg-amber-500/15 border border-amber-400/30 backdrop-blur px-4 py-1.5 rounded-full mb-6">
@@ -200,12 +200,12 @@ export default function Home() {
       </section>
 
       {/* TRUST STATS STRIP */}
-      <section className="bg-gradient-to-r from-red-50 via-amber-50 to-red-50 border-y border-amber-100">
+      <section className="bg-gradient-to-r from-[hsl(197,71%,96%)] via-amber-50 to-[hsl(197,71%,96%)] border-y border-amber-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-10">
             {STATS.map((s) => (
               <div key={s.label} className="text-center">
-                <div className="text-3xl md:text-4xl font-extrabold bg-gradient-to-r from-red-700 to-amber-600 bg-clip-text text-transparent">{s.value}</div>
+                <div className="text-3xl md:text-4xl font-extrabold bg-gradient-to-r from-[hsl(197,71%,28%)] to-[hsl(41,89%,45%)] bg-clip-text text-transparent">{s.value}</div>
                 <div className="text-sm font-semibold text-gray-800 mt-1">{s.label}</div>
                 <div className="text-xs text-gray-500 mt-0.5">{s.sub}</div>
               </div>
@@ -218,7 +218,7 @@ export default function Home() {
       <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <span className="text-xs font-bold uppercase tracking-[0.25em] text-red-600">Curated for every celebration</span>
+            <span className="text-xs font-bold uppercase tracking-[0.25em] text-primary">Curated for every celebration</span>
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mt-3">Shop by occasion</h2>
             <p className="text-gray-600 mt-3 max-w-2xl mx-auto">From the brightness of Diwali to the warmth of weddings — find the right pack for the moment you are celebrating.</p>
           </div>
@@ -244,12 +244,12 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4 mb-10">
             <div>
-              <span className="text-xs font-bold uppercase tracking-[0.25em] text-red-600">Hand-picked</span>
+              <span className="text-xs font-bold uppercase tracking-[0.25em] text-primary">Hand-picked</span>
               <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mt-2">This season's favourites</h2>
               <p className="text-gray-600 mt-3 max-w-xl">Crowd-pleasing crackers our customers come back for, every single year.</p>
             </div>
             <Link href="/catalogue">
-              <Button variant="ghost" className="text-red-600 hover:text-red-700 font-semibold">
+              <Button variant="ghost" className="text-primary hover:text-primary/80 font-semibold">
                 View all products <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
@@ -261,17 +261,17 @@ export default function Home() {
                 <div key={i} className="min-w-[280px] h-[380px] bg-gray-100 rounded-2xl animate-pulse" />
               ))
             ) : products.length === 0 ? (
-              <div className="min-w-full text-center py-16 text-gray-500">No featured products yet — check the full <Link href="/catalogue" className="text-red-600 underline">catalogue</Link>.</div>
+              <div className="min-w-full text-center py-16 text-gray-500">No featured products yet — check the full <Link href="/catalogue" className="text-primary underline">catalogue</Link>.</div>
             ) : (
               products.map((product) => (
                 <Link key={product.id} href={`/product/${product.id}`} className="snap-start">
                   <Card className="min-w-[280px] group cursor-pointer border-none shadow-sm hover:shadow-2xl transition-all duration-300 rounded-2xl overflow-hidden bg-white">
                     <CardContent className="p-0">
-                      <div className="aspect-[4/5] bg-gradient-to-br from-red-100 via-amber-50 to-amber-100 flex items-center justify-center relative overflow-hidden">
+                      <div className="aspect-[4/5] bg-gradient-to-br from-primary/10 via-amber-50 to-amber-100 flex items-center justify-center relative overflow-hidden">
                         <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_50%_30%,rgba(251,191,36,0.4),transparent_60%)]" />
                         <span className="text-7xl transform group-hover:scale-110 transition-transform duration-500 relative z-10">🎆</span>
                         <div className="absolute top-3 left-3">
-                          <span className="bg-white/90 backdrop-blur-sm text-red-600 text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider">
+                          <span className="bg-white/90 backdrop-blur-sm text-primary text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider">
                             {product.category ?? "Cracker"}
                           </span>
                         </div>
@@ -287,7 +287,7 @@ export default function Home() {
                           {(() => {
                             const m = minPrice(product);
                             return (
-                              <p className="text-red-600 font-bold text-lg">
+                              <p className="text-primary font-bold text-lg">
                                 {m > 0 ? (
                                   <>₹{m.toLocaleString("en-IN")}<span className="text-xs text-gray-500 font-medium">+</span></>
                                 ) : (
@@ -311,7 +311,7 @@ export default function Home() {
       {/* SHOP BY CATEGORY */}
       <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <span className="text-xs font-bold uppercase tracking-[0.25em] text-red-600">Browse the lineup</span>
+          <span className="text-xs font-bold uppercase tracking-[0.25em] text-primary">Browse the lineup</span>
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mt-3 mb-12">Shop by category</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             {CATEGORIES.map((cat) => (
@@ -332,7 +332,7 @@ export default function Home() {
       <section className="relative py-24 bg-gradient-to-br from-[#1a0a00] via-[#3a0c00] to-[#5a1500] text-white overflow-hidden">
         <div className="absolute inset-0 opacity-10 bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2260%22%20height%3D%2260%22%20viewBox%3D%220%200%2060%2060%22%3E%3Cpath%20fill%3D%22%23fbbf24%22%20d%3D%22M30%2010l3%2014%2014%203-14%203-3%2014-3-14-14-3%2014-3z%22%2F%3E%3C%2Fsvg%3E')]" />
         <div className="absolute -top-32 right-0 w-[500px] h-[500px] rounded-full bg-amber-500/10 blur-3xl" />
-        <div className="absolute -bottom-32 left-0 w-[500px] h-[500px] rounded-full bg-red-500/10 blur-3xl" />
+        <div className="absolute -bottom-32 left-0 w-[500px] h-[500px] rounded-full bg-primary/100/10 blur-3xl" />
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-2 gap-12 items-center">
           <div>
@@ -363,7 +363,7 @@ export default function Home() {
           </div>
 
           <div className="relative">
-            <div className="aspect-[4/5] rounded-3xl bg-gradient-to-br from-amber-400/20 to-red-500/20 border border-amber-400/30 backdrop-blur p-8 flex flex-col items-center justify-center text-center relative overflow-hidden">
+            <div className="aspect-[4/5] rounded-3xl bg-gradient-to-br from-amber-400/25 to-primary/25 border border-amber-400/30 backdrop-blur p-8 flex flex-col items-center justify-center text-center relative overflow-hidden">
               <div className="absolute inset-0 opacity-50 bg-[radial-gradient(circle_at_50%_30%,rgba(251,191,36,0.3),transparent_60%)]" />
               <span className="text-9xl mb-6 relative z-10">🪔</span>
               <Quote className="h-8 w-8 text-amber-300 mb-4 relative z-10" />
@@ -383,17 +383,17 @@ export default function Home() {
       <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-14">
-            <span className="text-xs font-bold uppercase tracking-[0.25em] text-red-600">Simple &amp; safe</span>
+            <span className="text-xs font-bold uppercase tracking-[0.25em] text-primary">Simple &amp; safe</span>
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mt-3">How it works</h2>
           </div>
           <div className="grid md:grid-cols-3 gap-8">
             {HOW_IT_WORKS.map((s, i) => {
               const Icon = HOW_ICONS[s.icon] ?? Sparkles;
               return (
-              <div key={s.step} className="relative bg-gradient-to-br from-red-50 to-amber-50 border border-amber-100 rounded-3xl p-8 hover:shadow-xl transition-shadow">
-                <div className="absolute -top-4 -left-4 text-7xl font-extrabold text-red-600/10 select-none">{s.step}</div>
+              <div key={s.step} className="relative bg-gradient-to-br from-primary/5 to-amber-50 border border-amber-100 rounded-3xl p-8 hover:shadow-xl transition-shadow">
+                <div className="absolute -top-4 -left-4 text-7xl font-extrabold text-primary/10 select-none">{s.step}</div>
                 <div className="relative z-10">
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-red-600 to-amber-500 flex items-center justify-center text-white shadow-lg mb-5">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-amber-500 flex items-center justify-center text-white shadow-lg mb-5">
                     <Icon className="h-7 w-7" />
                   </div>
                   <h3 className="text-xl font-bold text-gray-900 mb-2">{s.title}</h3>
@@ -413,7 +413,7 @@ export default function Home() {
       <section className="py-20 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-14">
-            <span className="text-xs font-bold uppercase tracking-[0.25em] text-red-600">The Rathinam promise</span>
+            <span className="text-xs font-bold uppercase tracking-[0.25em] text-primary">The Rathinam promise</span>
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mt-3">Why families choose us, year after year</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -421,7 +421,7 @@ export default function Home() {
               const Icon = HOW_ICONS[f.icon] ?? Award;
               return (
               <div key={f.title} className="bg-white rounded-2xl p-7 border border-gray-100 hover:border-red-200 hover:shadow-lg transition-all">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${f.iconBg ?? "bg-red-50 text-red-600"}`}>
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${f.iconBg ?? "bg-primary/10 text-primary"}`}>
                   <Icon className="h-6 w-6" />
                 </div>
                 <h3 className="font-bold text-lg text-gray-900 mb-2">{f.title}</h3>
@@ -437,12 +437,12 @@ export default function Home() {
       <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <span className="text-xs font-bold uppercase tracking-[0.25em] text-red-600">Loved across India</span>
+            <span className="text-xs font-bold uppercase tracking-[0.25em] text-primary">Loved across India</span>
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mt-3">From the families we serve</h2>
           </div>
 
           <div className="relative max-w-3xl mx-auto">
-            <div className="bg-gradient-to-br from-red-50 to-amber-50 border border-amber-200 rounded-3xl p-8 md:p-12 shadow-sm relative overflow-hidden">
+            <div className="bg-gradient-to-br from-primary/5 to-amber-50 border border-amber-200 rounded-3xl p-8 md:p-12 shadow-sm relative overflow-hidden">
               <Quote className="absolute top-6 right-6 h-16 w-16 text-red-200/60" />
               <div className="flex items-center gap-1 mb-5">
                 {[...Array(currentTestimonial?.rating ?? 5)].map((_, i) => (
@@ -453,7 +453,7 @@ export default function Home() {
                 "{currentTestimonial?.text ?? ""}"
               </p>
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-amber-500 flex items-center justify-center text-white font-bold text-lg">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-amber-500 flex items-center justify-center text-white font-bold text-lg">
                   {(currentTestimonial?.name ?? "·").charAt(0)}
                 </div>
                 <div>
@@ -468,7 +468,7 @@ export default function Home() {
                   key={i}
                   onClick={() => setActive(i)}
                   aria-label={`Show testimonial ${i + 1}`}
-                  className={`h-2 rounded-full transition-all ${i === safeActive ? "w-8 bg-red-600" : "w-2 bg-gray-300 hover:bg-gray-400"}`}
+                  className={`h-2 rounded-full transition-all ${i === safeActive ? "w-8 bg-primary" : "w-2 bg-gray-300 hover:bg-gray-400"}`}
                 />
               ))}
             </div>
@@ -487,7 +487,7 @@ export default function Home() {
       </section>
 
       {/* BULK / WEDDING / CORPORATE CTA */}
-      <section className="py-16 bg-gradient-to-r from-red-700 via-red-600 to-amber-600 relative overflow-hidden">
+      <section className="py-16 bg-gradient-to-r from-[hsl(197,65%,18%)] via-[hsl(197,71%,28%)] to-[hsl(41,89%,45%)] relative overflow-hidden">
         <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_20%_50%,white,transparent_40%)]" />
         <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_80%_50%,white,transparent_40%)]" />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -502,7 +502,7 @@ export default function Home() {
             </div>
             <div className="flex flex-col sm:flex-row gap-4 md:justify-end">
               <a href="https://wa.me/919876543210?text=Hi%2C%20I%27d%20like%20a%20bulk%20quote" target="_blank" rel="noreferrer">
-                <Button size="lg" className="bg-white text-red-700 hover:bg-amber-50 font-bold text-lg px-8 h-14 rounded-full w-full sm:w-auto">
+                <Button size="lg" className="bg-white text-primary hover:bg-amber-300 font-bold text-lg px-8 h-14 rounded-full w-full sm:w-auto">
                   <MessageCircle className="mr-2 h-5 w-5 text-green-600" /> WhatsApp us
                 </Button>
               </a>
@@ -520,14 +520,14 @@ export default function Home() {
       <section className="py-20 bg-gray-50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <span className="text-xs font-bold uppercase tracking-[0.25em] text-red-600">Quick answers</span>
+            <span className="text-xs font-bold uppercase tracking-[0.25em] text-primary">Quick answers</span>
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mt-3">Frequently asked</h2>
           </div>
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
             <Accordion type="single" collapsible className="px-6">
               {FAQS.map((f, i) => (
                 <AccordionItem key={f.q} value={`item-${i}`} className="border-b last:border-0">
-                  <AccordionTrigger className="text-left font-semibold text-gray-900 hover:text-red-600 hover:no-underline py-5">
+                  <AccordionTrigger className="text-left font-semibold text-gray-900 hover:text-primary hover:no-underline py-5">
                     {f.q}
                   </AccordionTrigger>
                   <AccordionContent className="text-gray-600 leading-relaxed pb-5">
@@ -539,7 +539,7 @@ export default function Home() {
           </div>
           <div className="text-center mt-8">
             <Link href="/help">
-              <Button variant="outline" className="rounded-full border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700">
+              <Button variant="outline" className="rounded-full border-red-200 text-primary hover:bg-primary/10 hover:text-primary">
                 See full Help &amp; FAQ <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>

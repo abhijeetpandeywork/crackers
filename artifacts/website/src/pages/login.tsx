@@ -36,8 +36,8 @@ export default function Login() {
       <div className="max-w-md mx-auto px-4 py-12">
         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-2xl bg-red-50 grid place-items-center">
-              <LogIn className="h-5 w-5 text-red-600" />
+            <div className="w-10 h-10 rounded-2xl bg-primary/10 grid place-items-center">
+              <LogIn className="h-5 w-5 text-primary" />
             </div>
             <h1 className="text-2xl font-extrabold">Login to your account</h1>
           </div>
@@ -62,13 +62,13 @@ export default function Login() {
                 data-testid="login-password"
               />
             </div>
-            <Button type="submit" className="w-full bg-red-600 hover:bg-red-700 h-12" disabled={login.isPending} data-testid="login-submit">
+            <Button type="submit" className="w-full bg-primary hover:bg-primary/90 h-12 text-primary-foreground" disabled={login.isPending} data-testid="login-submit">
               {login.isPending ? "Signing in…" : "Sign in"}
             </Button>
           </form>
           <p className="text-sm text-gray-600 mt-6 text-center">
             New to Rathinam Crackers?{" "}
-            <Link href="/signup" className="text-red-600 font-semibold hover:underline">
+            <Link href="/signup" className="text-primary font-semibold hover:underline">
               Create an account
             </Link>
           </p>

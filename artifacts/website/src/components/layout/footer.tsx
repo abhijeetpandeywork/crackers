@@ -1,9 +1,10 @@
 import { Link } from "wouter";
 import { Phone, Mail, MapPin, ShieldCheck, Award, Truck, FileCheck, MessageCircle, Instagram, Facebook, Youtube } from "lucide-react";
+import logoUrl from "@assets/rathinam_logo.png";
 
 export function Footer() {
   return (
-    <footer className="bg-gradient-to-b from-gray-900 to-black text-gray-300 pt-16 pb-8">
+    <footer className="bg-gradient-to-b from-[hsl(197,65%,12%)] via-[hsl(200,35%,7%)] to-[hsl(200,35%,4%)] text-gray-300 pt-16 pb-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Trust strip */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 pb-10 mb-10 border-b border-gray-800">
@@ -40,9 +41,9 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-12 gap-10">
           {/* Brand column */}
           <div className="md:col-span-5">
-            <h2 className="text-3xl font-extrabold bg-gradient-to-r from-red-500 to-amber-400 bg-clip-text text-transparent mb-4">
-              🎆 Rathinam Crackers
-            </h2>
+            <div className="bg-white/95 inline-block rounded-lg p-2 mb-4">
+              <img src={logoUrl} alt="Rathinam Crackers" className="h-14 w-auto" />
+            </div>
             <p className="text-sm leading-relaxed text-gray-400 mb-5 max-w-md">
               Premium Sivakasi fireworks since 1985. Three generations of cracker craftsmanship, delivering safe and brilliant celebrations to every Indian home.
             </p>

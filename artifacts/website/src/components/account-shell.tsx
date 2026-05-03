@@ -42,7 +42,7 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
                   key={it.href}
                   href={it.href}
                   className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${
-                    active ? "bg-red-50 text-red-700 font-semibold" : "text-gray-700 hover:bg-gray-50"
+                    active ? "bg-primary/10 text-primary font-semibold" : "text-gray-700 hover:bg-gray-50"
                   }`}
                   data-testid={`account-nav-${it.label.toLowerCase().replace(/\s+/g, "-")}`}
                 >
@@ -53,7 +53,7 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
             })}
             <button
               onClick={() => { logout(); navigate("/"); }}
-              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-red-50 hover:text-red-700"
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-destructive/10 hover:text-destructive"
               data-testid="account-logout"
             >
               <LogOut className="h-4 w-4" /> Logout

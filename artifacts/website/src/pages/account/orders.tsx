@@ -17,7 +17,7 @@ export default function AccountOrders() {
         <div className="bg-white rounded-2xl p-12 border border-gray-100 text-center">
           <Package className="h-10 w-10 mx-auto text-gray-300" />
           <p className="text-gray-500 mt-3">No orders yet.</p>
-          <Link href="/catalogue" className="inline-block mt-4 text-red-600 font-semibold hover:underline">Browse catalogue →</Link>
+          <Link href="/catalogue" className="inline-block mt-4 text-primary font-semibold hover:underline">Browse catalogue →</Link>
         </div>
       ) : (
         <div className="space-y-3">

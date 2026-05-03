@@ -64,7 +64,7 @@ export default function Catalogue() {
                     <TabsTrigger 
                       key={cat} 
                       value={cat}
-                      className="rounded-full px-6 data-[state=active]:bg-white data-[state=active]:text-red-600 data-[state=active]:shadow-sm"
+                      className="rounded-full px-6 data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm"
                     >
                       {cat}
                     </TabsTrigger>
@@ -78,7 +78,7 @@ export default function Catalogue() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-20">
-              <Loader2 className="h-10 w-10 text-red-600 animate-spin mb-4" />
+              <Loader2 className="h-10 w-10 text-primary animate-spin mb-4" />
               <p className="text-gray-500 font-medium">Loading our fireworks collection...</p>
             </div>
           ) : products.length === 0 ? (
@@ -96,18 +96,18 @@ export default function Catalogue() {
                     href={`/product/${product.id}`}
                     className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 flex flex-col"
                   >
-                    <div className="aspect-square bg-gradient-to-br from-red-50 to-amber-50 flex items-center justify-center relative overflow-hidden">
+                    <div className="aspect-square bg-gradient-to-br from-primary/5 to-amber-50 flex items-center justify-center relative overflow-hidden">
                       <span className="text-7xl group-hover:scale-110 transition-transform duration-500">
                         {product.category === 'Aerial' ? '🚀' : product.category === 'Gift Box' ? '🎁' : '🎇'}
                       </span>
                       <div className="absolute top-3 left-3">
-                        <span className="bg-white/90 backdrop-blur-sm text-red-600 text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider shadow-sm">
+                        <span className="bg-white/90 backdrop-blur-sm text-primary text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider shadow-sm">
                           {product.category}
                         </span>
                       </div>
                     </div>
                     <div className="p-4 flex-grow flex flex-col">
-                      <h3 className="font-bold text-gray-900 mb-1 line-clamp-2 group-hover:text-red-600 transition-colors">
+                      <h3 className="font-bold text-gray-900 mb-1 line-clamp-2 group-hover:text-primary transition-colors">
                         {product.name}
                       </h3>
                       <p className="text-sm text-gray-500 mb-3">Code: {product.code}</p>
@@ -124,7 +124,7 @@ export default function Catalogue() {
                             </span>
                           );
                         })()}
-                        <Button size="sm" variant="outline" className="rounded-full border-red-100 text-red-600 hover:bg-red-50 group-hover:bg-red-600 group-hover:text-white group-hover:border-red-600 transition-all">
+                        <Button size="sm" variant="outline" className="rounded-full border-primary/15 text-primary hover:bg-primary/10 group-hover:bg-primary group-hover:text-white group-hover:border-primary transition-all">
                           View
                         </Button>
                       </div>

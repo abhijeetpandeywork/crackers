@@ -35,12 +35,12 @@ export default function AccountIndex() {
       <div className="bg-white rounded-2xl p-5 border border-gray-100">
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-bold">Recent orders</h2>
-          <Link href="/account/orders" className="text-sm text-red-600 font-semibold flex items-center gap-1">
+          <Link href="/account/orders" className="text-sm text-primary font-semibold flex items-center gap-1">
             View all <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </div>
         {recentOrders.length === 0 ? (
-          <p className="text-sm text-gray-500 py-6 text-center">No orders yet — <Link href="/catalogue" className="text-red-600 font-semibold">start shopping</Link>.</p>
+          <p className="text-sm text-gray-500 py-6 text-center">No orders yet — <Link href="/catalogue" className="text-primary font-semibold">start shopping</Link>.</p>
         ) : (
           <div className="space-y-2">
             {recentOrders.map((o) => (

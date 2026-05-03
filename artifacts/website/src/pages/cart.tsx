@@ -75,7 +75,7 @@ export default function Cart() {
             Looks like you haven't added any fireworks yet. Start shopping to celebrate your next occasion!
           </p>
           <Link href="/catalogue">
-            <Button className="bg-red-600 hover:bg-red-700 h-14 px-10 rounded-full text-lg font-bold shadow-lg shadow-red-900/10">
+            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground h-14 px-10 rounded-full text-lg font-bold shadow-lg shadow-[hsl(197,65%,12%)]/10">
               Start Shopping
             </Button>
           </Link>
@@ -95,7 +95,7 @@ export default function Cart() {
             <div className="lg:col-span-2 space-y-4">
               {items.map((item) => (
                 <div key={`${item.productId}-${item.variantId}`} className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col sm:flex-row items-center gap-6">
-                  <div className="w-24 h-24 bg-gradient-to-br from-red-50 to-amber-50 rounded-2xl flex items-center justify-center text-4xl">
+                  <div className="w-24 h-24 bg-gradient-to-br from-primary/5 to-amber-50 rounded-2xl flex items-center justify-center text-4xl">
                     🎆
                   </div>
                   <div className="flex-grow text-center sm:text-left">
@@ -124,7 +124,7 @@ export default function Cart() {
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="text-gray-400 hover:text-red-600"
+                        className="text-gray-400 hover:text-primary"
                         onClick={() => removeItem(item.productId, item.variantId)}
                       >
                         <Trash2 className="h-5 w-5" />
@@ -194,7 +194,7 @@ export default function Cart() {
                 </div>
 
                 <Link href="/checkout">
-                  <Button className="w-full h-16 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-bold text-xl shadow-lg shadow-red-900/10">
+                  <Button className="w-full h-16 bg-primary hover:bg-primary/90 text-primary-foreground rounded-2xl font-bold text-xl shadow-lg shadow-[hsl(197,65%,12%)]/10">
                     Checkout <ArrowRight className="ml-2 h-6 w-6" />
                   </Button>
                 </Link>

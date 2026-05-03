@@ -24,7 +24,7 @@ export default function Wishlist() {
         <div className="bg-white rounded-2xl p-12 border border-gray-100 text-center">
           <Heart className="h-10 w-10 mx-auto text-gray-300" />
           <p className="text-gray-500 mt-3">Your wishlist is empty.</p>
-          <Link href="/catalogue" className="inline-block mt-4 text-red-600 font-semibold hover:underline">Browse products →</Link>
+          <Link href="/catalogue" className="inline-block mt-4 text-primary font-semibold hover:underline">Browse products →</Link>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
