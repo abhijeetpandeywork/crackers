@@ -938,6 +938,23 @@ export interface CouponValidationResponse {
   data?: CouponValidationResponseData;
 }
 
+export type PosSaleBodyTendersItemMode =
+  (typeof PosSaleBodyTendersItemMode)[keyof typeof PosSaleBodyTendersItemMode];
+
+export const PosSaleBodyTendersItemMode = {
+  CASH: "CASH",
+  UPI: "UPI",
+  CARD: "CARD",
+  CREDIT: "CREDIT",
+} as const;
+
+export type PosSaleBodyTendersItem = {
+  mode: PosSaleBodyTendersItemMode;
+  amount: number;
+  /** Optional reference (e.g. UPI txn id, last 4 of card). */
+  reference?: string;
+};
+
 export type PosSaleBodyItemsItem = {
   productId: string;
   variantId: string;
@@ -948,7 +965,15 @@ export interface PosSaleBody {
   customerId?: string;
   locationId: string;
   shiftId?: string;
-  paymentMode: string;
+  /** Legacy single-tender mode. Ignored when `tenders` is provided. */
+  paymentMode?: string;
+  /** Multi-tender split payment. Sum of amounts must equal the bill total. */
+  tenders?: PosSaleBodyTendersItem[];
+  /** Cash tendered including change (informational only — for slip). */
+  cashReceived?: number;
+  /** Manual order-level discount in INR (in addition to coupon). */
+  orderDiscount?: number;
+  discountReason?: string;
   items: PosSaleBodyItemsItem[];
   couponCode?: string;
   loyaltyPointsRedeem?: number;
@@ -1043,26 +1068,89 @@ export interface PosProductsResponse {
   data?: PosProductsResponseDataItem[];
 }
 
+export interface ShiftOpenBody {
+  locationId: string;
+  openingCash: number;
+  notes?: string;
+}
+
+/**
+ * Live totals computed from invoices linked to this shift.
+ */
+export type ShiftCurrentResponseDataRunning = {
+  txnCount?: number;
+  totalSales?: number;
+  cashSales?: number;
+  upiSales?: number;
+  cardSales?: number;
+  creditSales?: number;
+  expectedCash?: number;
+};
+
+export type ShiftCurrentResponseData = {
+  id?: string;
+  locationId?: string;
+  userId?: string;
+  openedAt?: string;
+  openingCash?: number;
+  status?: string;
+  /** Live totals computed from invoices linked to this shift. */
+  running?: ShiftCurrentResponseDataRunning;
+} | null;
+
+export interface ShiftCurrentResponse {
+  success?: boolean;
+  data?: ShiftCurrentResponseData;
+}
+
+/**
+ * Optional breakdown of counted notes/coins.
+ */
+export type CloseShiftBodyDenominations = { [key: string]: number };
+
 export interface CloseShiftBody {
   shiftId: string;
   closingCash: number;
+  /** Optional breakdown of counted notes/coins. */
+  denominations?: CloseShiftBodyDenominations;
   notes?: string;
 }
 
 export type ShiftSummaryResponseData = {
+  shiftId?: string;
+  openedAt?: string;
+  closedAt?: string;
+  txnCount?: number;
   totalSales?: number;
   cashSales?: number;
   upiSales?: number;
   cardSales?: number;
   creditSales?: number;
   openingCash?: number;
+  expectedCash?: number;
   closingCash?: number;
   overShort?: number;
+  notes?: string;
 };
 
 export interface ShiftSummaryResponse {
   success?: boolean;
   data?: ShiftSummaryResponseData;
+}
+
+export type PosRecentSalesResponseDataItem = {
+  id?: string;
+  invoiceNo?: string;
+  total?: number;
+  paymentMode?: string;
+  customerName?: string | null;
+  createdAt?: string;
+  itemCount?: number;
+};
+
+export interface PosRecentSalesResponse {
+  success?: boolean;
+  data?: PosRecentSalesResponseDataItem[];
 }
 
 export type ReturnType = (typeof ReturnType)[keyof typeof ReturnType];
@@ -1805,6 +1893,15 @@ export type ListHeldBillsParams = {
 
 export type GetPosProductsParams = {
   locationId: string;
+};
+
+export type GetCurrentShiftParams = {
+  locationId?: string;
+};
+
+export type GetRecentPosSalesParams = {
+  locationId?: string;
+  limit?: number;
 };
 
 export type ListReturnsParams = {

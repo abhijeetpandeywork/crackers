@@ -90,6 +90,12 @@ const ReceiptScreen = () => {
   const change = changeFromUrl ? num(changeFromUrl) : Math.max(0, cash - total);
   const date = new Date(invoice.createdAt || Date.now());
 
+  const logistics = ((invoice as any).logisticsDetails ?? null) as
+    | { tenders?: Array<{ mode: string; amount: number; reference?: string }>; discountReason?: string | null }
+    | null;
+  const tenders = Array.isArray(logistics?.tenders) ? logistics!.tenders : [];
+  const isSplit = invoice.paymentMode === "SPLIT" || tenders.length > 1;
+
   return (
     <>
       <style>{thermalPrintCSS}</style>
@@ -141,12 +147,18 @@ const ReceiptScreen = () => {
                 )}
                 <div className="flex justify-between text-zinc-400"><span>GST</span><span>{inr(totalGst)}</span></div>
                 <div className="flex justify-between text-white text-lg font-black pt-1 border-t border-zinc-800 mt-1"><span>TOTAL</span><span>{inr(total)}</span></div>
-                {invoice.paymentMode === "CASH" && (
+                {invoice.paymentMode === "CASH" && !isSplit && (
                   <>
                     <div className="flex justify-between text-zinc-400 pt-1"><span>Cash</span><span>{inr(cash)}</span></div>
                     <div className="flex justify-between text-green-500 font-bold"><span>Change</span><span>{inr(change)}</span></div>
                   </>
                 )}
+                {isSplit && tenders.map((t, i) => (
+                  <div key={i} className="flex justify-between text-zinc-400 pt-1">
+                    <span>{t.mode}{t.reference ? ` (${t.reference})` : ""}</span>
+                    <span>{inr(num(t.amount))}</span>
+                  </div>
+                ))}
               </div>
 
               <div className="p-5 border-t border-zinc-800 bg-zinc-900/50 flex justify-between items-center text-sm">
@@ -235,12 +247,15 @@ const ReceiptScreen = () => {
         {igst > 0 && <div className="row"><span>IGST</span><span>{igst.toFixed(2)}</span></div>}
         <hr className="hr-solid" />
         <div className="row total-line"><span>TOTAL</span><span>₹{total.toFixed(2)}</span></div>
-        {invoice.paymentMode === "CASH" && (
+        {invoice.paymentMode === "CASH" && !isSplit && (
           <>
             <div className="row"><span>Cash</span><span>{cash.toFixed(2)}</span></div>
             <div className="row"><span>Change</span><span>{change.toFixed(2)}</span></div>
           </>
         )}
+        {isSplit && tenders.map((t, i) => (
+          <div key={i} className="row"><span>{t.mode}{t.reference ? ` ${t.reference}` : ""}</span><span>{num(t.amount).toFixed(2)}</span></div>
+        ))}
         <hr className="hr" />
         <div className="center footer">
           <div>Thank you, visit again!</div>

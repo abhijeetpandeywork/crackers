@@ -59,11 +59,13 @@ import type {
   EstimateListResponse,
   GetAgentCommissionParams,
   GetCommissionReportParams,
+  GetCurrentShiftParams,
   GetDaybookReportParams,
   GetGstReportParams,
   GetNotificationLogParams,
   GetOutstandingReportParams,
   GetPosProductsParams,
+  GetRecentPosSalesParams,
   GetSalesByChannelParams,
   GetSalesReportParams,
   GetStockLedgerParams,
@@ -107,6 +109,7 @@ import type {
   PinLoginBody,
   PlaceShopOrderBody,
   PosProductsResponse,
+  PosRecentSalesResponse,
   PosReturnBody,
   PosReturnResponse,
   PosSaleBody,
@@ -132,6 +135,8 @@ import type {
   ReturnListResponse,
   SalesByChannelResponse,
   SalesReportResponse,
+  ShiftCurrentResponse,
+  ShiftOpenBody,
   ShiftSummaryResponse,
   ShopAddressBody,
   ShopAddressList,
@@ -6354,7 +6359,187 @@ export function useGetPosProducts<
 }
 
 /**
- * @summary Close shift
+ * @summary Open a cashier shift with opening float
+ */
+export const getOpenShiftUrl = () => {
+  return `/api/v1/pos/shift-open`;
+};
+
+export const openShift = async (
+  shiftOpenBody: ShiftOpenBody,
+  options?: RequestInit,
+): Promise<ShiftCurrentResponse> => {
+  return customFetch<ShiftCurrentResponse>(getOpenShiftUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(shiftOpenBody),
+  });
+};
+
+export const getOpenShiftMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof openShift>>,
+    TError,
+    { data: BodyType<ShiftOpenBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof openShift>>,
+  TError,
+  { data: BodyType<ShiftOpenBody> },
+  TContext
+> => {
+  const mutationKey = ["openShift"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof openShift>>,
+    { data: BodyType<ShiftOpenBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return openShift(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type OpenShiftMutationResult = NonNullable<
+  Awaited<ReturnType<typeof openShift>>
+>;
+export type OpenShiftMutationBody = BodyType<ShiftOpenBody>;
+export type OpenShiftMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Open a cashier shift with opening float
+ */
+export const useOpenShift = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof openShift>>,
+    TError,
+    { data: BodyType<ShiftOpenBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof openShift>>,
+  TError,
+  { data: BodyType<ShiftOpenBody> },
+  TContext
+> => {
+  return useMutation(getOpenShiftMutationOptions(options));
+};
+
+/**
+ * @summary Get the cashier's currently open shift with running tender totals
+ */
+export const getGetCurrentShiftUrl = (params?: GetCurrentShiftParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/v1/pos/shift-current?${stringifiedParams}`
+    : `/api/v1/pos/shift-current`;
+};
+
+export const getCurrentShift = async (
+  params?: GetCurrentShiftParams,
+  options?: RequestInit,
+): Promise<ShiftCurrentResponse> => {
+  return customFetch<ShiftCurrentResponse>(getGetCurrentShiftUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetCurrentShiftQueryKey = (params?: GetCurrentShiftParams) => {
+  return [`/api/v1/pos/shift-current`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetCurrentShiftQueryOptions = <
+  TData = Awaited<ReturnType<typeof getCurrentShift>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetCurrentShiftParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCurrentShift>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetCurrentShiftQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getCurrentShift>>> = ({
+    signal,
+  }) => getCurrentShift(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCurrentShift>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetCurrentShiftQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getCurrentShift>>
+>;
+export type GetCurrentShiftQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get the cashier's currently open shift with running tender totals
+ */
+
+export function useGetCurrentShift<
+  TData = Awaited<ReturnType<typeof getCurrentShift>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetCurrentShiftParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCurrentShift>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCurrentShiftQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Close shift, compute Z-report (expected vs counted cash, variance)
  */
 export const getCloseShiftUrl = () => {
   return `/api/v1/pos/shift-close`;
@@ -6417,7 +6602,7 @@ export type CloseShiftMutationBody = BodyType<CloseShiftBody>;
 export type CloseShiftMutationError = ErrorType<unknown>;
 
 /**
- * @summary Close shift
+ * @summary Close shift, compute Z-report (expected vs counted cash, variance)
  */
 export const useCloseShift = <
   TError = ErrorType<unknown>,
@@ -6438,6 +6623,103 @@ export const useCloseShift = <
 > => {
   return useMutation(getCloseShiftMutationOptions(options));
 };
+
+/**
+ * @summary List recent POS sales for quick reprint
+ */
+export const getGetRecentPosSalesUrl = (params?: GetRecentPosSalesParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/v1/pos/recent?${stringifiedParams}`
+    : `/api/v1/pos/recent`;
+};
+
+export const getRecentPosSales = async (
+  params?: GetRecentPosSalesParams,
+  options?: RequestInit,
+): Promise<PosRecentSalesResponse> => {
+  return customFetch<PosRecentSalesResponse>(getGetRecentPosSalesUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetRecentPosSalesQueryKey = (
+  params?: GetRecentPosSalesParams,
+) => {
+  return [`/api/v1/pos/recent`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetRecentPosSalesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getRecentPosSales>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetRecentPosSalesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getRecentPosSales>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetRecentPosSalesQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getRecentPosSales>>
+  > = ({ signal }) => getRecentPosSales(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getRecentPosSales>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetRecentPosSalesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getRecentPosSales>>
+>;
+export type GetRecentPosSalesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List recent POS sales for quick reprint
+ */
+
+export function useGetRecentPosSales<
+  TData = Awaited<ReturnType<typeof getRecentPosSales>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetRecentPosSalesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getRecentPosSales>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetRecentPosSalesQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary List returns

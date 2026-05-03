@@ -2114,7 +2114,36 @@ export const PosCreateSaleBody = zod.object({
   customerId: zod.string().optional(),
   locationId: zod.string(),
   shiftId: zod.string().optional(),
-  paymentMode: zod.string(),
+  paymentMode: zod
+    .string()
+    .optional()
+    .describe("Legacy single-tender mode. Ignored when `tenders` is provided."),
+  tenders: zod
+    .array(
+      zod.object({
+        mode: zod.enum(["CASH", "UPI", "CARD", "CREDIT"]),
+        amount: zod.number(),
+        reference: zod
+          .string()
+          .optional()
+          .describe("Optional reference (e.g. UPI txn id, last 4 of card)."),
+      }),
+    )
+    .optional()
+    .describe(
+      "Multi-tender split payment. Sum of amounts must equal the bill total.",
+    ),
+  cashReceived: zod
+    .number()
+    .optional()
+    .describe(
+      "Cash tendered including change (informational only — for slip).",
+    ),
+  orderDiscount: zod
+    .number()
+    .optional()
+    .describe("Manual order-level discount in INR (in addition to coupon)."),
+  discountReason: zod.string().optional(),
   items: zod.array(
     zod.object({
       productId: zod.string(),
@@ -2298,11 +2327,83 @@ export const GetPosProductsResponse = zod.object({
 });
 
 /**
- * @summary Close shift
+ * @summary Open a cashier shift with opening float
+ */
+export const OpenShiftBody = zod.object({
+  locationId: zod.string(),
+  openingCash: zod.number(),
+  notes: zod.string().optional(),
+});
+
+export const OpenShiftResponse = zod.object({
+  success: zod.boolean().optional(),
+  data: zod
+    .object({
+      id: zod.string().optional(),
+      locationId: zod.string().optional(),
+      userId: zod.string().optional(),
+      openedAt: zod.string().optional(),
+      openingCash: zod.number().optional(),
+      status: zod.string().optional(),
+      running: zod
+        .object({
+          txnCount: zod.number().optional(),
+          totalSales: zod.number().optional(),
+          cashSales: zod.number().optional(),
+          upiSales: zod.number().optional(),
+          cardSales: zod.number().optional(),
+          creditSales: zod.number().optional(),
+          expectedCash: zod.number().optional(),
+        })
+        .optional()
+        .describe("Live totals computed from invoices linked to this shift."),
+    })
+    .nullish(),
+});
+
+/**
+ * @summary Get the cashier's currently open shift with running tender totals
+ */
+export const GetCurrentShiftQueryParams = zod.object({
+  locationId: zod.coerce.string().optional(),
+});
+
+export const GetCurrentShiftResponse = zod.object({
+  success: zod.boolean().optional(),
+  data: zod
+    .object({
+      id: zod.string().optional(),
+      locationId: zod.string().optional(),
+      userId: zod.string().optional(),
+      openedAt: zod.string().optional(),
+      openingCash: zod.number().optional(),
+      status: zod.string().optional(),
+      running: zod
+        .object({
+          txnCount: zod.number().optional(),
+          totalSales: zod.number().optional(),
+          cashSales: zod.number().optional(),
+          upiSales: zod.number().optional(),
+          cardSales: zod.number().optional(),
+          creditSales: zod.number().optional(),
+          expectedCash: zod.number().optional(),
+        })
+        .optional()
+        .describe("Live totals computed from invoices linked to this shift."),
+    })
+    .nullish(),
+});
+
+/**
+ * @summary Close shift, compute Z-report (expected vs counted cash, variance)
  */
 export const CloseShiftBody = zod.object({
   shiftId: zod.string(),
   closingCash: zod.number(),
+  denominations: zod
+    .record(zod.string(), zod.number())
+    .optional()
+    .describe("Optional breakdown of counted notes\/coins."),
   notes: zod.string().optional(),
 });
 
@@ -2310,15 +2411,46 @@ export const CloseShiftResponse = zod.object({
   success: zod.boolean().optional(),
   data: zod
     .object({
+      shiftId: zod.string().optional(),
+      openedAt: zod.string().optional(),
+      closedAt: zod.string().optional(),
+      txnCount: zod.number().optional(),
       totalSales: zod.number().optional(),
       cashSales: zod.number().optional(),
       upiSales: zod.number().optional(),
       cardSales: zod.number().optional(),
       creditSales: zod.number().optional(),
       openingCash: zod.number().optional(),
+      expectedCash: zod.number().optional(),
       closingCash: zod.number().optional(),
       overShort: zod.number().optional(),
+      notes: zod.string().optional(),
     })
+    .optional(),
+});
+
+/**
+ * @summary List recent POS sales for quick reprint
+ */
+export const GetRecentPosSalesQueryParams = zod.object({
+  locationId: zod.coerce.string().optional(),
+  limit: zod.coerce.number().optional(),
+});
+
+export const GetRecentPosSalesResponse = zod.object({
+  success: zod.boolean().optional(),
+  data: zod
+    .array(
+      zod.object({
+        id: zod.string().optional(),
+        invoiceNo: zod.string().optional(),
+        total: zod.number().optional(),
+        paymentMode: zod.string().optional(),
+        customerName: zod.string().nullish(),
+        createdAt: zod.string().optional(),
+        itemCount: zod.number().optional(),
+      }),
+    )
     .optional(),
 });
 

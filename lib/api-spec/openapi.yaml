@@ -1782,11 +1782,52 @@ paths:
               schema:
                 $ref: "#/components/schemas/PosProductsResponse"
 
+  /v1/pos/shift-open:
+    post:
+      operationId: openShift
+      tags: [pos]
+      summary: Open a cashier shift with opening float
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShiftOpenBody"
+      responses:
+        "200":
+          description: Shift opened
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShiftCurrentResponse"
+
+  /v1/pos/shift-current:
+    get:
+      operationId: getCurrentShift
+      tags: [pos]
+      summary: Get the cashier's currently open shift with running tender totals
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: locationId
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Current shift (or null if none open)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShiftCurrentResponse"
+
   /v1/pos/shift-close:
     post:
       operationId: closeShift
       tags: [pos]
-      summary: Close shift
+      summary: Close shift, compute Z-report (expected vs counted cash, variance)
       security:
         - bearerAuth: []
       requestBody:
@@ -1802,6 +1843,30 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ShiftSummaryResponse"
+
+  /v1/pos/recent:
+    get:
+      operationId: getRecentPosSales
+      tags: [pos]
+      summary: List recent POS sales for quick reprint
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: locationId
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Recent POS sales
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PosRecentSalesResponse"
 
   # ============================================================
   # RETURNS & DAMAGE
@@ -4317,7 +4382,7 @@ components:
     # POS SCHEMAS
     PosSaleBody:
       type: object
-      required: [locationId, paymentMode, items]
+      required: [locationId, items]
       properties:
         customerId:
           type: string
@@ -4326,6 +4391,30 @@ components:
         shiftId:
           type: string
         paymentMode:
+          type: string
+          description: Legacy single-tender mode. Ignored when `tenders` is provided.
+        tenders:
+          type: array
+          description: Multi-tender split payment. Sum of amounts must equal the bill total.
+          items:
+            type: object
+            required: [mode, amount]
+            properties:
+              mode:
+                type: string
+                enum: [CASH, UPI, CARD, CREDIT]
+              amount:
+                type: number
+              reference:
+                type: string
+                description: Optional reference (e.g. UPI txn id, last 4 of card).
+        cashReceived:
+          type: number
+          description: Cash tendered including change (informational only — for slip).
+        orderDiscount:
+          type: number
+          description: Manual order-level discount in INR (in addition to coupon).
+        discountReason:
           type: string
         items:
           type: array
@@ -4477,6 +4566,57 @@ components:
                     stock:
                       type: integer
 
+    ShiftOpenBody:
+      type: object
+      required: [locationId, openingCash]
+      properties:
+        locationId:
+          type: string
+        openingCash:
+          type: number
+        notes:
+          type: string
+
+    ShiftCurrentResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          nullable: true
+          type: object
+          properties:
+            id:
+              type: string
+            locationId:
+              type: string
+            userId:
+              type: string
+            openedAt:
+              type: string
+            openingCash:
+              type: number
+            status:
+              type: string
+            running:
+              type: object
+              description: Live totals computed from invoices linked to this shift.
+              properties:
+                txnCount:
+                  type: integer
+                totalSales:
+                  type: number
+                cashSales:
+                  type: number
+                upiSales:
+                  type: number
+                cardSales:
+                  type: number
+                creditSales:
+                  type: number
+                expectedCash:
+                  type: number
+
     CloseShiftBody:
       type: object
       required: [shiftId, closingCash]
@@ -4485,6 +4625,11 @@ components:
           type: string
         closingCash:
           type: number
+        denominations:
+          type: object
+          description: Optional breakdown of counted notes/coins.
+          additionalProperties:
+            type: integer
         notes:
           type: string
 
@@ -4496,6 +4641,14 @@ components:
         data:
           type: object
           properties:
+            shiftId:
+              type: string
+            openedAt:
+              type: string
+            closedAt:
+              type: string
+            txnCount:
+              type: integer
             totalSales:
               type: number
             cashSales:
@@ -4508,10 +4661,40 @@ components:
               type: number
             openingCash:
               type: number
+            expectedCash:
+              type: number
             closingCash:
               type: number
             overShort:
               type: number
+            notes:
+              type: string
+
+    PosRecentSalesResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              invoiceNo:
+                type: string
+              total:
+                type: number
+              paymentMode:
+                type: string
+              customerName:
+                type: string
+                nullable: true
+              createdAt:
+                type: string
+              itemCount:
+                type: integer
 
     # RETURN/DAMAGE SCHEMAS
     Return:
