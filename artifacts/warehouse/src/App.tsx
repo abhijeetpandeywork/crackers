@@ -1,4 +1,5 @@
-import { Switch, Route, Router as WouterRouter } from "wouter";
+import { useEffect } from "react";
+import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -32,21 +33,35 @@ setUnauthorizedHandler(() => {
 
 const queryClient = new QueryClient();
 
+// Redirect to /login whenever a protected page is opened without a token,
+// so users don't sit on a screen full of empty dropdowns wondering what's wrong.
+function AuthGuard({ children }: { children: React.ReactNode }) {
+  const [location, navigate] = useLocation();
+  const hasToken = typeof window !== "undefined" && !!localStorage.getItem("wh_token");
+  useEffect(() => {
+    if (!hasToken && location !== "/login") navigate("/login", { replace: true });
+  }, [hasToken, location, navigate]);
+  if (!hasToken && location !== "/login") return null;
+  return <>{children}</>;
+}
+
 function Router() {
   return (
     <Layout>
-      <Switch>
-        <Route path="/login" component={Login} />
-        <Route path="/" component={Dashboard} />
-        <Route path="/stock" component={StockLevels} />
-        <Route path="/receive" component={ReceiveStock} />
-        <Route path="/adjust" component={StockAdjust} />
-        <Route path="/transfers" component={Transfers} />
-        <Route path="/transfers/new" component={NewTransfer} />
-        <Route path="/ledger" component={StockLedger} />
-        <Route path="/help" component={WarehouseHelp} />
-        <Route component={NotFound} />
-      </Switch>
+      <AuthGuard>
+        <Switch>
+          <Route path="/login" component={Login} />
+          <Route path="/" component={Dashboard} />
+          <Route path="/stock" component={StockLevels} />
+          <Route path="/receive" component={ReceiveStock} />
+          <Route path="/adjust" component={StockAdjust} />
+          <Route path="/transfers" component={Transfers} />
+          <Route path="/transfers/new" component={NewTransfer} />
+          <Route path="/ledger" component={StockLedger} />
+          <Route path="/help" component={WarehouseHelp} />
+          <Route component={NotFound} />
+        </Switch>
+      </AuthGuard>
     </Layout>
   );
 }
