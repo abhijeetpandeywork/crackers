@@ -134,6 +134,8 @@ export interface ProductVariant {
   size?: string;
   packContent?: string;
   unit?: string;
+  /** Manufacturer brand name (e.g. "Standard", "Sri Kaliswari", "Cock Brand"). Optional — same product can be sourced from multiple brands at different price points. */
+  brand?: string;
   prices?: ProductVariantPrices;
 }
 

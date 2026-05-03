@@ -52,7 +52,7 @@ router.post("/transfers", authenticate, async (req: AuthRequest, res) => {
     status: "draft",
     createdBy: req.user?.id,
   }).returning();
-  res.status(201).json(transfer);
+  res.status(201).json({ success: true, data: transfer });
 });
 
 router.get("/transfers/:id", authenticate, async (req, res) => {

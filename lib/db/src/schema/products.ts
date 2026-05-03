@@ -25,6 +25,7 @@ export type ProductVariant = {
   size: string;
   packContent?: string;
   unit?: string;
+  brand?: string;
   prices: {
     purchase: number;
     wholesaleBulk: number;

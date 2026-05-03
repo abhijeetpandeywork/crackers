@@ -23,23 +23,31 @@ async function seed() {
     { id: "loc-shop2", name: "Retail Shop - Madurai", type: "shop" as any, address: "Anna Nagar, Madurai", city: "Madurai", phone: "9876543203", isActive: true },
   ]).onConflictDoNothing();
 
-  const makeVariants = (base: number) => [
-    { variantId: "v1", size: "Small", packContent: "10 pcs", unit: "Box", prices: { purchase: base * 0.6, wholesaleBulk: base * 0.8, retailOnline: base, retailEst: base * 1.05, agent: base * 0.85 } },
-    { variantId: "v2", size: "Medium", packContent: "6 pcs", unit: "Box", prices: { purchase: base * 1.2, wholesaleBulk: base * 1.6, retailOnline: base * 2, retailEst: base * 2.1, agent: base * 1.7 } },
-    { variantId: "v3", size: "Large", packContent: "4 pcs", unit: "Box", prices: { purchase: base * 2, wholesaleBulk: base * 2.7, retailOnline: base * 3.5, retailEst: base * 3.6, agent: base * 2.8 } },
-  ];
+  // Single-brand product (3 sizes, same brand). brand defaults to "Standard".
+  const makeVariants = (base: number, brand: string = "Standard") => {
+    const slug = brand.toLowerCase().replace(/\s+/g, "-");
+    return [
+      { variantId: `${slug}-s`, brand, size: "Small", packContent: "10 pcs", unit: "Box", prices: { purchase: base * 0.6, wholesaleBulk: base * 0.8, retailOnline: base, retailEst: base * 1.05, agent: base * 0.85 } },
+      { variantId: `${slug}-m`, brand, size: "Medium", packContent: "6 pcs", unit: "Box", prices: { purchase: base * 1.2, wholesaleBulk: base * 1.6, retailOnline: base * 2, retailEst: base * 2.1, agent: base * 1.7 } },
+      { variantId: `${slug}-l`, brand, size: "Large", packContent: "4 pcs", unit: "Box", prices: { purchase: base * 2, wholesaleBulk: base * 2.7, retailOnline: base * 3.5, retailEst: base * 3.6, agent: base * 2.8 } },
+    ];
+  };
+
+  // Multi-brand product: same product offered under multiple manufacturer brands.
+  const makeMultiBrandVariants = (base: number, brands: Array<[string, number]>) =>
+    brands.flatMap(([brand, mul]) => makeVariants(base * mul, brand));
 
   const products = [
-    { id: "prod-001", code: "GND001", name: "Classic Flower Pot", category: "Ground", variants: makeVariants(50), onlineDisplay: true, featured: true },
-    { id: "prod-002", code: "GND002", name: "Colour Flower Pot", category: "Ground", variants: makeVariants(80), onlineDisplay: true },
-    { id: "prod-003", code: "ARL001", name: "Sky Shot 60 Shells", category: "Aerial", variants: makeVariants(150), onlineDisplay: true, featured: true },
-    { id: "prod-004", code: "ARL002", name: "Multi Colour Aerial", category: "Aerial", variants: makeVariants(200), onlineDisplay: true },
-    { id: "prod-005", code: "SPK001", name: "Silver Sparkler 30cm", category: "Sparkler", variants: makeVariants(30), onlineDisplay: true },
-    { id: "prod-006", code: "SPK002", name: "Golden Sparkler 50cm", category: "Sparkler", variants: makeVariants(45), onlineDisplay: true },
-    { id: "prod-007", code: "NOV001", name: "Wishing Well Fountain", category: "Novelty", variants: makeVariants(120), onlineDisplay: true, featured: true },
-    { id: "prod-008", code: "GBX001", name: "Diwali Gift Box - Premium", category: "Gift Box", variants: makeVariants(500), onlineDisplay: true, featured: true },
-    { id: "prod-009", code: "GBX002", name: "Family Pack", category: "Gift Box", variants: makeVariants(300), onlineDisplay: true },
-    { id: "prod-010", code: "BND001", name: "Starter Bundle", category: "Bundle", variants: makeVariants(200), onlineDisplay: true },
+    { id: "prod-001", code: "GND001", name: "Classic Flower Pot", category: "Ground", variants: makeMultiBrandVariants(50, [["Standard", 1], ["Sri Kaliswari", 1.3], ["Cock Brand", 0.9]]), onlineDisplay: true, featured: true },
+    { id: "prod-002", code: "GND002", name: "Colour Flower Pot", category: "Ground", variants: makeMultiBrandVariants(80, [["Standard", 1], ["Sri Kaliswari", 1.25]]), onlineDisplay: true },
+    { id: "prod-003", code: "ARL001", name: "Sky Shot 60 Shells", category: "Aerial", variants: makeMultiBrandVariants(150, [["Standard", 1], ["Sri Kaliswari", 1.4], ["Coronation", 1.15]]), onlineDisplay: true, featured: true },
+    { id: "prod-004", code: "ARL002", name: "Multi Colour Aerial", category: "Aerial", variants: makeVariants(200, "Sri Kaliswari"), onlineDisplay: true },
+    { id: "prod-005", code: "SPK001", name: "Silver Sparkler 30cm", category: "Sparkler", variants: makeMultiBrandVariants(30, [["Standard", 1], ["Cock Brand", 0.85]]), onlineDisplay: true },
+    { id: "prod-006", code: "SPK002", name: "Golden Sparkler 50cm", category: "Sparkler", variants: makeVariants(45, "Coronation"), onlineDisplay: true },
+    { id: "prod-007", code: "NOV001", name: "Wishing Well Fountain", category: "Novelty", variants: makeMultiBrandVariants(120, [["Standard", 1], ["Sri Kaliswari", 1.3]]), onlineDisplay: true, featured: true },
+    { id: "prod-008", code: "GBX001", name: "Diwali Gift Box - Premium", category: "Gift Box", variants: makeVariants(500, "Sri Kaliswari"), onlineDisplay: true, featured: true },
+    { id: "prod-009", code: "GBX002", name: "Family Pack", category: "Gift Box", variants: makeVariants(300, "Standard"), onlineDisplay: true },
+    { id: "prod-010", code: "BND001", name: "Starter Bundle", category: "Bundle", variants: makeVariants(200, "Standard"), onlineDisplay: true },
   ];
 
   for (const p of products) {

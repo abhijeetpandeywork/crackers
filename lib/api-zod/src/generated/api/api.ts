@@ -225,6 +225,12 @@ export const ListProductsResponse = zod.object({
               size: zod.string().optional(),
               packContent: zod.string().optional(),
               unit: zod.string().optional(),
+              brand: zod
+                .string()
+                .optional()
+                .describe(
+                  'Manufacturer brand name (e.g. \"Standard\", \"Sri Kaliswari\", \"Cock Brand\"). Optional — same product can be sourced from multiple brands at different price points.',
+                ),
               prices: zod
                 .object({
                   purchase: zod.number().optional(),
@@ -269,6 +275,12 @@ export const CreateProductBody = zod.object({
       size: zod.string().optional(),
       packContent: zod.string().optional(),
       unit: zod.string().optional(),
+      brand: zod
+        .string()
+        .optional()
+        .describe(
+          'Manufacturer brand name (e.g. \"Standard\", \"Sri Kaliswari\", \"Cock Brand\"). Optional — same product can be sourced from multiple brands at different price points.',
+        ),
       prices: zod
         .object({
           purchase: zod.number().optional(),
@@ -322,6 +334,12 @@ export const ListPublicProductsResponse = zod.object({
               size: zod.string().optional(),
               packContent: zod.string().optional(),
               unit: zod.string().optional(),
+              brand: zod
+                .string()
+                .optional()
+                .describe(
+                  'Manufacturer brand name (e.g. \"Standard\", \"Sri Kaliswari\", \"Cock Brand\"). Optional — same product can be sourced from multiple brands at different price points.',
+                ),
               prices: zod
                 .object({
                   purchase: zod.number().optional(),
@@ -375,6 +393,12 @@ export const GetProductResponse = zod.object({
         size: zod.string().optional(),
         packContent: zod.string().optional(),
         unit: zod.string().optional(),
+        brand: zod
+          .string()
+          .optional()
+          .describe(
+            'Manufacturer brand name (e.g. \"Standard\", \"Sri Kaliswari\", \"Cock Brand\"). Optional — same product can be sourced from multiple brands at different price points.',
+          ),
         prices: zod
           .object({
             purchase: zod.number().optional(),
@@ -413,6 +437,12 @@ export const UpdateProductBody = zod.object({
         size: zod.string().optional(),
         packContent: zod.string().optional(),
         unit: zod.string().optional(),
+        brand: zod
+          .string()
+          .optional()
+          .describe(
+            'Manufacturer brand name (e.g. \"Standard\", \"Sri Kaliswari\", \"Cock Brand\"). Optional — same product can be sourced from multiple brands at different price points.',
+          ),
         prices: zod
           .object({
             purchase: zod.number().optional(),
@@ -445,6 +475,12 @@ export const UpdateProductResponse = zod.object({
         size: zod.string().optional(),
         packContent: zod.string().optional(),
         unit: zod.string().optional(),
+        brand: zod
+          .string()
+          .optional()
+          .describe(
+            'Manufacturer brand name (e.g. \"Standard\", \"Sri Kaliswari\", \"Cock Brand\"). Optional — same product can be sourced from multiple brands at different price points.',
+          ),
         prices: zod
           .object({
             purchase: zod.number().optional(),

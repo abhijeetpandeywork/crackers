@@ -2590,6 +2590,9 @@ components:
           type: string
         unit:
           type: string
+        brand:
+          type: string
+          description: Manufacturer brand name (e.g. "Standard", "Sri Kaliswari", "Cock Brand"). Optional — same product can be sourced from multiple brands at different price points.
         prices:
           type: object
           properties:
