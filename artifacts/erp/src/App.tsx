@@ -13,6 +13,7 @@ import BusinessOverview from "@/pages/dashboard/business";
 import ProductsList from "@/pages/products/index";
 import ProductDetail from "@/pages/products/[id]";
 import BrandsList from "@/pages/brands/index";
+import CategoriesList from "@/pages/categories/index";
 import Stock from "@/pages/stock/index";
 import StockLedger from "@/pages/stock/ledger";
 
@@ -89,6 +90,9 @@ function Router() {
       </Route>
       <Route path="/brands">
         {(params) => <ProtectedRoute component={BrandsList} {...params} />}
+      </Route>
+      <Route path="/categories">
+        {(params) => <ProtectedRoute component={CategoriesList} {...params} />}
       </Route>
       <Route path="/stock">
         {(params) => <ProtectedRoute component={Stock} {...params} />}

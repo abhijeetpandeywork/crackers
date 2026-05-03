@@ -15,6 +15,7 @@ const navItems = [
   { icon: BarChart3, label: "Business Overview", href: "/dashboard/business" },
   { icon: Box, label: "Products", href: "/products" },
   { icon: Award, label: "Brands", href: "/brands" },
+  { icon: Tags, label: "Categories", href: "/categories" },
   { icon: Package, label: "Stock", href: "/stock" },
   { icon: FileText, label: "Estimates", href: "/estimates" },
   { icon: FileText, label: "Invoices", href: "/invoices" },

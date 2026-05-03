@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useListProducts } from "@workspace/api-client-react";
 import { Link } from "wouter";
 import { 
@@ -22,6 +23,18 @@ export default function ProductsList() {
   if (category !== "ALL") queryParams.category = category;
 
   const { data, isLoading } = useListProducts(queryParams);
+
+  // Dynamic category list — managed at /categories.
+  const { data: categoriesResp } = useQuery({
+    queryKey: ["categories"],
+    queryFn: async () => {
+      const token = localStorage.getItem("accessToken") || "";
+      const r = await fetch("/api/v1/categories", { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      return r.json();
+    },
+  });
+  const categoryList = (((categoriesResp as { data?: Array<{ name: string; isActive?: boolean }> } | undefined)?.data) ?? [])
+    .filter((c) => c.isActive !== false);
 
   return (
     <div className="space-y-6">
@@ -55,12 +68,9 @@ export default function ProductsList() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="ALL">All Categories</SelectItem>
-              <SelectItem value="Ground">Ground</SelectItem>
-              <SelectItem value="Aerial">Aerial</SelectItem>
-              <SelectItem value="Sparkler">Sparkler</SelectItem>
-              <SelectItem value="Novelty">Novelty</SelectItem>
-              <SelectItem value="Gift Box">Gift Box</SelectItem>
-              <SelectItem value="Bundle">Bundle</SelectItem>
+              {categoryList.map((c) => (
+                <SelectItem key={c.name} value={c.name}>{c.name}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
