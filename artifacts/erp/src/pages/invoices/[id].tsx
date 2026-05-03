@@ -1,4 +1,4 @@
-import { useGetInvoice, useShareInvoice } from "@workspace/api-client-react";
+import { useGetInvoice, useShareInvoice, useGetCompanySettings } from "@workspace/api-client-react";
 import { useRoute, Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,12 +7,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, Share2, Download, Printer, IndianRupee, Building, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { generateInvoicePdf, savePdf } from "@workspace/pdf";
+import { generateInvoicePdf, savePdf, type CompanyInfo } from "@workspace/pdf";
+import { resolveCompanyInfo } from "@/lib/company-info";
 
 export default function InvoiceDetail() {
   const [, params] = useRoute("/invoices/:id");
   const { toast } = useToast();
   const { data: invoice, isLoading } = useGetInvoice(params?.id as string);
+  const { data: companyData } = useGetCompanySettings();
+  const company: CompanyInfo = resolveCompanyInfo(companyData);
   const shareMutation = useShareInvoice();
 
   const handleShare = async () => {
@@ -26,7 +29,7 @@ export default function InvoiceDetail() {
 
   const handleDownloadPdf = () => {
     if (!invoice) return;
-    const doc = generateInvoicePdf(invoice as any);
+    const doc = generateInvoicePdf(invoice, company);
     savePdf(doc, `invoice-${invoice.invoiceNo || invoice.id?.slice(0, 8)}`);
     toast({ title: "PDF downloaded" });
   };
@@ -51,7 +54,20 @@ export default function InvoiceDetail() {
   const sgst = invoice.sgst ?? 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 print-area">
+      <div className="hidden print:block mb-4">
+        <h1 className="text-2xl font-bold">{company.name}</h1>
+        {company.address && <p className="text-sm">{company.address}</p>}
+        {company.gstin && <p className="text-sm">GSTIN: {company.gstin}</p>}
+        {(company.phone || company.email) && (
+          <p className="text-sm">{[company.phone, company.email].filter(Boolean).join(" | ")}</p>
+        )}
+        <hr className="my-3" />
+        <h2 className="text-xl font-bold">TAX INVOICE</h2>
+        <p className="text-sm">
+          # {invoice.invoiceNo || invoice.id?.slice(0, 8)} &nbsp;|&nbsp; Date: {invoice.createdAt ? new Date(invoice.createdAt).toLocaleDateString("en-IN") : "—"}
+        </p>
+      </div>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 print:hidden">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" asChild>
@@ -90,11 +106,11 @@ export default function InvoiceDetail() {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-sm space-y-1">
-            <div className="font-bold text-lg">RATHINAM CRACKERS</div>
-            <p>123 Factory Road, Sivakasi, Tamil Nadu</p>
-            <p>GSTIN: 33AAAAA0000A1Z5</p>
-            <p>Phone: +91 98765 43210</p>
-            <p>Email: sales@rathinamcrackers.com</p>
+            <div className="font-bold text-lg">{company.name}</div>
+            {company.address && <p>{company.address}</p>}
+            {company.gstin && <p>GSTIN: {company.gstin}</p>}
+            {company.phone && <p>Phone: {company.phone}</p>}
+            {company.email && <p>Email: {company.email}</p>}
           </CardContent>
         </Card>
 
@@ -163,6 +179,15 @@ export default function InvoiceDetail() {
           </div>
         </CardContent>
       </Card>
+
+      <div className="hidden print:grid grid-cols-2 gap-12 mt-16 text-sm">
+        <div>
+          <div className="border-t pt-2">Customer Signature</div>
+        </div>
+        <div>
+          <div className="border-t pt-2">Authorized Signatory — {company.name}</div>
+        </div>
+      </div>
     </div>
   );
 }

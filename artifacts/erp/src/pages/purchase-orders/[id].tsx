@@ -1,27 +1,32 @@
-import { useGetPurchaseOrder, useReceivePurchaseOrder } from "@workspace/api-client-react";
+import { useGetPurchaseOrder, useReceivePurchaseOrder, useGetCompanySettings } from "@workspace/api-client-react";
 import { useRoute, Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, PackageCheck, Truck, Calendar, IndianRupee, User, FileText, Loader2, Download } from "lucide-react";
+import { ArrowLeft, PackageCheck, Truck, Calendar, IndianRupee, User, FileText, Loader2, Download, Printer } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { generatePurchaseOrderPdf, savePdf } from "@workspace/pdf";
+import { generatePurchaseOrderPdf, savePdf, type CompanyInfo } from "@workspace/pdf";
+import { resolveCompanyInfo } from "@/lib/company-info";
 
 export default function PurchaseOrderDetail() {
   const [, params] = useRoute("/purchase-orders/:id");
   const { toast } = useToast();
   
   const { data: po, isLoading, refetch } = useGetPurchaseOrder(params?.id as string);
+  const { data: companyData } = useGetCompanySettings();
+  const company: CompanyInfo = resolveCompanyInfo(companyData);
   const receiveMutation = useReceivePurchaseOrder();
 
   const handleDownloadPdf = () => {
     if (!po) return;
-    const doc = generatePurchaseOrderPdf(po as any);
+    const doc = generatePurchaseOrderPdf(po, company);
     savePdf(doc, `purchase-order-${po.poNumber || po.id?.slice(0, 8)}`);
     toast({ title: "PDF downloaded" });
   };
+
+  const handlePrint = () => window.print();
 
   const handleReceive = async () => {
     if (!po) return;
@@ -60,8 +65,21 @@ export default function PurchaseOrderDetail() {
   if (!po) return <div>Purchase order not found.</div>;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="space-y-6 print-area">
+      <div className="hidden print:block mb-4">
+        <h1 className="text-2xl font-bold">{company.name}</h1>
+        {company.address && <p className="text-sm">{company.address}</p>}
+        {company.gstin && <p className="text-sm">GSTIN: {company.gstin}</p>}
+        {(company.phone || company.email) && (
+          <p className="text-sm">{[company.phone, company.email].filter(Boolean).join(" | ")}</p>
+        )}
+        <hr className="my-3" />
+        <h2 className="text-xl font-bold">PURCHASE ORDER</h2>
+        <p className="text-sm">
+          # {po.poNumber || po.id?.slice(0, 8)} &nbsp;|&nbsp; Date: {po.createdAt ? new Date(po.createdAt).toLocaleDateString("en-IN") : "—"}
+        </p>
+      </div>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 print:hidden">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" asChild>
             <Link href="/purchase-orders">
@@ -76,6 +94,9 @@ export default function PurchaseOrderDetail() {
           </div>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={handlePrint} data-testid="po-print">
+            <Printer className="mr-2 h-4 w-4" /> Print
+          </Button>
           <Button variant="outline" onClick={handleDownloadPdf} data-testid="po-download-pdf">
             <Download className="mr-2 h-4 w-4" /> Download PDF
           </Button>
@@ -160,6 +181,15 @@ export default function PurchaseOrderDetail() {
           )}
         </CardContent>
       </Card>
+
+      <div className="hidden print:grid grid-cols-2 gap-12 mt-16 text-sm">
+        <div>
+          <div className="border-t pt-2">Prepared By</div>
+        </div>
+        <div>
+          <div className="border-t pt-2">Authorized Signatory — {company.name}</div>
+        </div>
+      </div>
     </div>
   );
 }

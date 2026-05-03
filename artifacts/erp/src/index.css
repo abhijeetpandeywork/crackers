@@ -180,3 +180,69 @@
     @apply font-sans antialiased bg-background text-foreground;
   }
 }
+
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm 14mm;
+  }
+
+  html, body {
+    background: #fff !important;
+    color: #000 !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  aside,
+  nav,
+  .print\:hidden,
+  [data-print-hide="true"] {
+    display: none !important;
+  }
+
+  .flex.h-screen.overflow-hidden {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  main {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+
+  .print-area,
+  .print-area * {
+    color: #000 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .print-area {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .print-area .border,
+  .print-area [class*="border-"] {
+    border-color: #999 !important;
+  }
+
+  .print-area .text-muted-foreground {
+    color: #444 !important;
+  }
+
+  .print-area .bg-muted,
+  .print-area .bg-card,
+  .print-area .bg-background {
+    background: #fff !important;
+  }
+
+  .page-break-before {
+    page-break-before: always;
+  }
+}

@@ -3,6 +3,7 @@ import {
   useGetTransfer,
   useDispatchTransfer,
   useReceiveTransfer,
+  useGetCompanySettings,
   type Transfer,
   type TransferItem,
   type ReceiveTransferBody,
@@ -15,10 +16,11 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  ArrowLeft, ArrowRightLeft, Send, PackageCheck, Truck, MapPin, FileText, Download,
+  ArrowLeft, ArrowRightLeft, Send, PackageCheck, Truck, MapPin, FileText, Download, Printer,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { generateTransferPdf, savePdf } from "@workspace/pdf";
+import { generateTransferPdf, savePdf, type CompanyInfo } from "@workspace/pdf";
+import { resolveCompanyInfo } from "@/lib/company-info";
 
 export default function TransferDetail() {
   const [, params] = useRoute("/transfers/:id");
@@ -28,11 +30,13 @@ export default function TransferDetail() {
   const { data, isLoading, refetch } = useGetTransfer(id, {
     query: { enabled: !!id, queryKey: ["transfer", id] },
   });
+  const { data: companyData } = useGetCompanySettings();
   const dispatchM = useDispatchTransfer();
   const receiveM = useReceiveTransfer();
 
   const t: Transfer | undefined = data?.data;
   const items: TransferItem[] = t?.items ?? [];
+  const company: CompanyInfo = resolveCompanyInfo(companyData);
 
   const statusBadge = (status: string | undefined) => {
     const label = (status ?? "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -48,10 +52,12 @@ export default function TransferDetail() {
 
   const handleDownloadPdf = () => {
     if (!t) return;
-    const doc = generateTransferPdf(t as any);
+    const doc = generateTransferPdf(t, company);
     savePdf(doc, `transfer-${t.transferNo || t.id?.slice(0, 8) || "note"}`);
     toast({ title: "PDF downloaded" });
   };
+
+  const handlePrint = () => window.print();
 
   const handleDispatch = async () => {
     try {
@@ -102,8 +108,8 @@ export default function TransferDetail() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+    <div className="space-y-6 print-area">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 print:hidden">
         <div className="flex items-center gap-3">
           <Button asChild variant="ghost" size="icon">
             <Link href="/transfers"><ArrowLeft className="h-4 w-4" /></Link>
@@ -120,6 +126,9 @@ export default function TransferDetail() {
         </div>
         <div className="flex items-center gap-3">
           {statusBadge(t.status)}
+          <Button variant="outline" onClick={handlePrint} data-testid="transfer-print">
+            <Printer className="mr-2 h-4 w-4" /> Print
+          </Button>
           <Button variant="outline" onClick={handleDownloadPdf} data-testid="transfer-download-pdf">
             <Download className="mr-2 h-4 w-4" /> Download PDF
           </Button>
@@ -134,6 +143,20 @@ export default function TransferDetail() {
             </Button>
           )}
         </div>
+      </div>
+
+      <div className="hidden print:block mb-4">
+        <h1 className="text-2xl font-bold">{company.name}</h1>
+        {company.address && <p className="text-sm">{company.address}</p>}
+        {company.gstin && <p className="text-sm">GSTIN: {company.gstin}</p>}
+        {(company.phone || company.email) && (
+          <p className="text-sm">{[company.phone, company.email].filter(Boolean).join(" | ")}</p>
+        )}
+        <hr className="my-3" />
+        <h2 className="text-xl font-bold">STOCK TRANSFER NOTE</h2>
+        <p className="text-sm">
+          # {t.transferNo ?? t.id?.slice(0, 8)} &nbsp;|&nbsp; Date: {t.createdAt ? new Date(t.createdAt).toLocaleDateString("en-IN") : "—"}
+        </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -221,6 +244,15 @@ export default function TransferDetail() {
           </CardContent>
         </Card>
       )}
+
+      <div className="hidden print:grid grid-cols-2 gap-12 mt-16 text-sm">
+        <div>
+          <div className="border-t pt-2">Sender Signature</div>
+        </div>
+        <div>
+          <div className="border-t pt-2">Receiver Signature</div>
+        </div>
+      </div>
     </div>
   );
 }
