@@ -18,19 +18,37 @@ export default function InvoicesList() {
   const [page, setPage] = useState(1);
 
   const queryParams: any = { page, limit: 50 };
-  if (search) queryParams.search = search;
-  if (channel !== "ALL") queryParams.channel = channel;
-  if (status !== "ALL") queryParams.status = status;
+  if (search) queryParams.invoiceNo = search;
 
   const { data, isLoading } = useListInvoices(queryParams);
 
+  const filtered = (data?.data ?? []).filter((inv: any) => {
+    if (channel !== "ALL" && inv.channel !== channel) return false;
+    if (status !== "ALL") {
+      const want = status.toLowerCase();
+      const have = (inv.status ?? "").toLowerCase();
+      if (want === "paid" && have !== "paid") return false;
+      if (want === "partial" && have !== "credit") return false;
+      if (want === "unpaid" && have !== "credit") return false;
+      if (want === "overdue" && have !== "credit") return false;
+    }
+    if (search) {
+      const q = search.toLowerCase();
+      const hit =
+        (inv.invoiceNo ?? "").toLowerCase().includes(q) ||
+        (inv.customerName ?? "").toLowerCase().includes(q);
+      if (!hit) return false;
+    }
+    return true;
+  });
+
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "Paid": return <Badge variant="default" className="bg-green-500">{status}</Badge>;
-      case "Partial": return <Badge variant="secondary" className="bg-amber-500 text-white">{status}</Badge>;
-      case "Unpaid": return <Badge variant="destructive">{status}</Badge>;
-      case "Overdue": return <Badge variant="destructive" className="animate-pulse">{status}</Badge>;
-      default: return <Badge variant="outline">{status}</Badge>;
+    const s = (status ?? "").toLowerCase();
+    switch (s) {
+      case "paid": return <Badge variant="default" className="bg-green-500">Paid</Badge>;
+      case "credit": return <Badge variant="secondary" className="bg-amber-500 text-white">Credit</Badge>;
+      case "cancelled": return <Badge variant="destructive">Cancelled</Badge>;
+      default: return <Badge variant="outline">{status || "—"}</Badge>;
     }
   };
 
@@ -117,31 +135,37 @@ export default function InvoicesList() {
                   <TableCell><Skeleton className="h-8 w-12 ml-auto" /></TableCell>
                 </TableRow>
               ))
-            ) : data?.data?.length === 0 ? (
+            ) : filtered.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={8} className="text-center h-32 text-muted-foreground">
                   No invoices found.
                 </TableCell>
               </TableRow>
             ) : (
-              data?.data?.map((invoice: any) => (
-                <TableRow key={invoice.id}>
-                  <TableCell className="font-mono text-sm">{invoice.invoiceNumber || invoice.id.slice(0,8)}</TableCell>
-                  <TableCell className="font-medium">{invoice.customerName}</TableCell>
-                  <TableCell>{new Date(invoice.createdAt).toLocaleDateString('en-IN')}</TableCell>
-                  <TableCell>{getChannelBadge(invoice.channel)}</TableCell>
-                  <TableCell>₹{invoice.totalAmount?.toLocaleString('en-IN')}</TableCell>
-                  <TableCell>₹{invoice.taxAmount?.toLocaleString('en-IN')}</TableCell>
-                  <TableCell>{getStatusBadge(invoice.paymentStatus)}</TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="sm" asChild>
-                      <Link href={`/invoices/${invoice.id}`}>
-                        <Eye className="h-4 w-4" />
-                      </Link>
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))
+              filtered.map((invoice: any) => {
+                const tax =
+                  Number(invoice.cgst ?? 0) +
+                  Number(invoice.sgst ?? 0) +
+                  Number(invoice.igst ?? 0);
+                return (
+                  <TableRow key={invoice.id} data-testid={`row-invoice-${invoice.id}`}>
+                    <TableCell className="font-mono text-sm">{invoice.invoiceNo ?? invoice.id.slice(0, 8)}</TableCell>
+                    <TableCell className="font-medium">{invoice.customerName ?? "Walk-in"}</TableCell>
+                    <TableCell>{new Date(invoice.createdAt).toLocaleDateString('en-IN')}</TableCell>
+                    <TableCell>{getChannelBadge(invoice.channel)}</TableCell>
+                    <TableCell>₹{Number(invoice.total ?? 0).toLocaleString('en-IN')}</TableCell>
+                    <TableCell>₹{tax.toLocaleString('en-IN')}</TableCell>
+                    <TableCell>{getStatusBadge(invoice.status)}</TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="sm" asChild>
+                        <Link href={`/invoices/${invoice.id}`}>
+                          <Eye className="h-4 w-4" />
+                        </Link>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>
