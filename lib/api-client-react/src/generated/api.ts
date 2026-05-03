@@ -85,6 +85,7 @@ import type {
   InvoiceListResponse,
   ListAgentsParams,
   ListAllReviewsParams,
+  ListAuditActors200,
   ListAuditEntityTypes200,
   ListAuditLogParams,
   ListCouponsParams,
@@ -11278,6 +11279,81 @@ export function useListAuditEntityTypes<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getListAuditEntityTypesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Distinct actors that have written to the audit log (SUPER_ADMIN / ADMIN)
+ */
+export const getListAuditActorsUrl = () => {
+  return `/api/v1/audit-log/actors`;
+};
+
+export const listAuditActors = async (
+  options?: RequestInit,
+): Promise<ListAuditActors200> => {
+  return customFetch<ListAuditActors200>(getListAuditActorsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListAuditActorsQueryKey = () => {
+  return [`/api/v1/audit-log/actors`] as const;
+};
+
+export const getListAuditActorsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAuditActors>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listAuditActors>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListAuditActorsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listAuditActors>>> = ({
+    signal,
+  }) => listAuditActors({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAuditActors>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListAuditActorsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAuditActors>>
+>;
+export type ListAuditActorsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Distinct actors that have written to the audit log (SUPER_ADMIN / ADMIN)
+ */
+
+export function useListAuditActors<
+  TData = Awaited<ReturnType<typeof listAuditActors>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listAuditActors>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListAuditActorsQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

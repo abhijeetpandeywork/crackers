@@ -2107,3 +2107,13 @@ export type ListAuditEntityTypes200 = {
   success: boolean;
   data: string[];
 };
+
+export type ListAuditActors200DataItem = {
+  id: string;
+  name: string;
+};
+
+export type ListAuditActors200 = {
+  success: boolean;
+  data: ListAuditActors200DataItem[];
+};

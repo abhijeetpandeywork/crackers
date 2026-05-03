@@ -6,6 +6,10 @@ import { nextTransferNo } from "../../lib/counter.js";
 import { appendLedger } from "../../lib/stockService.js";
 import type { AuthRequest } from "../../middleware/authenticate.js";
 
+// Module-level test-hook gate. See pos.ts for full rationale; production
+// deployments never set this env var so the body flag is inert.
+const E2E_TEST_HOOKS = process.env["E2E_TEST_HOOKS"] === "1";
+
 const router = Router();
 
 router.get("/transfers", authenticate, async (req, res) => {
@@ -68,7 +72,7 @@ router.put("/transfers/:id/dispatch", authenticate, async (req: AuthRequest, res
   const items = (t.items ?? []) as any[];
 
   const forceFail =
-    process.env["NODE_ENV"] !== "production" &&
+    E2E_TEST_HOOKS &&
     (req.body as { __forceFailAfterLedger?: boolean })?.__forceFailAfterLedger === true;
 
   // Atomic: deduct source stock + flip transfer to in_transit together.
@@ -109,7 +113,7 @@ router.put("/transfers/:id/receive", authenticate, async (req: AuthRequest, res)
   const { items } = req.body as { items: Array<{ productId: string; variantId: string; receivedQty: number }> };
 
   const forceFailRecv =
-    process.env["NODE_ENV"] !== "production" &&
+    E2E_TEST_HOOKS &&
     (req.body as { __forceFailAfterLedger?: boolean })?.__forceFailAfterLedger === true;
 
   // Atomic: credit destination stock + close the transfer together.

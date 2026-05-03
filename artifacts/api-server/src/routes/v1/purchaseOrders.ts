@@ -6,6 +6,8 @@ import { nextPoNumber } from "../../lib/counter.js";
 import { appendLedger } from "../../lib/stockService.js";
 import type { AuthRequest } from "../../middleware/authenticate.js";
 
+const E2E_TEST_HOOKS = process.env["E2E_TEST_HOOKS"] === "1";
+
 const router = Router();
 
 router.get("/purchase-orders", authenticate, async (req, res) => {
@@ -60,7 +62,7 @@ router.put("/purchase-orders/:id/receive", authenticate, async (req: AuthRequest
   const { items } = req.body as { items: Array<{ productId: string; variantId: string; receivedQty: number; batchNo?: string; damagedQty?: number }> };
 
   const forceFail =
-    process.env["NODE_ENV"] !== "production" &&
+    E2E_TEST_HOOKS &&
     (req.body as { __forceFailAfterLedger?: boolean })?.__forceFailAfterLedger === true;
 
   // Atomic: stock IN + PO status flip in one transaction.

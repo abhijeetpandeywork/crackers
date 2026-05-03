@@ -16,6 +16,11 @@ import { authenticate } from "../../middleware/authenticate.js";
 import { nextInvoiceNo } from "../../lib/counter.js";
 import { resolvePrice } from "../../lib/pricing.js";
 import { appendLedger } from "../../lib/stockService.js";
+
+// Module-level: read once at process start so a runtime request can never
+// flip this on. Production deployments do not set E2E_TEST_HOOKS, so the
+// rollback test hook below is permanently inert in production.
+const E2E_TEST_HOOKS = process.env["E2E_TEST_HOOKS"] === "1";
 import type { AuthRequest } from "../../middleware/authenticate.js";
 
 const router = Router();
@@ -445,12 +450,11 @@ router.post("/pos/sale", authenticate, async (req: AuthRequest, res) => {
   // Wrap stock-ledger writes and the invoice insert in a single DB transaction
   // so a failure on the parent insert rolls back the ledger rows and stock
   // levels — no orphan ledger entries, no silent stock drift.
-  // Test-only hook (NODE_ENV !== "production") that lets the verifier prove
-  // transactional rollback by forcing a throw AFTER ledger writes inside the
-  // same db.transaction. The thrown error rolls the txn back, so the ledger
-  // row count must be unchanged after the request.
+  // Test-only rollback hook. Gated on a server-side, non-user-controllable
+  // env flag (E2E_TEST_HOOKS=1) read once at module load — production never
+  // sets this, so the body flag is completely inert in real deployments.
   const forceFail =
-    process.env["NODE_ENV"] !== "production" &&
+    E2E_TEST_HOOKS &&
     (req.body as { __forceFailAfterLedger?: boolean })?.__forceFailAfterLedger === true;
 
   const invoice = await db.transaction(async (tx) => {

@@ -3731,3 +3731,16 @@ export const ListAuditEntityTypesResponse = zod.object({
   success: zod.boolean(),
   data: zod.array(zod.string()),
 });
+
+/**
+ * @summary Distinct actors that have written to the audit log (SUPER_ADMIN / ADMIN)
+ */
+export const ListAuditActorsResponse = zod.object({
+  success: zod.boolean(),
+  data: zod.array(
+    zod.object({
+      id: zod.string(),
+      name: zod.string(),
+    }),
+  ),
+});
