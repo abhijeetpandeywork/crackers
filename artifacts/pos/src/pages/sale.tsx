@@ -127,10 +127,15 @@ const SaleScreen = () => {
   } = useCart();
 
   // Sale total includes the manual discount on top of coupon discount.
+  // Bill total is rounded to the nearest rupee (standard Indian retail
+  // practice). Keeping the unrounded breakdown lets the receipt show the
+  // exact tax math while the tender / display / server agree on whole rupees.
   const md = Math.max(0, parseFloat(manualDiscount) || 0);
   const taxableAmount = Math.max(0, subtotal - discount - md);
   const gstAdj = taxableAmount * taxRate;
-  const total = taxableAmount + gstAdj;
+  const totalRaw = taxableAmount + gstAdj;
+  const total = Math.round(totalRaw);
+  const roundOff = total - totalRaw;
 
   const { toast } = useToast();
   const [, setLocation] = useLocation();
@@ -885,9 +890,15 @@ const SaleScreen = () => {
             {md > 0 && (
               <div className="flex justify-between text-green-500"><span>Manual discount</span><span>- ₹{md.toLocaleString("en-IN")}</span></div>
             )}
-            <div className="flex justify-between"><span>GST ({Math.round(taxRate * 100)}%)</span><span>₹{Math.round(gstAdj).toLocaleString("en-IN")}</span></div>
+            <div className="flex justify-between"><span>GST ({Math.round(taxRate * 100)}%)</span><span>₹{gstAdj.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+            {Math.abs(roundOff) >= 0.01 && (
+              <div className="flex justify-between text-zinc-400">
+                <span>Round off</span>
+                <span>{roundOff >= 0 ? "+" : "−"}₹{Math.abs(roundOff).toFixed(2)}</span>
+              </div>
+            )}
             <div className="flex justify-between text-white text-3xl font-black pt-2 border-t border-zinc-800">
-              <span>TOTAL</span><span className="text-primary">₹{Math.round(total).toLocaleString("en-IN")}</span>
+              <span>TOTAL</span><span className="text-primary">₹{total.toLocaleString("en-IN")}</span>
             </div>
           </div>
 

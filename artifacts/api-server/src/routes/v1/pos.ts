@@ -486,7 +486,12 @@ router.post("/pos/sale", authenticate, async (req: AuthRequest, res) => {
   const taxable = tx.taxable;
   const cgst = tx.cgst;
   const sgst = tx.sgst;
-  const total = tx.total;
+  // Bill total is rounded to the nearest rupee — Indian retail standard.
+  // Display, tender input, button label, and server total all agree on whole
+  // rupees; the rounding delta is captured for the audit trail / receipt.
+  const totalRaw = tx.total;
+  const total = Math.round(totalRaw);
+  const roundOff = Number((total - totalRaw).toFixed(2));
 
   // Tender validation. Strict: known modes only, non-negative finite amounts.
   const ALLOWED_MODES = new Set(["CASH", "UPI", "CARD", "CREDIT"]);
@@ -612,6 +617,7 @@ router.post("/pos/sale", authenticate, async (req: AuthRequest, res) => {
           cashReceived: num(cashReceived),
           change: Math.max(0, num(cashReceived) - (nonZero.find((t) => t.mode === "CASH")?.amount ?? 0)),
           discountReason: discountReason ?? null,
+          roundOff,
           ...(shipAddr ? { shippingAddress: shipAddr, address: shipAddr } : {}),
           ...(billAddr ? { billingAddress: billAddr } : {}),
           ...(shipAddr && billAddr ? { sameAsShipping: JSON.stringify(shipAddr) === JSON.stringify(billAddr) } : {}),
