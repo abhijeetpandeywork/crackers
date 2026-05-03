@@ -413,8 +413,8 @@ const sections: Array<{ name: string; checks: () => Promise<CheckResult[]> }> = 
               notes: "verifier round-trip",
             }),
           });
-          const tBody = created.body as { data?: { id?: string } };
-          const tid = tBody?.data?.id;
+          const tBody = created.body as { id?: string; data?: { id?: string } };
+          const tid = tBody?.data?.id ?? tBody?.id;
           out.push({
             name: "POST /transfers creates a draft transfer",
             passed: created.status === 201 && !!tid,
@@ -479,8 +479,8 @@ const sections: Array<{ name: string; checks: () => Promise<CheckResult[]> }> = 
                 notes: "verifier PO round-trip",
               }),
             });
-            const poBody = poCreated.body as { data?: { id?: string } };
-            const poId = poBody?.data?.id;
+            const poBody = poCreated.body as { id?: string; data?: { id?: string } };
+            const poId = poBody?.data?.id ?? poBody?.id;
             out.push({
               name: "POST /purchase-orders creates a draft PO",
               passed: poCreated.status === 201 && !!poId,
@@ -500,7 +500,8 @@ const sections: Array<{ name: string; checks: () => Promise<CheckResult[]> }> = 
                 detail: `status=${poRecv.status}`,
               });
               const poAfter = await http(`/api/v1/purchase-orders/${poId}`, { headers });
-              const poRow = (poAfter.body as { data?: { status?: string } })?.data;
+              const poAfterBody = poAfter.body as { status?: string; data?: { status?: string } };
+              const poRow = poAfterBody?.data ?? poAfterBody;
               out.push({
                 name: "PO status is 'received' after receiving",
                 passed: poRow?.status === "received",

@@ -7,9 +7,11 @@
     "hello": "tsx ./src/hello.ts",
     "verify": "tsx ./src/verifier.ts",
     "seed": "tsx ./src/seed.ts",
+    "test:e2e": "playwright test",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@types/node": "catalog:",
     "tsx": "catalog:"
   }
