@@ -1,4 +1,5 @@
 import { Router } from "express";
+import crypto from "node:crypto";
 import {
   db,
   invoicesTable,
@@ -10,6 +11,7 @@ import {
   customersTable,
   loyaltyLedgerTable,
   usersTable,
+  idempotencyKeysTable,
   type HeldBillItemsPayload,
 } from "@workspace/db";
 import { eq, and, sql, inArray, desc, isNull } from "drizzle-orm";
@@ -363,7 +365,119 @@ router.post("/pos/shift-close", authenticate, async (req: AuthRequest, res) => {
 
 // -------- sale --------
 
+// Server-side idempotency for /pos/sale.
+//
+// The cashier UI may retry the same sale on a flaky network — without this
+// check the customer would be billed twice. The contract:
+//   * Client sends header `X-Idempotency-Key: <uuid>` (≤ 128 chars).
+//   * Same key + same body, sale already finished → replay cached response
+//     with header `X-Idempotent-Replay: true`.
+//   * Same key + different body → 409 IDEMPOTENCY_KEY_REUSED.
+//   * Same key + same body, sale still running on another worker → 409
+//     IDEMPOTENCY_IN_PROGRESS so the client retries shortly.
+//   * 24h retention; cron prunes via deploy/scripts/idempotency-cleanup.sh.
+//
+// Race-safe: we INSERT the row BEFORE running the sale (with response=null
+// meaning "in flight") and rely on the primary-key conflict to atomically
+// elect a single winner across concurrent requests / cluster workers. The
+// key is prefixed with the scope so the same UUID can't collide between e.g.
+// pos.sale and pos.return.
+type IdemClaim =
+  | { kind: "none" }
+  | { kind: "replay"; status: number; body: unknown }
+  | { kind: "conflict"; code: "IDEMPOTENCY_KEY_REUSED" | "IDEMPOTENCY_IN_PROGRESS"; message: string }
+  | { kind: "fresh"; storedKey: string; hash: string };
+
+async function claimIdempotency(
+  scope: string,
+  userId: string | undefined,
+  rawKey: unknown,
+  body: unknown,
+): Promise<IdemClaim> {
+  if (rawKey == null || rawKey === "") return { kind: "none" };
+  const storedKey = `${scope}:${String(rawKey).slice(0, 96)}`;
+  const hash = crypto.createHash("sha256").update(JSON.stringify(body ?? null)).digest("hex");
+
+  // Atomic claim. RETURNING returns the inserted row only if we won; on
+  // conflict it returns nothing and we fall through to inspect the existing
+  // row (replay vs conflict vs in-flight).
+  const inserted = await db
+    .insert(idempotencyKeysTable)
+    .values({
+      key: storedKey,
+      scope,
+      userId: userId ?? null,
+      requestHash: hash,
+      response: null,
+      statusCode: null,
+    })
+    .onConflictDoNothing({ target: idempotencyKeysTable.key })
+    .returning({ key: idempotencyKeysTable.key });
+  if (inserted.length > 0) return { kind: "fresh", storedKey, hash };
+
+  const existing = (
+    await db.select().from(idempotencyKeysTable).where(eq(idempotencyKeysTable.key, storedKey)).limit(1)
+  )[0];
+  if (!existing) {
+    // Row vanished between insert-conflict and select (cleanup race). Treat
+    // as a fresh claim by retrying once.
+    return claimIdempotency(scope, userId, rawKey, body);
+  }
+  if ((existing.userId ?? null) !== (userId ?? null) || existing.requestHash !== hash) {
+    return {
+      kind: "conflict",
+      code: "IDEMPOTENCY_KEY_REUSED",
+      message: "This X-Idempotency-Key was already used with a different request.",
+    };
+  }
+  if (existing.response == null) {
+    return {
+      kind: "conflict",
+      code: "IDEMPOTENCY_IN_PROGRESS",
+      message: "An earlier request with this X-Idempotency-Key is still being processed. Retry in a moment.",
+    };
+  }
+  return { kind: "replay", status: Number(existing.statusCode) || 200, body: existing.response };
+}
+
+async function commitIdempotency(storedKey: string, status: number, body: unknown): Promise<void> {
+  await db
+    .update(idempotencyKeysTable)
+    .set({ statusCode: String(status), response: body as never })
+    .where(eq(idempotencyKeysTable.key, storedKey));
+}
+
+async function releaseIdempotency(storedKey: string): Promise<void> {
+  // Sale failed before commit — drop the placeholder so the client can retry
+  // with the same key.
+  await db.delete(idempotencyKeysTable).where(eq(idempotencyKeysTable.key, storedKey));
+}
+
 router.post("/pos/sale", authenticate, async (req: AuthRequest, res) => {
+  const idempotencyHeader = req.header("X-Idempotency-Key") ?? req.header("x-idempotency-key");
+  const idem = await claimIdempotency("pos.sale", req.user?.id, idempotencyHeader, req.body);
+  if (idem.kind === "conflict") {
+    res.status(409).json({ success: false, error: { code: idem.code, message: idem.message } });
+    return;
+  }
+  if (idem.kind === "replay") {
+    res.setHeader("X-Idempotent-Replay", "true");
+    res.status(idem.status).json(idem.body);
+    return;
+  }
+
+  // From here on, if the sale fails we MUST release the claim so the client
+  // can retry with the same key. We wrap the whole handler body in try/catch.
+  try {
+    return await runSale();
+  } catch (err) {
+    if (idem.kind === "fresh") {
+      await releaseIdempotency(idem.storedKey).catch(() => {});
+    }
+    throw err;
+  }
+
+  async function runSale() {
   const {
     customerId,
     locationId,
@@ -644,7 +758,12 @@ router.post("/pos/sale", authenticate, async (req: AuthRequest, res) => {
     }
   }
 
-  res.json({ success: true, data: { invoice, loyaltyEarned } });
+  const responseBody = { success: true, data: { invoice, loyaltyEarned } };
+  if (idem.kind === "fresh") {
+    await commitIdempotency(idem.storedKey, 200, responseBody);
+  }
+  res.json(responseBody);
+  } // end runSale
 });
 
 // -------- recent (for reprint) --------
