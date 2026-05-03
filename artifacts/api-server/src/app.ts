@@ -5,6 +5,7 @@ import rateLimit from "express-rate-limit";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { requestId } from "./middleware/request-id";
 
 const app: Express = express();
 
@@ -32,6 +33,10 @@ const generalLimiter = rateLimit({
   message: { success: false, error: { code: "RATE_LIMITED", message: "Too many requests, please slow down." } },
 });
 app.use(generalLimiter);
+
+// Stamp every request with a stable id (honoring upstream X-Request-Id) so
+// log lines and error responses can be correlated end-to-end.
+app.use(requestId);
 
 app.use(
   pinoHttp({

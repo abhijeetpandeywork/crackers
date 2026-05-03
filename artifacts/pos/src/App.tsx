@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CartProvider } from "@/context/cart";
+import { ErrorBoundary } from "@/components/error-boundary";
 import { setAuthTokenGetter, setUnauthorizedHandler } from "@workspace/api-client-react";
 import PinLogin from "@/pages/pin-login";
 import SaleScreen from "@/pages/sale";
@@ -38,18 +39,20 @@ function Router() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <CartProvider>
-          <div className="dark min-h-screen bg-[#0d0d0d] text-white">
-            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-              <Router />
-            </WouterRouter>
-          </div>
-          <Toaster />
-        </CartProvider>
-      </TooltipProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <CartProvider>
+            <div className="dark min-h-screen bg-[#0d0d0d] text-white">
+              <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+                <Router />
+              </WouterRouter>
+            </div>
+            <Toaster />
+          </CartProvider>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 

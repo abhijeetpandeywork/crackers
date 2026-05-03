@@ -16,6 +16,7 @@ import { nextInvoiceNo } from "../../lib/counter.js";
 import { resolvePrice, type PricingChannel } from "../../lib/pricing.js";
 import { appendLedger } from "../../lib/stockService.js";
 import { getTaxConfig, computeTax } from "../../lib/tax.js";
+import { sendEmail, sendWhatsapp } from "../../lib/notifier.js";
 
 const router = Router();
 
@@ -456,6 +457,43 @@ router.post("/shop/orders", shopAuthenticate, async (req: ShopAuthRequest, res) 
     res.status(500).json({ success: false, error: { code: "ORDER_FAILED", message: err?.message || "Could not place order. Please try again." } });
     return;
   }
+
+  // Fire-and-forget order confirmation. Never blocks the response — a
+  // notifier outage must not turn into a checkout outage.
+  void (async () => {
+    try {
+      const subject = `Order confirmed: ${invoice.invoiceNo}`;
+      const body =
+        `Hi ${cust.name},\n\nThanks for your order!\n\n` +
+        `Order: ${invoice.invoiceNo}\nAmount: ₹${total.toFixed(2)}\n` +
+        `Payment: ${paymentMode}\n\n` +
+        `We'll contact you shortly to confirm delivery.\n\n— Rathinam Crackers`;
+      const tasks: Promise<unknown>[] = [];
+      if (cust.email) {
+        tasks.push(sendEmail({
+          eventType: "shop.order.placed",
+          to: cust.email,
+          subject,
+          text: body,
+          recipientId: cust.id,
+          recipientType: "customer",
+        }));
+      }
+      if (cust.phone) {
+        const phone = cust.phone.startsWith("+") ? cust.phone : `+91${cust.phone}`;
+        tasks.push(sendWhatsapp({
+          eventType: "shop.order.placed",
+          to: phone,
+          body,
+          recipientId: cust.id,
+          recipientType: "customer",
+        }));
+      }
+      await Promise.allSettled(tasks);
+    } catch (err) {
+      req.log?.warn({ err, invoiceNo: invoice?.invoiceNo }, "shop order notification failed");
+    }
+  })();
 
   res.status(201).json({ success: true, data: invoice });
 });

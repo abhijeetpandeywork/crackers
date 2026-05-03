@@ -3,6 +3,7 @@ import { logger } from "./lib/logger";
 import { startSystemHealthScheduler } from "./lib/system-health";
 import { startBackupScheduler } from "./lib/system-backup";
 import { startAuditRetentionScheduler } from "./lib/audit-retention";
+import { startPaymentReminderScheduler } from "./lib/payment-reminder";
 
 const rawPort = process.env["PORT"];
 
@@ -32,4 +33,7 @@ app.listen(port, (err) => {
   // Retention: prune audit_log rows older than the configured window
   // (default 365d, configurable via settings.audit.retentionDays).
   startAuditRetentionScheduler();
+  // Outbound: nudge customers with outstanding balances once a day at 10:00 IST.
+  // No-op unless settings.paymentReminders.enabled is true.
+  startPaymentReminderScheduler();
 });

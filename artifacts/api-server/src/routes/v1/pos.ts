@@ -20,6 +20,7 @@ import { nextInvoiceNo } from "../../lib/counter.js";
 import { resolvePrice } from "../../lib/pricing.js";
 import { appendLedger } from "../../lib/stockService.js";
 import { getTaxConfig, computeTax } from "../../lib/tax.js";
+import { sendEmail, sendWhatsapp } from "../../lib/notifier.js";
 
 // Module-level: read once at process start so a runtime request can never
 // flip this on. Production deployments do not set E2E_TEST_HOOKS, so the
@@ -762,6 +763,50 @@ router.post("/pos/sale", authenticate, async (req: AuthRequest, res) => {
   if (idem.kind === "fresh") {
     await commitIdempotency(idem.storedKey, 200, responseBody);
   }
+
+  // Fire-and-forget receipt notification. Wrapped in a try-and-swallow so a
+  // notifier outage NEVER blocks a sale — the till must always confirm fast.
+  // Only fires when (a) sale is paid, (b) we have a customer with contact
+  // details, (c) operator has actually configured + enabled SMTP/WhatsApp.
+  if (customerId && status === "paid") {
+    void (async () => {
+      try {
+        const cust = (await db.select().from(customersTable).where(eq(customersTable.id, customerId)).limit(1))[0];
+        if (!cust) return;
+        const subject = `Receipt for ${invoiceNo} — ₹${total.toFixed(2)}`;
+        const body =
+          `Hi ${cust.name},\n\nThank you for your purchase!\n\n` +
+          `Invoice: ${invoiceNo}\nAmount: ₹${total.toFixed(2)}\n` +
+          (loyaltyEarned > 0 ? `Loyalty points earned: ${loyaltyEarned}\n` : "") +
+          `\n— Rathinam Crackers`;
+        const tasks: Promise<unknown>[] = [];
+        if (cust.email) {
+          tasks.push(sendEmail({
+            eventType: "pos.sale.receipt",
+            to: cust.email,
+            subject,
+            text: body,
+            recipientId: cust.id,
+            recipientType: "customer",
+          }));
+        }
+        if (cust.phone) {
+          const phone = cust.phone.startsWith("+") ? cust.phone : `+91${cust.phone}`;
+          tasks.push(sendWhatsapp({
+            eventType: "pos.sale.receipt",
+            to: phone,
+            body,
+            recipientId: cust.id,
+            recipientType: "customer",
+          }));
+        }
+        await Promise.allSettled(tasks);
+      } catch (err) {
+        req.log?.warn({ err, invoiceNo }, "pos receipt notification failed");
+      }
+    })();
+  }
+
   res.json(responseBody);
   } // end runSale
 });
