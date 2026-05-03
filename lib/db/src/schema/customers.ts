@@ -1,4 +1,5 @@
 import { pgTable, text, timestamp, boolean, integer, decimal } from "drizzle-orm/pg-core";
+// boolean used for emailVerified column below
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -16,6 +17,8 @@ export const customersTable = pgTable("customers", {
   creditLimit: decimal("credit_limit", { precision: 12, scale: 2 }).default("0"),
   outstandingBalance: decimal("outstanding_balance", { precision: 12, scale: 2 }).notNull().default("0"),
   loyaltyPoints: integer("loyalty_points").notNull().default(0),
+  passwordHash: text("password_hash"),
+  emailVerified: boolean("email_verified").notNull().default(false),
   status: text("status", { enum: ["active","inactive"] }).notNull().default("active"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

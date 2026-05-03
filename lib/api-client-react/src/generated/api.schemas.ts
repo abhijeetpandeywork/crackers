@@ -1528,6 +1528,145 @@ export interface SuccessResponse {
   success?: boolean;
 }
 
+export interface ShopSignupBody {
+  name: string;
+  phone: string;
+  email?: string;
+  /** @minLength 6 */
+  password: string;
+}
+
+export interface ShopLoginBody {
+  /** email or phone */
+  identifier: string;
+  password: string;
+}
+
+export interface ShopCustomer {
+  id?: string;
+  name?: string;
+  phone?: string;
+  email?: string | null;
+  loyaltyPoints?: number;
+  emailVerified?: boolean;
+}
+
+export type ShopAuthResponseData = {
+  token?: string;
+  customer?: ShopCustomer;
+};
+
+export interface ShopAuthResponse {
+  success?: boolean;
+  data?: ShopAuthResponseData;
+}
+
+export interface ShopMeResponse {
+  success?: boolean;
+  data?: ShopCustomer;
+}
+
+export interface ShopAddress {
+  id?: string;
+  label?: string | null;
+  name?: string;
+  phone?: string;
+  line1?: string;
+  line2?: string | null;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  landmark?: string | null;
+  isDefault?: boolean;
+}
+
+export interface ShopAddressBody {
+  label?: string;
+  name: string;
+  phone: string;
+  line1: string;
+  line2?: string;
+  city: string;
+  state: string;
+  pincode: string;
+  landmark?: string;
+  isDefault?: boolean;
+}
+
+export interface ShopAddressResponse {
+  success?: boolean;
+  data?: ShopAddress;
+}
+
+export interface ShopAddressList {
+  success?: boolean;
+  data?: ShopAddress[];
+}
+
+export interface ShopWishlistItem {
+  customerId?: string;
+  productId?: string;
+  createdAt?: string;
+}
+
+export interface ShopWishlistResponse {
+  success?: boolean;
+  data?: ShopWishlistItem[];
+}
+
+export type PlaceShopOrderBodyItemsItem = {
+  productId: string;
+  variantId: string;
+  qty: number;
+};
+
+export type PlaceShopOrderBodyPaymentMode =
+  (typeof PlaceShopOrderBodyPaymentMode)[keyof typeof PlaceShopOrderBodyPaymentMode];
+
+export const PlaceShopOrderBodyPaymentMode = {
+  COD: "COD",
+  UPI: "UPI",
+  BANK: "BANK",
+} as const;
+
+export interface PlaceShopOrderBody {
+  items: PlaceShopOrderBodyItemsItem[];
+  addressId?: string;
+  paymentMode?: PlaceShopOrderBodyPaymentMode;
+  notes?: string;
+}
+
+export type ShopOrderItemsItem = { [key: string]: unknown };
+
+export type ShopOrderLogisticsDetails = { [key: string]: unknown };
+
+export interface ShopOrder {
+  id?: string;
+  invoiceNo?: string;
+  customerId?: string;
+  customerName?: string;
+  items?: ShopOrderItemsItem[];
+  subtotal?: string;
+  taxableAmount?: string;
+  cgst?: string;
+  sgst?: string;
+  total?: string;
+  channel?: string;
+  status?: string;
+  logisticsDetails?: ShopOrderLogisticsDetails;
+  createdAt?: string;
+}
+
+export interface ShopOrderResponse {
+  success?: boolean;
+  data?: ShopOrder;
+}
+
+export interface ShopOrderListResponse {
+  success?: boolean;
+  data?: ShopOrder[];
+}
+
 export type GetSalesByChannelParams = {
   dateFrom?: string;
   dateTo?: string;
@@ -1741,4 +1880,18 @@ export type ListPackingJobsParams = {
   status?: string;
   page?: number;
   limit?: number;
+};
+
+export type UpdateShopMeBody = {
+  name?: string;
+  email?: string;
+};
+
+export type ChangeShopPasswordBody = {
+  currentPassword: string;
+  newPassword: string;
+};
+
+export type AddShopWishlistBody = {
+  productId: string;
 };

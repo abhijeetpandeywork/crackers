@@ -18,3 +18,5 @@ export * from "./pos";
 export * from "./packingJobs";
 export * from "./notifications";
 export * from "./reviews";
+export * from "./customerAddresses";
+export * from "./customerWishlist";

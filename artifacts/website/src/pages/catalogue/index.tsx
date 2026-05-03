@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { useListPublicProducts } from "@workspace/api-client-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -91,8 +91,8 @@ export default function Catalogue() {
             <>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                 {products.map((product: any) => (
-                  <a 
-                    key={product.id} 
+                  <Link
+                    key={product.id}
                     href={`/product/${product.id}`}
                     className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 flex flex-col"
                   >
@@ -129,7 +129,7 @@ export default function Catalogue() {
                         </Button>
                       </div>
                     </div>
-                  </a>
+                  </Link>
                 ))}
               </div>
 

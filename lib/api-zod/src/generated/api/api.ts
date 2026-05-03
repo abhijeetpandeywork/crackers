@@ -3154,3 +3154,289 @@ export const CompletePackingJobResponse = zod.object({
   completedAt: zod.string().optional(),
   createdAt: zod.string().optional(),
 });
+
+/**
+ * @summary Create a customer account
+ */
+export const shopSignupBodyPasswordMin = 6;
+
+export const ShopSignupBody = zod.object({
+  name: zod.string(),
+  phone: zod.string(),
+  email: zod.string().optional(),
+  password: zod.string().min(shopSignupBodyPasswordMin),
+});
+
+/**
+ * @summary Customer login (email or phone + password)
+ */
+export const ShopLoginBody = zod.object({
+  identifier: zod.string().describe("email or phone"),
+  password: zod.string(),
+});
+
+export const ShopLoginResponse = zod.object({
+  success: zod.boolean().optional(),
+  data: zod
+    .object({
+      token: zod.string().optional(),
+      customer: zod
+        .object({
+          id: zod.string().optional(),
+          name: zod.string().optional(),
+          phone: zod.string().optional(),
+          email: zod.string().nullish(),
+          loyaltyPoints: zod.number().optional(),
+          emailVerified: zod.boolean().optional(),
+        })
+        .optional(),
+    })
+    .optional(),
+});
+
+/**
+ * @summary Current customer profile
+ */
+export const GetShopMeResponse = zod.object({
+  success: zod.boolean().optional(),
+  data: zod
+    .object({
+      id: zod.string().optional(),
+      name: zod.string().optional(),
+      phone: zod.string().optional(),
+      email: zod.string().nullish(),
+      loyaltyPoints: zod.number().optional(),
+      emailVerified: zod.boolean().optional(),
+    })
+    .optional(),
+});
+
+/**
+ * @summary Update profile (name, email)
+ */
+export const UpdateShopMeBody = zod.object({
+  name: zod.string().optional(),
+  email: zod.string().optional(),
+});
+
+export const UpdateShopMeResponse = zod.object({
+  success: zod.boolean().optional(),
+  data: zod
+    .object({
+      id: zod.string().optional(),
+      name: zod.string().optional(),
+      phone: zod.string().optional(),
+      email: zod.string().nullish(),
+      loyaltyPoints: zod.number().optional(),
+      emailVerified: zod.boolean().optional(),
+    })
+    .optional(),
+});
+
+/**
+ * @summary Change password
+ */
+export const ChangeShopPasswordBody = zod.object({
+  currentPassword: zod.string(),
+  newPassword: zod.string(),
+});
+
+export const ChangeShopPasswordResponse = zod.object({
+  success: zod.boolean().optional(),
+});
+
+/**
+ * @summary List my saved addresses
+ */
+export const ListShopAddressesResponse = zod.object({
+  success: zod.boolean().optional(),
+  data: zod
+    .array(
+      zod.object({
+        id: zod.string().optional(),
+        label: zod.string().nullish(),
+        name: zod.string().optional(),
+        phone: zod.string().optional(),
+        line1: zod.string().optional(),
+        line2: zod.string().nullish(),
+        city: zod.string().optional(),
+        state: zod.string().optional(),
+        pincode: zod.string().optional(),
+        landmark: zod.string().nullish(),
+        isDefault: zod.boolean().optional(),
+      }),
+    )
+    .optional(),
+});
+
+/**
+ * @summary Add an address
+ */
+export const CreateShopAddressBody = zod.object({
+  label: zod.string().optional(),
+  name: zod.string(),
+  phone: zod.string(),
+  line1: zod.string(),
+  line2: zod.string().optional(),
+  city: zod.string(),
+  state: zod.string(),
+  pincode: zod.string(),
+  landmark: zod.string().optional(),
+  isDefault: zod.boolean().optional(),
+});
+
+/**
+ * @summary Update address
+ */
+export const UpdateShopAddressParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpdateShopAddressBody = zod.object({
+  label: zod.string().optional(),
+  name: zod.string(),
+  phone: zod.string(),
+  line1: zod.string(),
+  line2: zod.string().optional(),
+  city: zod.string(),
+  state: zod.string(),
+  pincode: zod.string(),
+  landmark: zod.string().optional(),
+  isDefault: zod.boolean().optional(),
+});
+
+export const UpdateShopAddressResponse = zod.object({
+  success: zod.boolean().optional(),
+  data: zod
+    .object({
+      id: zod.string().optional(),
+      label: zod.string().nullish(),
+      name: zod.string().optional(),
+      phone: zod.string().optional(),
+      line1: zod.string().optional(),
+      line2: zod.string().nullish(),
+      city: zod.string().optional(),
+      state: zod.string().optional(),
+      pincode: zod.string().optional(),
+      landmark: zod.string().nullish(),
+      isDefault: zod.boolean().optional(),
+    })
+    .optional(),
+});
+
+/**
+ * @summary Delete address
+ */
+export const DeleteShopAddressParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const DeleteShopAddressResponse = zod.object({
+  success: zod.boolean().optional(),
+});
+
+/**
+ * @summary My wishlist
+ */
+export const ListShopWishlistResponse = zod.object({
+  success: zod.boolean().optional(),
+  data: zod
+    .array(
+      zod.object({
+        customerId: zod.string().optional(),
+        productId: zod.string().optional(),
+        createdAt: zod.coerce.date().optional(),
+      }),
+    )
+    .optional(),
+});
+
+/**
+ * @summary Add product to wishlist
+ */
+export const AddShopWishlistBody = zod.object({
+  productId: zod.string(),
+});
+
+/**
+ * @summary Remove from wishlist
+ */
+export const RemoveShopWishlistParams = zod.object({
+  productId: zod.coerce.string(),
+});
+
+export const RemoveShopWishlistResponse = zod.object({
+  success: zod.boolean().optional(),
+});
+
+/**
+ * @summary List my online orders
+ */
+export const ListShopOrdersResponse = zod.object({
+  success: zod.boolean().optional(),
+  data: zod
+    .array(
+      zod.object({
+        id: zod.string().optional(),
+        invoiceNo: zod.string().optional(),
+        customerId: zod.string().optional(),
+        customerName: zod.string().optional(),
+        items: zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+        subtotal: zod.string().optional(),
+        taxableAmount: zod.string().optional(),
+        cgst: zod.string().optional(),
+        sgst: zod.string().optional(),
+        total: zod.string().optional(),
+        channel: zod.string().optional(),
+        status: zod.string().optional(),
+        logisticsDetails: zod.record(zod.string(), zod.unknown()).optional(),
+        createdAt: zod.coerce.date().optional(),
+      }),
+    )
+    .optional(),
+});
+
+/**
+ * @summary Place an order from cart
+ */
+export const PlaceShopOrderBody = zod.object({
+  items: zod.array(
+    zod.object({
+      productId: zod.string(),
+      variantId: zod.string(),
+      qty: zod.number(),
+    }),
+  ),
+  addressId: zod.string().optional(),
+  paymentMode: zod.enum(["COD", "UPI", "BANK"]).optional(),
+  notes: zod.string().optional(),
+});
+
+/**
+ * @summary My order detail
+ */
+export const GetShopOrderParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const GetShopOrderResponse = zod.object({
+  success: zod.boolean().optional(),
+  data: zod
+    .object({
+      id: zod.string().optional(),
+      invoiceNo: zod.string().optional(),
+      customerId: zod.string().optional(),
+      customerName: zod.string().optional(),
+      items: zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+      subtotal: zod.string().optional(),
+      taxableAmount: zod.string().optional(),
+      cgst: zod.string().optional(),
+      sgst: zod.string().optional(),
+      total: zod.string().optional(),
+      channel: zod.string().optional(),
+      status: zod.string().optional(),
+      logisticsDetails: zod.record(zod.string(), zod.unknown()).optional(),
+      createdAt: zod.coerce.date().optional(),
+    })
+    .optional(),
+});

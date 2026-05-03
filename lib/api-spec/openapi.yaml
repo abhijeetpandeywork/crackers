@@ -55,6 +55,8 @@ tags:
     description: Public website CMS content (homepage, help, FAQs)
   - name: reviews
     description: Product reviews (public submission, admin moderation)
+  - name: shop
+    description: Public storefront — customer auth, addresses, wishlist, orders
 
 paths:
   /healthz:
@@ -2547,6 +2549,282 @@ paths:
               schema:
                 $ref: "#/components/schemas/PackingJob"
 
+  /v1/shop/auth/signup:
+    post:
+      operationId: shopSignup
+      tags: [shop]
+      summary: Create a customer account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShopSignupBody"
+      responses:
+        "201":
+          description: Account created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShopAuthResponse"
+
+  /v1/shop/auth/login:
+    post:
+      operationId: shopLogin
+      tags: [shop]
+      summary: Customer login (email or phone + password)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShopLoginBody"
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShopAuthResponse"
+
+  /v1/shop/auth/me:
+    get:
+      operationId: getShopMe
+      tags: [shop]
+      summary: Current customer profile
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShopMeResponse"
+    put:
+      operationId: updateShopMe
+      tags: [shop]
+      summary: Update profile (name, email)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                email: { type: string }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShopMeResponse"
+
+  /v1/shop/auth/password:
+    put:
+      operationId: changeShopPassword
+      tags: [shop]
+      summary: Change password
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword]
+              properties:
+                currentPassword: { type: string }
+                newPassword: { type: string }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /v1/shop/addresses:
+    get:
+      operationId: listShopAddresses
+      tags: [shop]
+      summary: List my saved addresses
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Addresses
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShopAddressList"
+    post:
+      operationId: createShopAddress
+      tags: [shop]
+      summary: Add an address
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShopAddressBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShopAddressResponse"
+
+  /v1/shop/addresses/{id}:
+    put:
+      operationId: updateShopAddress
+      tags: [shop]
+      summary: Update address
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShopAddressBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShopAddressResponse"
+    delete:
+      operationId: deleteShopAddress
+      tags: [shop]
+      summary: Delete address
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /v1/shop/wishlist:
+    get:
+      operationId: listShopWishlist
+      tags: [shop]
+      summary: My wishlist
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Wishlist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShopWishlistResponse"
+    post:
+      operationId: addShopWishlist
+      tags: [shop]
+      summary: Add product to wishlist
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [productId]
+              properties:
+                productId: { type: string }
+      responses:
+        "201":
+          description: Added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /v1/shop/wishlist/{productId}:
+    delete:
+      operationId: removeShopWishlist
+      tags: [shop]
+      summary: Remove from wishlist
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /v1/shop/orders:
+    get:
+      operationId: listShopOrders
+      tags: [shop]
+      summary: List my online orders
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Orders
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShopOrderListResponse"
+    post:
+      operationId: placeShopOrder
+      tags: [shop]
+      summary: Place an order from cart
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlaceShopOrderBody"
+      responses:
+        "201":
+          description: Order placed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShopOrderResponse"
+
+  /v1/shop/orders/{id}:
+    get:
+      operationId: getShopOrder
+      tags: [shop]
+      summary: My order detail
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShopOrderResponse"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -4940,3 +5218,166 @@ components:
       properties:
         success:
           type: boolean
+
+    ShopSignupBody:
+      type: object
+      required: [name, phone, password]
+      properties:
+        name: { type: string }
+        phone: { type: string }
+        email: { type: string }
+        password: { type: string, minLength: 6 }
+
+    ShopLoginBody:
+      type: object
+      required: [identifier, password]
+      properties:
+        identifier:
+          type: string
+          description: email or phone
+        password: { type: string }
+
+    ShopCustomer:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        phone: { type: string }
+        email: { type: string, nullable: true }
+        loyaltyPoints: { type: integer }
+        emailVerified: { type: boolean }
+
+    ShopAuthResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data:
+          type: object
+          properties:
+            token: { type: string }
+            customer:
+              $ref: "#/components/schemas/ShopCustomer"
+
+    ShopMeResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data:
+          $ref: "#/components/schemas/ShopCustomer"
+
+    ShopAddress:
+      type: object
+      properties:
+        id: { type: string }
+        label: { type: string, nullable: true }
+        name: { type: string }
+        phone: { type: string }
+        line1: { type: string }
+        line2: { type: string, nullable: true }
+        city: { type: string }
+        state: { type: string }
+        pincode: { type: string }
+        landmark: { type: string, nullable: true }
+        isDefault: { type: boolean }
+
+    ShopAddressBody:
+      type: object
+      required: [name, phone, line1, city, state, pincode]
+      properties:
+        label: { type: string }
+        name: { type: string }
+        phone: { type: string }
+        line1: { type: string }
+        line2: { type: string }
+        city: { type: string }
+        state: { type: string }
+        pincode: { type: string }
+        landmark: { type: string }
+        isDefault: { type: boolean }
+
+    ShopAddressResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data:
+          $ref: "#/components/schemas/ShopAddress"
+
+    ShopAddressList:
+      type: object
+      properties:
+        success: { type: boolean }
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ShopAddress"
+
+    ShopWishlistItem:
+      type: object
+      properties:
+        customerId: { type: string }
+        productId: { type: string }
+        createdAt: { type: string, format: date-time }
+
+    ShopWishlistResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ShopWishlistItem"
+
+    PlaceShopOrderBody:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required: [productId, variantId, qty]
+            properties:
+              productId: { type: string }
+              variantId: { type: string }
+              qty: { type: integer }
+        addressId: { type: string }
+        paymentMode:
+          type: string
+          enum: [COD, UPI, BANK]
+        notes: { type: string }
+
+    ShopOrder:
+      type: object
+      properties:
+        id: { type: string }
+        invoiceNo: { type: string }
+        customerId: { type: string }
+        customerName: { type: string }
+        items: { type: array, items: { type: object, additionalProperties: true } }
+        subtotal: { type: string }
+        taxableAmount: { type: string }
+        cgst: { type: string }
+        sgst: { type: string }
+        total: { type: string }
+        channel: { type: string }
+        status: { type: string }
+        logisticsDetails:
+          type: object
+          additionalProperties: true
+        createdAt: { type: string, format: date-time }
+
+    ShopOrderResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data:
+          $ref: "#/components/schemas/ShopOrder"
+
+    ShopOrderListResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ShopOrder"

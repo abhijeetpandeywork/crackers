@@ -1,13 +1,16 @@
 import { Link, useLocation } from "wouter";
 import { useCart } from "@/context/cart";
+import { useShopAuth } from "@/context/auth";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Menu, X, Phone, Sparkles } from "lucide-react";
+import { ShoppingCart, Menu, X, Phone, Sparkles, User, LogOut, Package, Heart, MapPin, ChevronDown } from "lucide-react";
 import { useState } from "react";
 
 export function Navbar() {
   const { totalItems } = useCart();
-  const [location] = useLocation();
+  const { isLoggedIn, customer, logout } = useShopAuth();
+  const [location, navigate] = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
 
   const navLinks = [
     { href: "/", label: "Home" },
@@ -74,6 +77,43 @@ export function Navbar() {
                   )}
                 </Button>
               </Link>
+              {isLoggedIn ? (
+                <div className="relative">
+                  <button
+                    onClick={() => setAccountOpen((v) => !v)}
+                    className="flex items-center gap-1.5 text-sm font-medium text-gray-700 hover:text-red-600"
+                    data-testid="account-menu-trigger"
+                  >
+                    <User className="h-4 w-4" />
+                    <span className="max-w-[100px] truncate">{customer?.name?.split(" ")[0] ?? "Account"}</span>
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </button>
+                  {accountOpen && (
+                    <>
+                      <div className="fixed inset-0 z-30" onClick={() => setAccountOpen(false)} />
+                      <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-100 rounded-2xl shadow-lg p-2 z-40">
+                        <Link href="/account" onClick={() => setAccountOpen(false)} className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-50"><User className="h-4 w-4" /> My account</Link>
+                        <Link href="/account/orders" onClick={() => setAccountOpen(false)} className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-50"><Package className="h-4 w-4" /> Orders</Link>
+                        <Link href="/account/wishlist" onClick={() => setAccountOpen(false)} className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-50"><Heart className="h-4 w-4" /> Wishlist</Link>
+                        <Link href="/account/addresses" onClick={() => setAccountOpen(false)} className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-50"><MapPin className="h-4 w-4" /> Addresses</Link>
+                        <button
+                          onClick={() => { logout(); setAccountOpen(false); navigate("/"); }}
+                          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-red-600 hover:bg-red-50"
+                          data-testid="navbar-logout"
+                        >
+                          <LogOut className="h-4 w-4" /> Logout
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <Link href="/login">
+                  <Button variant="outline" size="sm" data-testid="navbar-login">
+                    <User className="h-4 w-4 mr-1" /> Login
+                  </Button>
+                </Link>
+              )}
             </div>
 
             {/* Mobile menu button */}
@@ -118,6 +158,18 @@ export function Navbar() {
             >
               Bulk Orders (WhatsApp)
             </a>
+            {isLoggedIn ? (
+              <>
+                <Link href="/account" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50">My account</Link>
+                <Link href="/account/orders" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50">My orders</Link>
+                <button onClick={() => { logout(); setIsMenuOpen(false); }} className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-red-600 hover:bg-red-50">Logout</button>
+              </>
+            ) : (
+              <>
+                <Link href="/login" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-red-700 hover:bg-red-50">Login</Link>
+                <Link href="/signup" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50">Create account</Link>
+              </>
+            )}
           </div>
         )}
       </nav>

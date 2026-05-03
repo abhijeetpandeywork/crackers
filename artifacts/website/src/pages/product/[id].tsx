@@ -5,7 +5,12 @@ import {
   useListPublicProductReviews,
   useSubmitProductReview,
   useGetPublicSiteContent,
+  useListShopWishlist,
+  useAddShopWishlist,
+  useRemoveShopWishlist,
 } from "@workspace/api-client-react";
+import { useShopAuth } from "@/context/auth";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -225,7 +230,13 @@ export default function ProductDetail() {
   const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
   const [activeImage, setActiveImage] = useState(0);
-  const [wishlisted, setWishlisted] = useState(false);
+  const { isLoggedIn } = useShopAuth();
+  const [, navigate] = useLocation();
+  const { data: wishResp, refetch: refetchWish } = useListShopWishlist({ query: { enabled: isLoggedIn } as any });
+  const addWish = useAddShopWishlist();
+  const removeWish = useRemoveShopWishlist();
+  const wishlistItems = ((wishResp as any)?.data ?? []) as Array<{ productId: string }>;
+  const wishlisted = isLoggedIn && wishlistItems.some((w) => w.productId === id);
 
   const { data: publicProducts, isLoading } = useListPublicProducts({ limit: 500 });
   const { data: reviewsResp, refetch: refetchReviews } = useListPublicProductReviews(id ?? "");
@@ -509,7 +520,24 @@ export default function ProductDetail() {
                     </Badge>
                   )}
                   <button
-                    onClick={() => { setWishlisted(!wishlisted); toast({ title: wishlisted ? "Removed from wishlist" : "Added to wishlist" }); }}
+                    onClick={async () => {
+                      if (!isLoggedIn) {
+                        navigate(`/login?next=${encodeURIComponent(`/product/${id}`)}`);
+                        return;
+                      }
+                      try {
+                        if (wishlisted) {
+                          await removeWish.mutateAsync({ productId: id! });
+                          toast({ title: "Removed from wishlist" });
+                        } else {
+                          await addWish.mutateAsync({ data: { productId: id! } });
+                          toast({ title: "Added to wishlist" });
+                        }
+                        refetchWish();
+                      } catch {
+                        toast({ title: "Could not update wishlist", variant: "destructive" });
+                      }
+                    }}
                     className="bg-white/90 backdrop-blur p-2.5 rounded-full hover:bg-white shadow-sm transition-all"
                     data-testid="wishlist-btn"
                   >
