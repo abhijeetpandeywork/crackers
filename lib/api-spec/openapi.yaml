@@ -3727,6 +3727,10 @@ components:
           type: number
         loyaltyPoints:
           type: integer
+        source:
+          type: string
+          enum: [website, pos, erp, import]
+          description: How the customer entered the system. website=self-signup, pos=cashier walk-in, erp=back-office, import=bulk load.
         status:
           type: string
         createdAt:

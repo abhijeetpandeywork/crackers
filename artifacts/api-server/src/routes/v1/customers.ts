@@ -1,5 +1,16 @@
 import { Router } from "express";
-import { db, customersTable, creditLedgerTable, loyaltyLedgerTable } from "@workspace/db";
+import {
+  db,
+  customersTable,
+  creditLedgerTable,
+  loyaltyLedgerTable,
+  invoicesTable,
+  estimatesTable,
+  customerAddressesTable,
+  customerWishlistTable,
+  productsTable,
+  agentsTable,
+} from "@workspace/db";
 import { eq, ilike, and, sql, desc } from "drizzle-orm";
 import { authenticate, type AuthRequest } from "../../middleware/authenticate.js";
 import { auditWrite } from "../../lib/audit.js";
@@ -28,6 +39,17 @@ router.get("/customers", authenticate, async (req, res) => {
 
 router.post("/customers", authenticate, async (req: AuthRequest, res) => {
   const phone = typeof req.body?.phone === "string" ? req.body.phone.trim() : "";
+  // Provenance: cashier-added walk-ins are tagged "pos"; everything else
+  // staff-creates from the ERP UI defaults to "erp". The only client-supplied
+  // override we honour is "import" (for bulk loaders) — and only when the
+  // caller is a privileged operator. Any other body value is dropped so a
+  // cashier or compromised token can't spoof "website" provenance and skew
+  // acquisition analytics.
+  const bodySource = typeof req.body?.source === "string" ? req.body.source : "";
+  const role = req.user?.role ?? "";
+  const isPrivileged = role === "SUPER_ADMIN" || role === "ADMIN" || role === "ERP_MANAGER";
+  const inferred = role === "CASHIER" ? "pos" : "erp";
+  const source = bodySource === "import" && isPrivileged ? "import" : inferred;
   if (phone) {
     const existing = (await db.select().from(customersTable).where(eq(customersTable.phone, phone)).limit(1))[0];
     if (existing) {
@@ -43,7 +65,7 @@ router.post("/customers", authenticate, async (req: AuthRequest, res) => {
     }
   }
   try {
-    const [customer] = await db.insert(customersTable).values({ ...req.body, phone, id: crypto.randomUUID() }).returning();
+    const [customer] = await db.insert(customersTable).values({ ...req.body, phone, source, id: crypto.randomUUID() }).returning();
     await auditWrite(req, { action: "CREATE", entityType: "customer", entityId: customer?.id, after: customer });
     res.status(201).json(customer);
   } catch (err: any) {
@@ -119,6 +141,69 @@ router.post("/customers/:id/payment", authenticate, async (req, res) => {
     }),
   ]);
   res.json({ success: true, message: "Payment recorded" });
+});
+
+// Aggregate every related record for a single customer in one round-trip.
+// The ERP detail page used to fire 4–5 separate fetches and stitch the
+// results together client-side, which made the page feel sluggish and made
+// loading-state handling fiddly. This endpoint owns the joins so the UI
+// just renders sections.
+router.get("/customers/:id/related", authenticate, async (req, res) => {
+  const id = req.params["id"] as string;
+  const customer = (await db.select().from(customersTable).where(eq(customersTable.id, id)).limit(1))[0];
+  if (!customer) {
+    res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Customer not found" } });
+    return;
+  }
+  // Run the dependent reads in parallel — none of them depend on each other
+  // and none mutate state, so a single Promise.all keeps page load snappy
+  // even on a customer with hundreds of invoices.
+  const [invoices, estimates, addresses, wishlistRows, agentRow, totals] = await Promise.all([
+    db.select().from(invoicesTable).where(eq(invoicesTable.customerId, id)).orderBy(desc(invoicesTable.createdAt)).limit(50),
+    db.select().from(estimatesTable).where(eq(estimatesTable.customerId, id)).orderBy(desc(estimatesTable.createdAt)).limit(20),
+    db.select().from(customerAddressesTable).where(eq(customerAddressesTable.customerId, id)).orderBy(desc(customerAddressesTable.isDefault)),
+    db
+      .select({
+        productId: customerWishlistTable.productId,
+        addedAt: customerWishlistTable.createdAt,
+        productName: productsTable.name,
+        productSku: productsTable.code,
+      })
+      .from(customerWishlistTable)
+      .leftJoin(productsTable, eq(productsTable.id, customerWishlistTable.productId))
+      .where(eq(customerWishlistTable.customerId, id))
+      .orderBy(desc(customerWishlistTable.createdAt))
+      .limit(50),
+    customer.agentId
+      ? db.select().from(agentsTable).where(eq(agentsTable.id, customer.agentId)).limit(1)
+      : Promise.resolve([] as any[]),
+    // Lifetime totals sourced from `invoices` (excluding cancelled). Done in
+    // SQL so we don't have to load every row to sum it on the server.
+    db
+      .select({
+        totalSpend: sql<number>`coalesce(sum(case when ${invoicesTable.status} <> 'cancelled' then ${invoicesTable.total}::numeric else 0 end), 0)::float`,
+        orderCount: sql<number>`count(*) filter (where ${invoicesTable.status} <> 'cancelled')::int`,
+        lastOrderAt: sql<string | null>`max(${invoicesTable.createdAt})`,
+      })
+      .from(invoicesTable)
+      .where(eq(invoicesTable.customerId, id)),
+  ]);
+  res.json({
+    success: true,
+    data: {
+      customer,
+      invoices,
+      estimates,
+      addresses,
+      wishlist: wishlistRows,
+      agent: agentRow[0] ?? null,
+      stats: {
+        totalSpend: Number(totals[0]?.totalSpend ?? 0),
+        orderCount: Number(totals[0]?.orderCount ?? 0),
+        lastOrderAt: totals[0]?.lastOrderAt ?? null,
+      },
+    },
+  });
 });
 
 export default router;

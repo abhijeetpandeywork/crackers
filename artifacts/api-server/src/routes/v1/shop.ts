@@ -56,6 +56,7 @@ router.post("/shop/auth/signup", async (req, res) => {
     email: email || null,
     customerType: "RETAIL",
     passwordHash: hashed,
+    source: "website",
   }).returning();
   const customer = created!;
   const token = signShopToken({ id: customer.id });

@@ -19,6 +19,13 @@ export const customersTable = pgTable("customers", {
   loyaltyPoints: integer("loyalty_points").notNull().default(0),
   passwordHash: text("password_hash"),
   emailVerified: boolean("email_verified").notNull().default(false),
+  // How the customer first entered the system. "website" = self-signed up
+  // through the public storefront; "pos" = walk-in added by a cashier;
+  // "erp" = staff-added (back-office data entry / agent on behalf of buyer);
+  // "import" = bulk loaded from a spreadsheet or external system. Used by
+  // the ERP customer list/detail to show provenance and by analytics to
+  // segment online vs offline acquisition.
+  source: text("source", { enum: ["website", "pos", "erp", "import"] }).notNull().default("erp"),
   status: text("status", { enum: ["active","inactive"] }).notNull().default("active"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

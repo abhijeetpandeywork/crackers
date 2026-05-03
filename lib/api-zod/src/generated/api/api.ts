@@ -866,6 +866,12 @@ export const ListCustomersResponse = zod.object({
         creditLimit: zod.number().optional(),
         outstandingBalance: zod.number().optional(),
         loyaltyPoints: zod.number().optional(),
+        source: zod
+          .enum(["website", "pos", "erp", "import"])
+          .optional()
+          .describe(
+            "How the customer entered the system. website=self-signup, pos=cashier walk-in, erp=back-office, import=bulk load.",
+          ),
         status: zod.string().optional(),
         createdAt: zod.string().optional(),
       }),
@@ -920,6 +926,12 @@ export const GetCustomerResponse = zod.object({
   creditLimit: zod.number().optional(),
   outstandingBalance: zod.number().optional(),
   loyaltyPoints: zod.number().optional(),
+  source: zod
+    .enum(["website", "pos", "erp", "import"])
+    .optional()
+    .describe(
+      "How the customer entered the system. website=self-signup, pos=cashier walk-in, erp=back-office, import=bulk load.",
+    ),
   status: zod.string().optional(),
   createdAt: zod.string().optional(),
 });
@@ -960,6 +972,12 @@ export const UpdateCustomerResponse = zod.object({
   creditLimit: zod.number().optional(),
   outstandingBalance: zod.number().optional(),
   loyaltyPoints: zod.number().optional(),
+  source: zod
+    .enum(["website", "pos", "erp", "import"])
+    .optional()
+    .describe(
+      "How the customer entered the system. website=self-signup, pos=cashier walk-in, erp=back-office, import=bulk load.",
+    ),
   status: zod.string().optional(),
   createdAt: zod.string().optional(),
 });
@@ -2438,6 +2456,12 @@ export const ListHeldBillsResponse = zod.object({
             creditLimit: zod.number().optional(),
             outstandingBalance: zod.number().optional(),
             loyaltyPoints: zod.number().optional(),
+            source: zod
+              .enum(["website", "pos", "erp", "import"])
+              .optional()
+              .describe(
+                "How the customer entered the system. website=self-signup, pos=cashier walk-in, erp=back-office, import=bulk load.",
+              ),
             status: zod.string().optional(),
             createdAt: zod.string().optional(),
           })

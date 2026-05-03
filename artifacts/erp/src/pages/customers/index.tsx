@@ -150,6 +150,7 @@ export default function CustomersList() {
             <TableRow>
               <TableHead>Customer</TableHead>
               <TableHead>Type</TableHead>
+              <TableHead>Source</TableHead>
               <TableHead>City</TableHead>
               <TableHead>Outstanding</TableHead>
               <TableHead>Loyalty Pts</TableHead>
@@ -170,7 +171,7 @@ export default function CustomersList() {
               ))
             ) : data?.data?.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center h-32 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center h-32 text-muted-foreground">
                   No customers found.
                 </TableCell>
               </TableRow>
@@ -185,6 +186,22 @@ export default function CustomersList() {
                   </TableCell>
                   <TableCell>
                     <Badge variant="secondary">{customer.customerType}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    {(() => {
+                      // Source-tag styling: website orders are the highest-
+                      // value acquisition channel so we surface them in
+                      // green; pos = walk-in (neutral); erp = staff-entered
+                      // (subdued); import = legacy migration (outline).
+                      const src = (customer.source ?? 'erp') as string;
+                      const tone =
+                        src === 'website' ? 'bg-green-100 text-green-800 hover:bg-green-100' :
+                        src === 'pos' ? 'bg-blue-100 text-blue-800 hover:bg-blue-100' :
+                        src === 'import' ? 'bg-amber-100 text-amber-800 hover:bg-amber-100' :
+                        'bg-muted text-muted-foreground hover:bg-muted';
+                      const label = src === 'website' ? 'Online' : src === 'pos' ? 'POS' : src === 'erp' ? 'ERP' : 'Import';
+                      return <Badge className={tone} variant="outline">{label}</Badge>;
+                    })()}
                   </TableCell>
                   <TableCell>{customer.city || 'N/A'}</TableCell>
                   <TableCell>

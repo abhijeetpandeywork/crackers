@@ -371,6 +371,19 @@ export const CustomerCustomerType = {
   WALK_IN: "WALK_IN",
 } as const;
 
+/**
+ * How the customer entered the system. website=self-signup, pos=cashier walk-in, erp=back-office, import=bulk load.
+ */
+export type CustomerSource =
+  (typeof CustomerSource)[keyof typeof CustomerSource];
+
+export const CustomerSource = {
+  website: "website",
+  pos: "pos",
+  erp: "erp",
+  import: "import",
+} as const;
+
 export interface Customer {
   id?: string;
   name?: string;
@@ -385,6 +398,8 @@ export interface Customer {
   creditLimit?: number;
   outstandingBalance?: number;
   loyaltyPoints?: number;
+  /** How the customer entered the system. website=self-signup, pos=cashier walk-in, erp=back-office, import=bulk load. */
+  source?: CustomerSource;
   status?: string;
   createdAt?: string;
 }
