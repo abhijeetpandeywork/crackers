@@ -113,4 +113,15 @@ router.put("/coupons/:id", authenticate, async (req: AuthRequest, res) => {
   res.json(coupon);
 });
 
+// Soft-delete: coupons are referenced by coupon_usages history, so we can't
+// hard-delete without breaking the audit trail. Mark as expired instead.
+router.delete("/coupons/:id", authenticate, async (req: AuthRequest, res) => {
+  const id = req.params["id"] as string;
+  const before = (await db.select().from(couponsTable).where(eq(couponsTable.id, id)).limit(1))[0] ?? null;
+  if (!before) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Coupon not found" } }); return; }
+  const [coupon] = await db.update(couponsTable).set({ status: "expired" }).where(eq(couponsTable.id, id)).returning();
+  await auditWrite(req, { action: "DELETE", entityType: "coupon", entityId: id, before, after: coupon });
+  res.json({ success: true, data: { id } });
+});
+
 export default router;
