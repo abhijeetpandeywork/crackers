@@ -12,7 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Pencil, Loader2, Store } from "lucide-react";
+import { Plus, Pencil, Loader2, Store, Check } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 
@@ -398,6 +398,7 @@ export default function UsersList() {
                           type="button"
                           key={s.id}
                           onClick={() => toggleLocation(s.id)}
+                          aria-pressed={checked}
                           className={`flex items-center gap-2 rounded-md border p-3 text-left text-sm transition ${
                             checked ? "border-primary bg-primary/5" : "hover:bg-accent"
                           }`}
@@ -408,7 +409,14 @@ export default function UsersList() {
                             <div className="font-medium">{s.name}</div>
                             {s.city && <div className="text-xs text-muted-foreground">{s.city}</div>}
                           </div>
-                          <Switch checked={checked} onCheckedChange={() => toggleLocation(s.id)} />
+                          <span
+                            aria-hidden="true"
+                            className={`flex h-5 w-5 items-center justify-center rounded-full border ${
+                              checked ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/30"
+                            }`}
+                          >
+                            {checked && <Check className="h-3 w-3" />}
+                          </span>
                         </button>
                       );
                     })}
