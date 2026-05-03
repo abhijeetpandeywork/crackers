@@ -1409,6 +1409,53 @@ export interface CreateLocationBody {
   phone?: string;
 }
 
+export interface Brand {
+  id?: string;
+  name?: string;
+  slug?: string;
+  logoUrl?: string | null;
+  description?: string | null;
+  sortOrder?: number;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface BrandListResponse {
+  success?: boolean;
+  data?: Brand[];
+}
+
+export interface BrandResponse {
+  success?: boolean;
+  data?: Brand;
+}
+
+export interface CreateBrandBody {
+  name: string;
+  logoUrl?: string | null;
+  description?: string | null;
+  sortOrder?: number;
+  isActive?: boolean;
+}
+
+export interface UpdateBrandBody {
+  name?: string;
+  logoUrl?: string | null;
+  description?: string | null;
+  sortOrder?: number;
+  isActive?: boolean;
+}
+
+export type DeleteBrandResponseData = {
+  id?: string;
+};
+
+export interface DeleteBrandResponse {
+  success?: boolean;
+  data?: DeleteBrandResponseData;
+}
+
 export type PackingJobRawMaterialsItem = { [key: string]: unknown };
 
 export type PackingJobFinishedGoodsItem = { [key: string]: unknown };

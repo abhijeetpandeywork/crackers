@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation, useParams } from "wouter";
-import { useGetProduct, useUpdateProduct, useCreateProduct, type ProductVariant, type CreateProductBody } from "@workspace/api-client-react";
+import { useGetProduct, useUpdateProduct, useCreateProduct, useListBrands, type ProductVariant, type CreateProductBody, type Brand } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,15 +37,12 @@ export default function ProductDetail() {
   });
   const [defaultBrand, setDefaultBrand] = useState<string>("Standard");
 
-  const KNOWN_BRANDS = [
-    "Standard",
-    "Sri Kaliswari",
-    "Cock Brand",
-    "Ajantha",
-    "Vinayaga",
-    "Coronation",
-    "Supreme",
-  ];
+  const { data: brandsResp } = useListBrands();
+  const brands: Brand[] = (brandsResp?.data ?? []) as Brand[];
+  const activeBrands = brands.filter((b) => b.isActive !== false);
+  const brandNames = activeBrands.map((b) => b.name ?? "").filter(Boolean) as string[];
+  // Always include the currently-selected brand even if inactive/missing.
+  const ensureName = (n: string) => (n && !brandNames.includes(n) ? [n, ...brandNames] : brandNames);
 
   useEffect(() => {
     if (product) {
@@ -191,38 +188,72 @@ export default function ProductDetail() {
               </div>
               <div className="space-y-2">
                 <Label>Default Brand</Label>
-                <Input
-                  list="erp-brand-suggestions"
-                  value={defaultBrand}
-                  onChange={e => setDefaultBrand(e.target.value)}
-                  placeholder="e.g. Standard, Sri Kaliswari"
-                />
-                <datalist id="erp-brand-suggestions">
-                  {KNOWN_BRANDS.map(b => <option key={b} value={b} />)}
-                </datalist>
+                <Select value={defaultBrand} onValueChange={setDefaultBrand}>
+                  <SelectTrigger><SelectValue placeholder="Select a brand" /></SelectTrigger>
+                  <SelectContent>
+                    {ensureName(defaultBrand).map(b => (
+                      <SelectItem key={b} value={b}>
+                        <span className="flex items-center gap-2">
+                          {(() => {
+                            const found = brands.find(x => x.name === b);
+                            return found?.logoUrl ? (
+                              <img src={found.logoUrl} alt="" className="h-4 w-4 object-contain bg-white rounded-sm" />
+                            ) : null;
+                          })()}
+                          {b}
+                        </span>
+                      </SelectItem>
+                    ))}
+                    {brandNames.length === 0 && (
+                      <div className="px-2 py-3 text-xs text-muted-foreground">
+                        No brands defined yet. Add brands under "Brands" in the sidebar.
+                      </div>
+                    )}
+                  </SelectContent>
+                </Select>
                 <p className="text-xs text-muted-foreground">
                   Pre-fills brand for new variants. Each variant can override.
                 </p>
                 {formData.variants.length > 0 && (() => {
                   const trimmed = defaultBrand.trim();
                   const blankCount = formData.variants.filter(v => !v.brand?.trim()).length;
+                  const totalCount = formData.variants.length;
                   return (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="w-full"
-                      disabled={!trimmed || blankCount === 0}
-                      onClick={() => setFormData(p => ({
-                        ...p,
-                        variants: p.variants.map(v => v.brand?.trim() ? v : { ...v, brand: trimmed })
-                      }))}
-                      title={!trimmed ? "Enter a default brand first" : blankCount === 0 ? "All variants already have a brand" : ""}
-                    >
-                      {blankCount === 0
-                        ? "All variants have a brand"
-                        : `Fill ${blankCount} variant${blankCount === 1 ? '' : 's'} without a brand`}
-                    </Button>
+                    <div className="space-y-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        disabled={!trimmed || blankCount === 0}
+                        onClick={() => setFormData(p => ({
+                          ...p,
+                          variants: p.variants.map(v => v.brand?.trim() ? v : { ...v, brand: trimmed })
+                        }))}
+                        title={!trimmed ? "Pick a default brand first" : blankCount === 0 ? "All variants already have a brand" : ""}
+                      >
+                        {blankCount === 0
+                          ? "All variants have a brand"
+                          : `Fill ${blankCount} variant${blankCount === 1 ? '' : 's'} without a brand`}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="default"
+                        size="sm"
+                        className="w-full"
+                        disabled={!trimmed}
+                        onClick={() => {
+                          if (!confirm(`Overwrite the brand on all ${totalCount} variant${totalCount === 1 ? '' : 's'} with "${trimmed}"?`)) return;
+                          setFormData(p => ({
+                            ...p,
+                            variants: p.variants.map(v => ({ ...v, brand: trimmed }))
+                          }));
+                        }}
+                        data-testid="btn-apply-brand-all"
+                      >
+                        Apply "{trimmed || '…'}" to ALL variants
+                      </Button>
+                    </div>
                   );
                 })()}
               </div>
@@ -270,12 +301,27 @@ export default function ProductDetail() {
                     </div>
                     <div className="space-y-2">
                       <Label>Brand</Label>
-                      <Input
-                        list="erp-brand-suggestions"
+                      <Select
                         value={variant.brand || ''}
-                        onChange={e => updateVariant(i, 'brand', e.target.value || undefined)}
-                        placeholder={defaultBrand || 'Standard'}
-                      />
+                        onValueChange={(v) => updateVariant(i, 'brand', v || undefined)}
+                      >
+                        <SelectTrigger><SelectValue placeholder={defaultBrand || 'Select brand'} /></SelectTrigger>
+                        <SelectContent>
+                          {ensureName(variant.brand || '').filter(Boolean).map(b => (
+                            <SelectItem key={b} value={b}>
+                              <span className="flex items-center gap-2">
+                                {(() => {
+                                  const found = brands.find(x => x.name === b);
+                                  return found?.logoUrl ? (
+                                    <img src={found.logoUrl} alt="" className="h-4 w-4 object-contain bg-white rounded-sm" />
+                                  ) : null;
+                                })()}
+                                {b}
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
 

@@ -3221,6 +3221,109 @@ export const CreateLocationBody = zod.object({
 });
 
 /**
+ * @summary List all brands (admin/staff)
+ */
+export const ListBrandsResponse = zod.object({
+  success: zod.boolean().optional(),
+  data: zod
+    .array(
+      zod.object({
+        id: zod.string().optional(),
+        name: zod.string().optional(),
+        slug: zod.string().optional(),
+        logoUrl: zod.string().nullish(),
+        description: zod.string().nullish(),
+        sortOrder: zod.number().optional(),
+        isActive: zod.boolean().optional(),
+        createdAt: zod.coerce.date().optional(),
+        updatedAt: zod.coerce.date().optional(),
+      }),
+    )
+    .optional(),
+});
+
+/**
+ * @summary Create brand
+ */
+export const CreateBrandBody = zod.object({
+  name: zod.string(),
+  logoUrl: zod.string().nullish(),
+  description: zod.string().nullish(),
+  sortOrder: zod.number().optional(),
+  isActive: zod.boolean().optional(),
+});
+
+/**
+ * @summary List active brands (public — for storefront/POS)
+ */
+export const ListPublicBrandsResponse = zod.object({
+  success: zod.boolean().optional(),
+  data: zod
+    .array(
+      zod.object({
+        id: zod.string().optional(),
+        name: zod.string().optional(),
+        slug: zod.string().optional(),
+        logoUrl: zod.string().nullish(),
+        description: zod.string().nullish(),
+        sortOrder: zod.number().optional(),
+        isActive: zod.boolean().optional(),
+        createdAt: zod.coerce.date().optional(),
+        updatedAt: zod.coerce.date().optional(),
+      }),
+    )
+    .optional(),
+});
+
+/**
+ * @summary Update brand
+ */
+export const UpdateBrandParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpdateBrandBody = zod.object({
+  name: zod.string().optional(),
+  logoUrl: zod.string().nullish(),
+  description: zod.string().nullish(),
+  sortOrder: zod.number().optional(),
+  isActive: zod.boolean().optional(),
+});
+
+export const UpdateBrandResponse = zod.object({
+  success: zod.boolean().optional(),
+  data: zod
+    .object({
+      id: zod.string().optional(),
+      name: zod.string().optional(),
+      slug: zod.string().optional(),
+      logoUrl: zod.string().nullish(),
+      description: zod.string().nullish(),
+      sortOrder: zod.number().optional(),
+      isActive: zod.boolean().optional(),
+      createdAt: zod.coerce.date().optional(),
+      updatedAt: zod.coerce.date().optional(),
+    })
+    .optional(),
+});
+
+/**
+ * @summary Delete brand
+ */
+export const DeleteBrandParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const DeleteBrandResponse = zod.object({
+  success: zod.boolean().optional(),
+  data: zod
+    .object({
+      id: zod.string().optional(),
+    })
+    .optional(),
+});
+
+/**
  * @summary List packing jobs
  */
 export const ListPackingJobsQueryParams = zod.object({

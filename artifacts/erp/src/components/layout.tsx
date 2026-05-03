@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { 
   BarChart3, Box, Package, Users, UsersRound, Truck, 
   ShoppingCart, Tags, FileText, FileBarChart, Settings, LogOut,
-  HelpCircle, ShieldCheck, Globe, MessageSquare
+  HelpCircle, ShieldCheck, Globe, MessageSquare, Award
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -12,6 +12,7 @@ import logoUrl from "@assets/rathinam_logo.png";
 const navItems = [
   { icon: BarChart3, label: "Dashboard", href: "/" },
   { icon: Box, label: "Products", href: "/products" },
+  { icon: Award, label: "Brands", href: "/brands" },
   { icon: Package, label: "Stock", href: "/stock" },
   { icon: FileText, label: "Estimates", href: "/estimates" },
   { icon: FileText, label: "Invoices", href: "/invoices" },

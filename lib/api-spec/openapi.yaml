@@ -47,6 +47,8 @@ tags:
     description: User management
   - name: locations
     description: Location management
+  - name: brands
+    description: Brand master (manufacturer brands with logos)
   - name: brochure
     description: Order brochure
   - name: dashboard
@@ -2542,6 +2544,102 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Location"
+
+  # ============================================================
+  # BRANDS (master)
+  # ============================================================
+  /v1/brands:
+    get:
+      operationId: listBrands
+      tags: [brands]
+      summary: List all brands (admin/staff)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Brand list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandListResponse"
+    post:
+      operationId: createBrand
+      tags: [brands]
+      summary: Create brand
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBrandBody"
+      responses:
+        "201":
+          description: Brand created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandResponse"
+
+  /v1/brands/public:
+    get:
+      operationId: listPublicBrands
+      tags: [brands]
+      summary: List active brands (public — for storefront/POS)
+      responses:
+        "200":
+          description: Active brands
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandListResponse"
+
+  /v1/brands/{id}:
+    patch:
+      operationId: updateBrand
+      tags: [brands]
+      summary: Update brand
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateBrandBody"
+      responses:
+        "200":
+          description: Updated brand
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandResponse"
+    delete:
+      operationId: deleteBrand
+      tags: [brands]
+      summary: Delete brand
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Brand deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteBrandResponse"
 
   # ============================================================
   # PACKING JOBS
@@ -5082,6 +5180,95 @@ components:
           type: string
         phone:
           type: string
+
+    # BRAND SCHEMAS
+    Brand:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        slug:
+          type: string
+        logoUrl:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        sortOrder:
+          type: integer
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    BrandListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Brand"
+
+    BrandResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: "#/components/schemas/Brand"
+
+    CreateBrandBody:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        logoUrl:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        sortOrder:
+          type: integer
+        isActive:
+          type: boolean
+
+    UpdateBrandBody:
+      type: object
+      properties:
+        name:
+          type: string
+        logoUrl:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        sortOrder:
+          type: integer
+        isActive:
+          type: boolean
+
+    DeleteBrandResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            id:
+              type: string
 
     # PACKING JOB SCHEMAS
     PackingJob:

@@ -10,6 +10,7 @@ import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
 import ProductsList from "@/pages/products/index";
 import ProductDetail from "@/pages/products/[id]";
+import BrandsList from "@/pages/brands/index";
 import Stock from "@/pages/stock/index";
 import StockLedger from "@/pages/stock/ledger";
 
@@ -73,6 +74,9 @@ function Router() {
       </Route>
       <Route path="/products/:id">
         {(params) => <ProtectedRoute component={ProductDetail} {...params} />}
+      </Route>
+      <Route path="/brands">
+        {(params) => <ProtectedRoute component={BrandsList} {...params} />}
       </Route>
       <Route path="/stock">
         {(params) => <ProtectedRoute component={Stock} {...params} />}
