@@ -821,6 +821,103 @@ const sections: Array<{ name: string; checks: () => Promise<CheckResult[]> }> = 
       return out;
     },
   },
+  {
+    name: "10. Shop orders — split shipping & billing",
+    checks: async () => {
+      const out: CheckResult[] = [];
+      // Sign up a fresh shop customer (verifier-only) so we can place an order.
+      const stamp = Date.now();
+      const phone = `9${String(stamp).slice(-9)}`;
+      const signup = await http("/api/v1/shop/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Verifier User", phone, password: "verify1234" }),
+      });
+      const token = (signup.body as any)?.data?.token ?? (signup.body as any)?.data?.accessToken;
+      out.push({
+        name: "POST /shop/auth/signup returns token",
+        passed: (signup.status === 200 || signup.status === 201) && typeof token === "string",
+        detail: token ? undefined : `status=${signup.status}`,
+      });
+      if (!token) return out;
+      const auth = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+
+      // Create two distinct addresses: one shipping, one billing.
+      const ship = await http("/api/v1/shop/addresses", {
+        method: "POST",
+        headers: auth,
+        body: JSON.stringify({
+          label: "Ship", name: "Ship Recipient", phone: "9000000001",
+          line1: "1 Shipping Lane", city: "Sivakasi", state: "Tamil Nadu",
+          pincode: "626123", addressType: "shipping",
+        }),
+      });
+      const shippingId = (ship.body as any)?.data?.id;
+      const bill = await http("/api/v1/shop/addresses", {
+        method: "POST",
+        headers: auth,
+        body: JSON.stringify({
+          label: "Bill", name: "Bill Recipient", phone: "9000000002",
+          line1: "9 Billing Road", city: "Madurai", state: "Tamil Nadu",
+          pincode: "625001", addressType: "billing", isDefault: false,
+        }),
+      });
+      const billingId = (bill.body as any)?.data?.id;
+      out.push({
+        name: "POST /shop/addresses (shipping + billing) returns 201",
+        passed: !!shippingId && !!billingId,
+        detail: !shippingId ? `ship status=${ship.status}` : !billingId ? `bill status=${bill.status}` : undefined,
+      });
+      if (!shippingId || !billingId) return out;
+
+      // Pick any public product/variant to place the order.
+      const prods = await http("/api/v1/products/public?limit=1");
+      const p = (prods.body as any)?.data?.[0];
+      const v = p?.variants?.[0];
+      if (!p || !v) {
+        out.push({ name: "Public product available for order", passed: false, detail: "no products" });
+        return out;
+      }
+
+      const placed = await http("/api/v1/shop/orders", {
+        method: "POST",
+        headers: auth,
+        body: JSON.stringify({
+          items: [{ productId: p.id, variantId: v.id ?? v.variantId, qty: 1 }],
+          shippingAddressId: shippingId,
+          billingAddressId: billingId,
+          paymentMode: "COD",
+        }),
+      });
+      out.push({
+        name: "POST /shop/orders accepts shippingAddressId + billingAddressId",
+        passed: placed.status === 200 || placed.status === 201,
+        detail: placed.status >= 400 ? `status=${placed.status}` : undefined,
+      });
+
+      const orderId = (placed.body as any)?.data?.id;
+      if (!orderId) return out;
+
+      const got = await http(`/api/v1/shop/orders/${orderId}`, { headers: auth });
+      const ld = (got.body as any)?.data?.logisticsDetails ?? {};
+      out.push({
+        name: "Order persists shippingAddress in logisticsDetails",
+        passed: ld?.shippingAddress?.line1 === "1 Shipping Lane",
+        detail: ld?.shippingAddress?.line1 ?? "missing",
+      });
+      out.push({
+        name: "Order persists billingAddress in logisticsDetails",
+        passed: ld?.billingAddress?.line1 === "9 Billing Road",
+        detail: ld?.billingAddress?.line1 ?? "missing",
+      });
+      out.push({
+        name: "Order marks sameAsShipping=false when billing differs",
+        passed: ld?.sameAsShipping === false,
+        detail: `sameAsShipping=${ld?.sameAsShipping}`,
+      });
+      return out;
+    },
+  },
 ];
 
 async function main() {

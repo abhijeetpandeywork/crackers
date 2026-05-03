@@ -26,8 +26,29 @@ router.get("/invoices", authenticate, async (req, res) => {
   res.json({ success: true, data: rows, meta: { page: pg, limit: lim, total, pages: Math.ceil(total / lim) } });
 });
 
+type InlineAddress = {
+  name?: string; phone?: string; line1?: string; line2?: string | null;
+  city?: string; state?: string; pincode?: string; landmark?: string | null;
+};
+function sanitizeAddress(a: unknown): InlineAddress | null {
+  if (!a || typeof a !== "object") return null;
+  const o = a as Record<string, unknown>;
+  const required = ["name", "phone", "line1", "city", "state", "pincode"];
+  if (!required.every((k) => typeof o[k] === "string" && (o[k] as string).trim() !== "")) return null;
+  return {
+    name: String(o["name"]),
+    phone: String(o["phone"]),
+    line1: String(o["line1"]),
+    line2: o["line2"] == null ? null : String(o["line2"]),
+    city: String(o["city"]),
+    state: String(o["state"]),
+    pincode: String(o["pincode"]),
+    landmark: o["landmark"] == null ? null : String(o["landmark"]),
+  };
+}
+
 router.post("/invoices", authenticate, async (req: AuthRequest, res) => {
-  const { customerId, agentId, locationId, priceListId, couponCode, loyaltyPointsRedeem, paymentMode, channel, items } = req.body as {
+  const { customerId, agentId, locationId, priceListId, couponCode, loyaltyPointsRedeem, paymentMode, channel, items, shippingAddress, billingAddress, logisticsDetails: extraLogistics } = req.body as {
     customerId?: string;
     agentId?: string;
     locationId?: string;
@@ -37,7 +58,12 @@ router.post("/invoices", authenticate, async (req: AuthRequest, res) => {
     paymentMode: string;
     channel?: string;
     items: Array<{ productId: string; variantId: string; qty: number }>;
+    shippingAddress?: unknown;
+    billingAddress?: unknown;
+    logisticsDetails?: Record<string, unknown>;
   };
+  const ship = sanitizeAddress(shippingAddress);
+  const bill = sanitizeAddress(billingAddress) ?? ship;
 
   const settingsRows = await db.select().from(settingsTable).where(eq(settingsTable.key, "pricing")).limit(1);
   const pricingSettings = (settingsRows[0]?.value ?? {}) as any;
@@ -132,6 +158,14 @@ router.post("/invoices", authenticate, async (req: AuthRequest, res) => {
       channel: (channel ?? "RETAIL") as any,
       financialYear,
       status: paymentMode === "CREDIT" ? "credit" : "paid",
+      logisticsDetails: (ship || bill || extraLogistics)
+        ? {
+            ...(extraLogistics ?? {}),
+            ...(ship ? { shippingAddress: ship, address: ship } : {}),
+            ...(bill ? { billingAddress: bill } : {}),
+            ...(ship && bill ? { sameAsShipping: JSON.stringify(ship) === JSON.stringify(bill) } : {}),
+          }
+        : null,
       createdBy: req.user?.id,
     }).returning();
     return inv;

@@ -12,6 +12,7 @@ export const customerAddressesTable = pgTable("customer_addresses", {
   state: text("state").notNull(),
   pincode: text("pincode").notNull(),
   landmark: text("landmark"),
+  addressType: text("address_type", { enum: ["shipping", "billing", "both"] }).notNull().default("both"),
   isDefault: boolean("is_default").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

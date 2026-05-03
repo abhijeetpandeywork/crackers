@@ -1489,6 +1489,32 @@ export const CreateInvoiceBody = zod.object({
       qty: zod.number(),
     }),
   ),
+  shippingAddress: zod
+    .object({
+      name: zod.string(),
+      phone: zod.string(),
+      line1: zod.string(),
+      line2: zod.string().nullish(),
+      city: zod.string(),
+      state: zod.string(),
+      pincode: zod.string(),
+      landmark: zod.string().nullish(),
+    })
+    .optional()
+    .describe("Inline address used on invoices, orders and printed documents."),
+  billingAddress: zod
+    .object({
+      name: zod.string(),
+      phone: zod.string(),
+      line1: zod.string(),
+      line2: zod.string().nullish(),
+      city: zod.string(),
+      state: zod.string(),
+      pincode: zod.string(),
+      landmark: zod.string().nullish(),
+    })
+    .optional()
+    .describe("Inline address used on invoices, orders and printed documents."),
   logisticsDetails: zod.object({}).passthrough().optional(),
 });
 
@@ -3517,6 +3543,8 @@ export const ChangeShopPasswordResponse = zod.object({
 /**
  * @summary List my saved addresses
  */
+export const listShopAddressesResponseDataItemAddressTypeDefault = `both`;
+
 export const ListShopAddressesResponse = zod.object({
   success: zod.boolean().optional(),
   data: zod
@@ -3532,6 +3560,9 @@ export const ListShopAddressesResponse = zod.object({
         state: zod.string().optional(),
         pincode: zod.string().optional(),
         landmark: zod.string().nullish(),
+        addressType: zod
+          .enum(["shipping", "billing", "both"])
+          .default(listShopAddressesResponseDataItemAddressTypeDefault),
         isDefault: zod.boolean().optional(),
       }),
     )
@@ -3551,6 +3582,7 @@ export const CreateShopAddressBody = zod.object({
   state: zod.string(),
   pincode: zod.string(),
   landmark: zod.string().optional(),
+  addressType: zod.enum(["shipping", "billing", "both"]).optional(),
   isDefault: zod.boolean().optional(),
 });
 
@@ -3571,8 +3603,11 @@ export const UpdateShopAddressBody = zod.object({
   state: zod.string(),
   pincode: zod.string(),
   landmark: zod.string().optional(),
+  addressType: zod.enum(["shipping", "billing", "both"]).optional(),
   isDefault: zod.boolean().optional(),
 });
+
+export const updateShopAddressResponseDataAddressTypeDefault = `both`;
 
 export const UpdateShopAddressResponse = zod.object({
   success: zod.boolean().optional(),
@@ -3588,6 +3623,9 @@ export const UpdateShopAddressResponse = zod.object({
       state: zod.string().optional(),
       pincode: zod.string().optional(),
       landmark: zod.string().nullish(),
+      addressType: zod
+        .enum(["shipping", "billing", "both"])
+        .default(updateShopAddressResponseDataAddressTypeDefault),
       isDefault: zod.boolean().optional(),
     })
     .optional(),
@@ -3676,7 +3714,19 @@ export const PlaceShopOrderBody = zod.object({
       qty: zod.number(),
     }),
   ),
-  addressId: zod.string().optional(),
+  addressId: zod
+    .string()
+    .optional()
+    .describe(
+      "Legacy alias for shippingAddressId. Used for shipping if shippingAddressId is omitted.",
+    ),
+  shippingAddressId: zod.string().optional(),
+  billingAddressId: zod
+    .string()
+    .optional()
+    .describe(
+      "Optional. Defaults to shippingAddressId \/ addressId when omitted.",
+    ),
   paymentMode: zod.enum(["COD", "UPI", "BANK"]).optional(),
   notes: zod.string().optional(),
 });

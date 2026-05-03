@@ -82,6 +82,20 @@ const SaleScreen = () => {
   // Reprint
   const [reprintOpen, setReprintOpen] = useState(false);
 
+  // Optional delivery address for POS sales (only when a customer is selected).
+  type PosAddress = {
+    name: string; phone: string; line1: string; line2: string;
+    city: string; state: string; pincode: string; landmark: string;
+  };
+  const EMPTY_POS_ADDR: PosAddress = { name: "", phone: "", line1: "", line2: "", city: "", state: "Tamil Nadu", pincode: "", landmark: "" };
+  const [deliveryOpen, setDeliveryOpen] = useState(false);
+  const [includeDelivery, setIncludeDelivery] = useState(false);
+  const [deliveryShip, setDeliveryShip] = useState<PosAddress>(EMPTY_POS_ADDR);
+  const [deliveryBill, setDeliveryBill] = useState<PosAddress>(EMPTY_POS_ADDR);
+  const [deliverySameAsShip, setDeliverySameAsShip] = useState(true);
+  const isAddrComplete = (a: PosAddress) =>
+    !!(a.name && a.phone.replace(/\D/g, "").length >= 10 && a.line1 && a.city && a.state && /^\d{6}$/.test(a.pincode.replace(/\D/g, "")));
+
   const barcodeRef = useRef<HTMLInputElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const cashRef = useRef<HTMLInputElement>(null);
@@ -267,6 +281,18 @@ const SaleScreen = () => {
     if (upiAmt > 0) tenders.push({ mode: "UPI", amount: upiAmt, reference: tenderUpiRef || undefined });
     if (cardAmt > 0) tenders.push({ mode: "CARD", amount: cardAmt, reference: tenderCardRef || undefined });
 
+    // Only attach delivery address when a customer is selected, the toggle is on,
+    // and the shipping address is complete. Billing falls back to shipping
+    // unless the cashier explicitly supplied a different one.
+    const deliveryPayload =
+      customer?.id && includeDelivery && isAddrComplete(deliveryShip)
+        ? {
+            shippingAddress: deliveryShip,
+            billingAddress:
+              !deliverySameAsShip && isAddrComplete(deliveryBill) ? deliveryBill : deliveryShip,
+          }
+        : {};
+
     createSale(
       {
         data: {
@@ -279,7 +305,8 @@ const SaleScreen = () => {
           shiftId: currentShift.id,
           couponCode: coupon?.code,
           customerId: customer?.id,
-        },
+          ...deliveryPayload,
+        } as any,
       },
       {
         onSuccess: (res) => {
@@ -774,6 +801,32 @@ const SaleScreen = () => {
                 : <span className="text-emerald-500 font-bold">Settled</span>}
           </div>
 
+          {customer?.id && (
+            <div className="flex items-center justify-between text-xs px-1">
+              <label className="inline-flex items-center gap-2 text-zinc-400">
+                <input
+                  type="checkbox"
+                  checked={includeDelivery}
+                  onChange={(e) => {
+                    const on = e.target.checked;
+                    setIncludeDelivery(on);
+                    if (on && !deliveryShip.name) {
+                      setDeliveryShip((p) => ({ ...p, name: customer.name ?? "", phone: customer.phone ?? "" }));
+                    }
+                    if (on) setDeliveryOpen(true);
+                  }}
+                  data-testid="pos-include-delivery"
+                />
+                <span>Add delivery address</span>
+              </label>
+              {includeDelivery && (
+                <Button variant="link" size="sm" className="h-auto p-0 text-primary" onClick={() => setDeliveryOpen(true)}>
+                  {isAddrComplete(deliveryShip) ? "Edit address" : "Enter address"}
+                </Button>
+              )}
+            </div>
+          )}
+
           <Button
             className="w-full h-16 text-xl font-black rounded-xl shadow-lg shadow-primary/20"
             disabled={items.length === 0 || remainingDue > 0.5 || checkingOut || !currentShift}
@@ -784,6 +837,64 @@ const SaleScreen = () => {
           </Button>
         </div>
       </div>
+
+      {/* Delivery address dialog (POS) */}
+      <Dialog open={deliveryOpen} onOpenChange={setDeliveryOpen}>
+        <DialogContent className="bg-zinc-950 border-zinc-800 text-white max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Delivery address</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-sm font-bold text-zinc-400 uppercase mb-2">Shipping</h3>
+              <div className="grid grid-cols-2 gap-3">
+                <Input placeholder="Recipient name" value={deliveryShip.name} onChange={(e) => setDeliveryShip({ ...deliveryShip, name: e.target.value })} data-testid="pos-ship-name" />
+                <Input placeholder="Phone (10 digits)" value={deliveryShip.phone} onChange={(e) => setDeliveryShip({ ...deliveryShip, phone: e.target.value })} data-testid="pos-ship-phone" />
+                <Input className="col-span-2" placeholder="Address line 1" value={deliveryShip.line1} onChange={(e) => setDeliveryShip({ ...deliveryShip, line1: e.target.value })} data-testid="pos-ship-line1" />
+                <Input className="col-span-2" placeholder="Address line 2 (optional)" value={deliveryShip.line2} onChange={(e) => setDeliveryShip({ ...deliveryShip, line2: e.target.value })} />
+                <Input placeholder="City" value={deliveryShip.city} onChange={(e) => setDeliveryShip({ ...deliveryShip, city: e.target.value })} data-testid="pos-ship-city" />
+                <Input placeholder="State" value={deliveryShip.state} onChange={(e) => setDeliveryShip({ ...deliveryShip, state: e.target.value })} />
+                <Input placeholder="Pincode (6 digits)" value={deliveryShip.pincode} onChange={(e) => setDeliveryShip({ ...deliveryShip, pincode: e.target.value })} data-testid="pos-ship-pincode" />
+                <Input placeholder="Landmark (optional)" value={deliveryShip.landmark} onChange={(e) => setDeliveryShip({ ...deliveryShip, landmark: e.target.value })} />
+              </div>
+            </div>
+            <label className="inline-flex items-center gap-2 text-sm text-zinc-300">
+              <input type="checkbox" checked={deliverySameAsShip} onChange={(e) => setDeliverySameAsShip(e.target.checked)} data-testid="pos-bill-same" />
+              <span>Billing address same as shipping</span>
+            </label>
+            {!deliverySameAsShip && (
+              <div>
+                <h3 className="text-sm font-bold text-zinc-400 uppercase mb-2">Billing</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <Input placeholder="Recipient name" value={deliveryBill.name} onChange={(e) => setDeliveryBill({ ...deliveryBill, name: e.target.value })} />
+                  <Input placeholder="Phone (10 digits)" value={deliveryBill.phone} onChange={(e) => setDeliveryBill({ ...deliveryBill, phone: e.target.value })} />
+                  <Input className="col-span-2" placeholder="Address line 1" value={deliveryBill.line1} onChange={(e) => setDeliveryBill({ ...deliveryBill, line1: e.target.value })} />
+                  <Input className="col-span-2" placeholder="Address line 2 (optional)" value={deliveryBill.line2} onChange={(e) => setDeliveryBill({ ...deliveryBill, line2: e.target.value })} />
+                  <Input placeholder="City" value={deliveryBill.city} onChange={(e) => setDeliveryBill({ ...deliveryBill, city: e.target.value })} />
+                  <Input placeholder="State" value={deliveryBill.state} onChange={(e) => setDeliveryBill({ ...deliveryBill, state: e.target.value })} />
+                  <Input placeholder="Pincode (6 digits)" value={deliveryBill.pincode} onChange={(e) => setDeliveryBill({ ...deliveryBill, pincode: e.target.value })} />
+                  <Input placeholder="Landmark (optional)" value={deliveryBill.landmark} onChange={(e) => setDeliveryBill({ ...deliveryBill, landmark: e.target.value })} />
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeliveryOpen(false)}>Cancel</Button>
+            <Button
+              onClick={() => {
+                if (!isAddrComplete(deliveryShip)) {
+                  toast({ title: "Shipping address incomplete (10-digit phone, 6-digit pincode required)", variant: "destructive" });
+                  return;
+                }
+                setDeliveryOpen(false);
+              }}
+              data-testid="pos-delivery-save"
+            >
+              Save address
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Shortcuts overlay */}
       {shortcutsOpen && (

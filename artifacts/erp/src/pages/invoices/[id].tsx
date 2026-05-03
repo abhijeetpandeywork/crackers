@@ -5,7 +5,17 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Share2, Download, Printer, IndianRupee, Building, User } from "lucide-react";
+import { ArrowLeft, Share2, Download, Printer, IndianRupee, Building, User, MapPin, Receipt } from "lucide-react";
+
+type Addr = { name?: string; phone?: string; line1?: string; line2?: string | null; city?: string; state?: string; pincode?: string; landmark?: string | null };
+const renderAddrLines = (a: Addr) => (
+  <>
+    <p className="font-semibold">{a.name}{a.phone ? ` · ${a.phone}` : ""}</p>
+    <p>{a.line1}{a.line2 ? `, ${a.line2}` : ""}</p>
+    <p>{[a.city, a.state].filter(Boolean).join(", ")}{a.pincode ? ` - ${a.pincode}` : ""}</p>
+    {a.landmark && <p className="text-xs text-muted-foreground">Landmark: {a.landmark}</p>}
+  </>
+);
 import { useToast } from "@/hooks/use-toast";
 import { generateInvoicePdf, savePdf, type CompanyInfo } from "@workspace/pdf";
 import { resolveCompanyInfo } from "@/lib/company-info";
@@ -128,6 +138,41 @@ export default function InvoiceDetail() {
           </CardContent>
         </Card>
       </div>
+
+      {(() => {
+        const ld = ((invoice as any).logisticsDetails ?? {}) as { shippingAddress?: Addr; billingAddress?: Addr; address?: Addr; sameAsShipping?: boolean };
+        const ship = ld.shippingAddress ?? ld.address ?? null;
+        const bill = ld.billingAddress ?? null;
+        if (!ship && !bill) return null;
+        const same = ld.sameAsShipping ?? (!bill || (ship && JSON.stringify(ship) === JSON.stringify(bill)));
+        return (
+          <div className="grid gap-6 md:grid-cols-2" data-testid="invoice-addresses">
+            {ship && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2"><MapPin className="h-4 w-4 text-primary" /> Ship To</CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm space-y-1">{renderAddrLines(ship)}</CardContent>
+              </Card>
+            )}
+            {bill && !same ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2"><Receipt className="h-4 w-4 text-primary" /> Bill To</CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm space-y-1">{renderAddrLines(bill)}</CardContent>
+              </Card>
+            ) : ship ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2"><Receipt className="h-4 w-4 text-primary" /> Bill To</CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm text-muted-foreground italic">Same as shipping address</CardContent>
+              </Card>
+            ) : null}
+          </div>
+        );
+      })()}
 
       <Card>
         <CardHeader>

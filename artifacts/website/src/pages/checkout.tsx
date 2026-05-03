@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useCart } from "@/context/cart";
 import { useShopAuth } from "@/context/auth";
@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { CheckCircle, Truck, ShieldCheck, ChevronLeft, MapPin, Plus } from "lucide-react";
+import { CheckCircle, Truck, ShieldCheck, ChevronLeft, MapPin, Plus, Receipt } from "lucide-react";
 import { Layout } from "@/components/layout";
 import {
   useListShopAddresses,
@@ -15,7 +15,41 @@ import {
 } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 
-const EMPTY_ADDR = { label: "Home", name: "", phone: "", line1: "", line2: "", city: "", state: "Tamil Nadu", pincode: "", landmark: "", isDefault: true };
+const EMPTY_ADDR = {
+  label: "Home", name: "", phone: "", line1: "", line2: "",
+  city: "", state: "Tamil Nadu", pincode: "", landmark: "",
+  addressType: "both" as "shipping" | "billing" | "both",
+  isDefault: true,
+};
+
+const isValidPhone = (s: string) => s.replace(/\D/g, "").length >= 10;
+const isValidPincode = (s: string) => /^\d{6}$/.test(s.replace(/\D/g, ""));
+
+type Addr = {
+  id: string; name: string; phone: string; line1: string; line2?: string | null;
+  city: string; state: string; pincode: string; landmark?: string | null;
+  label?: string | null; addressType?: "shipping" | "billing" | "both";
+  isDefault?: boolean;
+};
+
+function AddressCard({ a, selected, onSelect, testId }: { a: Addr; selected: boolean; onSelect: () => void; testId: string }) {
+  return (
+    <label className={`block p-4 rounded-2xl border cursor-pointer transition ${selected ? "border-primary bg-primary/5" : "border-gray-200 hover:border-gray-300"}`}>
+      <div className="flex items-start gap-3">
+        <input type="radio" checked={selected} onChange={onSelect} className="mt-1" data-testid={testId} />
+        <div className="flex-1">
+          <p className="font-semibold">
+            {a.name} · {a.phone}
+            {a.label && <span className="ml-2 text-xs px-2 py-0.5 rounded bg-gray-100">{a.label}</span>}
+          </p>
+          <p className="text-sm text-gray-600 mt-0.5">
+            {a.line1}{a.line2 ? `, ${a.line2}` : ""}, {a.city}, {a.state} - {a.pincode}
+          </p>
+        </div>
+      </div>
+    </label>
+  );
+}
 
 export default function Checkout() {
   const { items, subtotal, clearCart } = useCart();
@@ -26,10 +60,24 @@ export default function Checkout() {
   const createAddr = useCreateShopAddress();
   const placeOrder = usePlaceShopOrder();
 
-  const addresses = ((addrResp as any)?.data ?? []) as any[];
-  const [selectedAddr, setSelectedAddr] = useState<string | null>(null);
-  const [showNewAddr, setShowNewAddr] = useState(false);
-  const [newAddr, setNewAddr] = useState(EMPTY_ADDR);
+  const allAddresses: Addr[] = (((addrResp as any)?.data ?? []) as Addr[]);
+  // Filter usable addresses by type for each picker. `both` works for either.
+  const shippingOptions = useMemo(
+    () => allAddresses.filter((a) => !a.addressType || a.addressType === "shipping" || a.addressType === "both"),
+    [allAddresses],
+  );
+  const billingOptions = useMemo(
+    () => allAddresses.filter((a) => !a.addressType || a.addressType === "billing" || a.addressType === "both"),
+    [allAddresses],
+  );
+
+  const [shippingId, setShippingId] = useState<string | null>(null);
+  const [billingId, setBillingId] = useState<string | null>(null);
+  const [sameAsShipping, setSameAsShipping] = useState(true);
+  const [showNewShipping, setShowNewShipping] = useState(false);
+  const [showNewBilling, setShowNewBilling] = useState(false);
+  const [newShipping, setNewShipping] = useState({ ...EMPTY_ADDR, addressType: "shipping" as const });
+  const [newBilling, setNewBilling] = useState({ ...EMPTY_ADDR, addressType: "billing" as const, label: "Billing", isDefault: false });
   const [paymentMode, setPaymentMode] = useState<"COD" | "UPI" | "BANK">("COD");
   const [notes, setNotes] = useState("");
   const [placedOrder, setPlacedOrder] = useState<any>(null);
@@ -38,34 +86,62 @@ export default function Checkout() {
   const total = subtotal + gst;
 
   useEffect(() => {
-    if (!isLoggedIn) {
-      navigate(`/login?next=${encodeURIComponent("/checkout")}`);
-    }
+    if (!isLoggedIn) navigate(`/login?next=${encodeURIComponent("/checkout")}`);
   }, [isLoggedIn, navigate]);
 
+  // Initialize shipping/billing selections once addresses load.
   useEffect(() => {
-    if (addresses.length && !selectedAddr) {
-      const def = addresses.find((a) => a.isDefault) ?? addresses[0];
-      setSelectedAddr(def.id);
+    if (shippingOptions.length && !shippingId) {
+      const def = shippingOptions.find((a) => a.isDefault) ?? shippingOptions[0];
+      if (def) setShippingId(def.id);
     }
-    if (addresses.length === 0 && isLoggedIn) {
-      setShowNewAddr(true);
-      if (customer) setNewAddr((p) => ({ ...p, name: customer.name, phone: customer.phone }));
+    if (allAddresses.length === 0 && isLoggedIn) {
+      setShowNewShipping(true);
+      if (customer) setNewShipping((p) => ({ ...p, name: customer.name, phone: customer.phone }));
     }
-  }, [addresses, selectedAddr, isLoggedIn, customer]);
+  }, [shippingOptions, allAddresses.length, shippingId, isLoggedIn, customer]);
+
+  const validateInline = (a: typeof EMPTY_ADDR, label: string): string | null => {
+    if (!a.name || !a.phone || !a.line1 || !a.city || !a.state || !a.pincode) return `Please complete the ${label} address`;
+    if (!isValidPhone(a.phone)) return `${label} phone must contain at least 10 digits`;
+    if (!isValidPincode(a.pincode)) return `${label} pincode must be 6 digits`;
+    return null;
+  };
 
   const handlePlace = async (e: React.FormEvent) => {
     e.preventDefault();
-    let addressId = selectedAddr;
     try {
-      if (showNewAddr || !addressId) {
-        const res = await createAddr.mutateAsync({ data: newAddr as any });
-        addressId = (res as any).data.id;
-        await refetchAddr();
+      // Resolve shipping address id (create new if needed).
+      let resolvedShippingId = shippingId;
+      if (showNewShipping || !resolvedShippingId) {
+        const err = validateInline(newShipping, "shipping");
+        if (err) { toast({ title: err, variant: "destructive" }); return; }
+        const res = await createAddr.mutateAsync({ data: newShipping as any });
+        resolvedShippingId = (res as any).data.id;
       }
+      // Resolve billing address id when "same as shipping" is OFF.
+      let resolvedBillingId: string | undefined;
+      if (!sameAsShipping) {
+        if (showNewBilling || !billingId) {
+          const err = validateInline(newBilling, "billing");
+          if (err) { toast({ title: err, variant: "destructive" }); return; }
+          const res = await createAddr.mutateAsync({ data: newBilling as any });
+          resolvedBillingId = (res as any).data.id;
+        } else {
+          resolvedBillingId = billingId ?? undefined;
+        }
+      }
+      await refetchAddr();
+
       const orderItems = items.map((i) => ({ productId: i.productId, variantId: i.variantId, qty: i.qty }));
       const res = await placeOrder.mutateAsync({
-        data: { items: orderItems, addressId: addressId!, paymentMode, notes: notes || undefined },
+        data: {
+          items: orderItems,
+          shippingAddressId: resolvedShippingId!,
+          billingAddressId: resolvedBillingId,
+          paymentMode,
+          notes: notes || undefined,
+        } as any,
       });
       setPlacedOrder((res as any).data);
       clearCart();
@@ -119,6 +195,24 @@ export default function Checkout() {
     );
   }
 
+  // Reusable inline address form.
+  const renderAddrFields = (
+    val: typeof EMPTY_ADDR,
+    set: (v: typeof EMPTY_ADDR) => void,
+    keyPrefix: string,
+  ) => (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div><Label>Recipient name *</Label><Input value={val.name} onChange={(e) => set({ ...val, name: e.target.value })} required data-testid={`${keyPrefix}-name`} /></div>
+      <div><Label>Phone *</Label><Input value={val.phone} onChange={(e) => set({ ...val, phone: e.target.value })} required data-testid={`${keyPrefix}-phone`} /></div>
+      <div className="md:col-span-2"><Label>Address line 1 *</Label><Input value={val.line1} onChange={(e) => set({ ...val, line1: e.target.value })} required data-testid={`${keyPrefix}-line1`} /></div>
+      <div className="md:col-span-2"><Label>Address line 2</Label><Input value={val.line2} onChange={(e) => set({ ...val, line2: e.target.value })} /></div>
+      <div><Label>City *</Label><Input value={val.city} onChange={(e) => set({ ...val, city: e.target.value })} required data-testid={`${keyPrefix}-city`} /></div>
+      <div><Label>State *</Label><Input value={val.state} onChange={(e) => set({ ...val, state: e.target.value })} required /></div>
+      <div><Label>Pincode * (6 digits)</Label><Input value={val.pincode} onChange={(e) => set({ ...val, pincode: e.target.value })} required data-testid={`${keyPrefix}-pincode`} /></div>
+      <div><Label>Landmark</Label><Input value={val.landmark} onChange={(e) => set({ ...val, landmark: e.target.value })} /></div>
+    </div>
+  );
+
   return (
     <Layout>
       <div className="bg-gray-50 min-h-screen py-12">
@@ -130,44 +224,61 @@ export default function Checkout() {
 
           <form onSubmit={handlePlace} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-6">
+              {/* SHIPPING */}
               <section className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
-                <h2 className="text-xl font-bold mb-6 flex items-center"><MapPin className="h-5 w-5 mr-2 text-primary" /> Delivery address</h2>
-
-                {addresses.length > 0 && !showNewAddr && (
+                <h2 className="text-xl font-bold mb-6 flex items-center"><MapPin className="h-5 w-5 mr-2 text-primary" /> Shipping address</h2>
+                {shippingOptions.length > 0 && !showNewShipping && (
                   <div className="space-y-3 mb-4">
-                    {addresses.map((a) => (
-                      <label key={a.id} className={`block p-4 rounded-2xl border cursor-pointer transition ${selectedAddr === a.id ? "border-primary bg-primary/5" : "border-gray-200 hover:border-gray-300"}`}>
-                        <div className="flex items-start gap-3">
-                          <input type="radio" name="addr" checked={selectedAddr === a.id} onChange={() => setSelectedAddr(a.id)} className="mt-1" data-testid={`addr-radio-${a.id}`} />
-                          <div className="flex-1">
-                            <p className="font-semibold">{a.name} · {a.phone} {a.label && <span className="ml-2 text-xs px-2 py-0.5 rounded bg-gray-100">{a.label}</span>}</p>
-                            <p className="text-sm text-gray-600 mt-0.5">{a.line1}{a.line2 ? `, ${a.line2}` : ""}, {a.city}, {a.state} - {a.pincode}</p>
-                          </div>
-                        </div>
-                      </label>
+                    {shippingOptions.map((a) => (
+                      <AddressCard key={a.id} a={a} selected={shippingId === a.id} onSelect={() => setShippingId(a.id)} testId={`ship-radio-${a.id}`} />
                     ))}
-                    <Button type="button" variant="outline" onClick={() => { setShowNewAddr(true); setNewAddr({ ...EMPTY_ADDR, name: customer?.name ?? "", phone: customer?.phone ?? "" }); }}>
-                      <Plus className="h-4 w-4 mr-1" /> Add new address
+                    <Button type="button" variant="outline" onClick={() => { setShowNewShipping(true); setNewShipping({ ...EMPTY_ADDR, addressType: "shipping", name: customer?.name ?? "", phone: customer?.phone ?? "" }); }}>
+                      <Plus className="h-4 w-4 mr-1" /> Add new shipping address
                     </Button>
                   </div>
                 )}
-
-                {showNewAddr && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div><Label>Recipient name *</Label><Input value={newAddr.name} onChange={(e) => setNewAddr({ ...newAddr, name: e.target.value })} required data-testid="checkout-name" /></div>
-                    <div><Label>Phone *</Label><Input value={newAddr.phone} onChange={(e) => setNewAddr({ ...newAddr, phone: e.target.value })} required data-testid="checkout-phone" /></div>
-                    <div className="md:col-span-2"><Label>Address line 1 *</Label><Input value={newAddr.line1} onChange={(e) => setNewAddr({ ...newAddr, line1: e.target.value })} required data-testid="checkout-line1" /></div>
-                    <div className="md:col-span-2"><Label>Address line 2</Label><Input value={newAddr.line2} onChange={(e) => setNewAddr({ ...newAddr, line2: e.target.value })} /></div>
-                    <div><Label>City *</Label><Input value={newAddr.city} onChange={(e) => setNewAddr({ ...newAddr, city: e.target.value })} required data-testid="checkout-city" /></div>
-                    <div><Label>State *</Label><Input value={newAddr.state} onChange={(e) => setNewAddr({ ...newAddr, state: e.target.value })} required /></div>
-                    <div><Label>Pincode *</Label><Input value={newAddr.pincode} onChange={(e) => setNewAddr({ ...newAddr, pincode: e.target.value })} required data-testid="checkout-pincode" /></div>
-                    <div><Label>Landmark</Label><Input value={newAddr.landmark} onChange={(e) => setNewAddr({ ...newAddr, landmark: e.target.value })} /></div>
-                    {addresses.length > 0 && (
-                      <div className="md:col-span-2">
-                        <Button type="button" variant="ghost" onClick={() => setShowNewAddr(false)}>Use a saved address instead</Button>
+                {showNewShipping && (
+                  <>
+                    {renderAddrFields(newShipping as any, (v) => setNewShipping(v as any), "checkout-ship")}
+                    {shippingOptions.length > 0 && (
+                      <div className="md:col-span-2 mt-3">
+                        <Button type="button" variant="ghost" onClick={() => setShowNewShipping(false)}>Use a saved address instead</Button>
                       </div>
                     )}
-                  </div>
+                  </>
+                )}
+              </section>
+
+              {/* BILLING */}
+              <section className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
+                <h2 className="text-xl font-bold mb-3 flex items-center"><Receipt className="h-5 w-5 mr-2 text-primary" /> Billing address</h2>
+                <label className="inline-flex items-center gap-2 mb-5">
+                  <input type="checkbox" checked={sameAsShipping} onChange={(e) => setSameAsShipping(e.target.checked)} data-testid="billing-same-as-shipping" />
+                  <span className="text-sm">Same as shipping address</span>
+                </label>
+                {!sameAsShipping && (
+                  <>
+                    {billingOptions.length > 0 && !showNewBilling && (
+                      <div className="space-y-3 mb-4">
+                        {billingOptions.map((a) => (
+                          <AddressCard key={a.id} a={a} selected={billingId === a.id} onSelect={() => setBillingId(a.id)} testId={`bill-radio-${a.id}`} />
+                        ))}
+                        <Button type="button" variant="outline" onClick={() => { setShowNewBilling(true); setNewBilling({ ...EMPTY_ADDR, addressType: "billing", label: "Billing", isDefault: false, name: customer?.name ?? "", phone: customer?.phone ?? "" }); }}>
+                          <Plus className="h-4 w-4 mr-1" /> Add new billing address
+                        </Button>
+                      </div>
+                    )}
+                    {(showNewBilling || billingOptions.length === 0) && (
+                      <>
+                        {renderAddrFields(newBilling as any, (v) => setNewBilling(v as any), "checkout-bill")}
+                        {billingOptions.length > 0 && (
+                          <div className="md:col-span-2 mt-3">
+                            <Button type="button" variant="ghost" onClick={() => setShowNewBilling(false)}>Use a saved address instead</Button>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </>
                 )}
               </section>
 

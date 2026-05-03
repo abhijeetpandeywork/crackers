@@ -90,9 +90,21 @@ const ReceiptScreen = () => {
   const change = changeFromUrl ? num(changeFromUrl) : Math.max(0, cash - total);
   const date = new Date(invoice.createdAt || Date.now());
 
+  type Addr = { name?: string; phone?: string; line1?: string; line2?: string | null; city?: string; state?: string; pincode?: string; landmark?: string | null };
   const logistics = ((invoice as any).logisticsDetails ?? null) as
-    | { tenders?: Array<{ mode: string; amount: number; reference?: string }>; discountReason?: string | null }
+    | {
+        tenders?: Array<{ mode: string; amount: number; reference?: string }>;
+        discountReason?: string | null;
+        shippingAddress?: Addr;
+        billingAddress?: Addr;
+        address?: Addr;
+        sameAsShipping?: boolean;
+      }
     | null;
+  const shipAddr: Addr | null = logistics?.shippingAddress ?? logistics?.address ?? null;
+  const billAddr: Addr | null = logistics?.billingAddress ?? null;
+  const sameAsShipping =
+    logistics?.sameAsShipping ?? (!billAddr || JSON.stringify(billAddr) === JSON.stringify(shipAddr));
   const tenders = Array.isArray(logistics?.tenders) ? logistics!.tenders : [];
   const isSplit = invoice.paymentMode === "SPLIT" || tenders.length > 1;
 
@@ -171,6 +183,25 @@ const ReceiptScreen = () => {
                   <p className="font-bold">{date.toLocaleString()}</p>
                 </div>
               </div>
+
+              {shipAddr && (
+                <div className="p-5 border-t border-zinc-800 bg-zinc-900/30 text-sm" data-testid="receipt-ship-to">
+                  <p className="text-xs text-zinc-500 uppercase font-black mb-1">Ship to</p>
+                  <p className="font-bold">{shipAddr.name} · {shipAddr.phone}</p>
+                  <p className="text-zinc-400">
+                    {shipAddr.line1}{shipAddr.line2 ? `, ${shipAddr.line2}` : ""}, {shipAddr.city}, {shipAddr.state} - {shipAddr.pincode}
+                  </p>
+                  {billAddr && !sameAsShipping && (
+                    <div className="mt-3 pt-3 border-t border-zinc-800">
+                      <p className="text-xs text-zinc-500 uppercase font-black mb-1">Bill to</p>
+                      <p className="font-bold">{billAddr.name} · {billAddr.phone}</p>
+                      <p className="text-zinc-400">
+                        {billAddr.line1}{billAddr.line2 ? `, ${billAddr.line2}` : ""}, {billAddr.city}, {billAddr.state} - {billAddr.pincode}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -256,6 +287,25 @@ const ReceiptScreen = () => {
         {isSplit && tenders.map((t, i) => (
           <div key={i} className="row"><span>{t.mode}{t.reference ? ` ${t.reference}` : ""}</span><span>{num(t.amount).toFixed(2)}</span></div>
         ))}
+        {shipAddr && (
+          <>
+            <hr className="hr" />
+            <div>
+              <strong>Ship To:</strong>
+              <div>{shipAddr.name} · {shipAddr.phone}</div>
+              <div>{shipAddr.line1}{shipAddr.line2 ? `, ${shipAddr.line2}` : ""}</div>
+              <div>{shipAddr.city}, {shipAddr.state} - {shipAddr.pincode}</div>
+            </div>
+            {billAddr && !sameAsShipping && (
+              <div style={{ marginTop: 4 }}>
+                <strong>Bill To:</strong>
+                <div>{billAddr.name} · {billAddr.phone}</div>
+                <div>{billAddr.line1}{billAddr.line2 ? `, ${billAddr.line2}` : ""}</div>
+                <div>{billAddr.city}, {billAddr.state} - {billAddr.pincode}</div>
+              </div>
+            )}
+          </>
+        )}
         <hr className="hr" />
         <div className="center footer">
           <div>Thank you, visit again!</div>

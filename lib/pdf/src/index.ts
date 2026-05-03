@@ -160,6 +160,21 @@ export type InvoiceLineItemLike = {
   lineTotal?: number | string;
 };
 
+export type AddressLike = {
+  name?: string; phone?: string; line1?: string; line2?: string | null;
+  city?: string; state?: string; pincode?: string; landmark?: string | null;
+};
+
+const addrLines = (a: AddressLike): string[] => [
+  a.name ?? "",
+  a.phone ? `Ph: ${a.phone}` : "",
+  a.line1 ?? "",
+  a.line2 ?? "",
+  [a.city, a.state].filter(Boolean).join(", "),
+  a.pincode ? `Pincode: ${a.pincode}` : "",
+  a.landmark ? `Landmark: ${a.landmark}` : "",
+];
+
 export type InvoiceLike = {
   id?: string;
   // Number (DB is invoiceNo; some legacy code uses invoiceNumber)
@@ -168,6 +183,12 @@ export type InvoiceLike = {
   customerName?: string;
   customerId?: string;
   customerGstin?: string;
+  logisticsDetails?: {
+    shippingAddress?: AddressLike;
+    billingAddress?: AddressLike;
+    address?: AddressLike;
+    sameAsShipping?: boolean;
+  } | null;
   paymentMode?: string;
   paymentMethod?: string;
   paymentStatus?: string;
@@ -224,6 +245,30 @@ export function generateInvoicePdf(invoice: InvoiceLike, company: CompanyInfo = 
       ],
     },
   );
+
+  // Optional Ship-To / Bill-To block from logisticsDetails.
+  const ld = invoice.logisticsDetails ?? null;
+  const ship = ld?.shippingAddress ?? ld?.address ?? null;
+  const bill = ld?.billingAddress ?? null;
+  const sameAsShipping = ld?.sameAsShipping ?? (!bill || (ship && JSON.stringify(ship) === JSON.stringify(bill)));
+  if (ship || bill) {
+    y = drawPartyBlock(
+      doc,
+      y,
+      {
+        title: "Ship To",
+        lines: ship ? addrLines(ship) : ["—"],
+      },
+      {
+        title: "Bill To",
+        lines: bill && !sameAsShipping
+          ? addrLines(bill)
+          : ship
+            ? ["Same as shipping address"]
+            : ["—"],
+      },
+    );
+  }
 
   const items = invoice.items ?? [];
   const computedLineTotals: number[] = items.map(itemLineTotal);

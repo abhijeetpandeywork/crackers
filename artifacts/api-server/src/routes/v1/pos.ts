@@ -292,6 +292,8 @@ router.post("/pos/sale", authenticate, async (req: AuthRequest, res) => {
     items,
     couponCode,
     shiftId: explicitShiftId,
+    shippingAddress: shippingAddressInput,
+    billingAddress: billingAddressInput,
   } = req.body as {
     customerId?: string;
     locationId: string;
@@ -303,7 +305,25 @@ router.post("/pos/sale", authenticate, async (req: AuthRequest, res) => {
     items: Array<{ productId: string; variantId: string; qty: number }>;
     couponCode?: string;
     shiftId?: string;
+    shippingAddress?: unknown;
+    billingAddress?: unknown;
   };
+
+  // Inline-address sanitizer for delivery POS sales.
+  const sanitizeAddress = (a: unknown) => {
+    if (!a || typeof a !== "object") return null;
+    const o = a as Record<string, unknown>;
+    const required = ["name", "phone", "line1", "city", "state", "pincode"];
+    if (!required.every((k) => typeof o[k] === "string" && (o[k] as string).trim() !== "")) return null;
+    return {
+      name: String(o["name"]), phone: String(o["phone"]), line1: String(o["line1"]),
+      line2: o["line2"] == null ? null : String(o["line2"]),
+      city: String(o["city"]), state: String(o["state"]), pincode: String(o["pincode"]),
+      landmark: o["landmark"] == null ? null : String(o["landmark"]),
+    };
+  };
+  const shipAddr = sanitizeAddress(shippingAddressInput);
+  const billAddr = sanitizeAddress(billingAddressInput) ?? shipAddr;
 
   if (!Array.isArray(items) || items.length === 0) {
     res.status(400).json({ success: false, error: { code: "VALIDATION", message: "Cart is empty" } });
@@ -502,6 +522,9 @@ router.post("/pos/sale", authenticate, async (req: AuthRequest, res) => {
           cashReceived: num(cashReceived),
           change: Math.max(0, num(cashReceived) - (nonZero.find((t) => t.mode === "CASH")?.amount ?? 0)),
           discountReason: discountReason ?? null,
+          ...(shipAddr ? { shippingAddress: shipAddr, address: shipAddr } : {}),
+          ...(billAddr ? { billingAddress: billAddr } : {}),
+          ...(shipAddr && billAddr ? { sameAsShipping: JSON.stringify(shipAddr) === JSON.stringify(billAddr) } : {}),
         } as any,
         createdBy: req.user?.id,
       })

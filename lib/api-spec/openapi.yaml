@@ -4243,6 +4243,10 @@ components:
                 type: string
               qty:
                 type: integer
+        shippingAddress:
+          $ref: "#/components/schemas/AddressInline"
+        billingAddress:
+          $ref: "#/components/schemas/AddressInline"
         logisticsDetails:
           type: object
 
@@ -5785,6 +5789,20 @@ components:
         data:
           $ref: "#/components/schemas/ShopCustomer"
 
+    AddressInline:
+      type: object
+      description: Inline address used on invoices, orders and printed documents.
+      required: [name, phone, line1, city, state, pincode]
+      properties:
+        name: { type: string }
+        phone: { type: string }
+        line1: { type: string }
+        line2: { type: string, nullable: true }
+        city: { type: string }
+        state: { type: string }
+        pincode: { type: string }
+        landmark: { type: string, nullable: true }
+
     ShopAddress:
       type: object
       properties:
@@ -5798,6 +5816,10 @@ components:
         state: { type: string }
         pincode: { type: string }
         landmark: { type: string, nullable: true }
+        addressType:
+          type: string
+          enum: [shipping, billing, both]
+          default: both
         isDefault: { type: boolean }
 
     ShopAddressBody:
@@ -5813,6 +5835,9 @@ components:
         state: { type: string }
         pincode: { type: string }
         landmark: { type: string }
+        addressType:
+          type: string
+          enum: [shipping, billing, both]
         isDefault: { type: boolean }
 
     ShopAddressResponse:
@@ -5860,7 +5885,13 @@ components:
               productId: { type: string }
               variantId: { type: string }
               qty: { type: integer }
-        addressId: { type: string }
+        addressId:
+          type: string
+          description: Legacy alias for shippingAddressId. Used for shipping if shippingAddressId is omitted.
+        shippingAddressId: { type: string }
+        billingAddressId:
+          type: string
+          description: Optional. Defaults to shippingAddressId / addressId when omitted.
         paymentMode:
           type: string
           enum: [COD, UPI, BANK]

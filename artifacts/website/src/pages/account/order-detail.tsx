@@ -2,7 +2,28 @@ import { Link, useRoute } from "wouter";
 import { AccountShell } from "@/components/account-shell";
 import { useGetShopOrder } from "@workspace/api-client-react";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, MapPin, Truck } from "lucide-react";
+import { ArrowLeft, MapPin, Receipt, Truck } from "lucide-react";
+
+type Addr = {
+  name?: string; phone?: string; line1?: string; line2?: string | null;
+  city?: string; state?: string; pincode?: string; landmark?: string | null;
+};
+
+function AddressBlock({ title, icon, addr }: { title: string; icon: React.ReactNode; addr: Addr }) {
+  return (
+    <div className="bg-white rounded-2xl p-5 border border-gray-100">
+      <h2 className="font-bold mb-3 flex items-center gap-2">{icon} {title}</h2>
+      <p className="font-semibold">{addr.name} · {addr.phone}</p>
+      <p className="text-sm text-gray-600 mt-1">
+        {addr.line1}
+        {addr.line2 ? `, ${addr.line2}` : ""}
+        {addr.city ? `, ${addr.city}` : ""}{addr.state ? `, ${addr.state}` : ""}
+        {addr.pincode ? ` - ${addr.pincode}` : ""}
+      </p>
+      {addr.landmark && <p className="text-xs text-gray-500 mt-1">Landmark: {addr.landmark}</p>}
+    </div>
+  );
+}
 
 export default function OrderDetail() {
   const [, params] = useRoute("/account/orders/:id");
@@ -51,17 +72,26 @@ export default function OrderDetail() {
             </div>
           </div>
 
-          {order.logisticsDetails?.address && (
-            <div className="bg-white rounded-2xl p-5 border border-gray-100 mb-4">
-              <h2 className="font-bold mb-3 flex items-center gap-2"><MapPin className="h-4 w-4" /> Delivery to</h2>
-              <p className="font-semibold">{order.logisticsDetails.address.name} · {order.logisticsDetails.address.phone}</p>
-              <p className="text-sm text-gray-600 mt-1">
-                {order.logisticsDetails.address.line1}
-                {order.logisticsDetails.address.line2 ? `, ${order.logisticsDetails.address.line2}` : ""},{" "}
-                {order.logisticsDetails.address.city}, {order.logisticsDetails.address.state} - {order.logisticsDetails.address.pincode}
-              </p>
-            </div>
-          )}
+          {(() => {
+            const ld = order.logisticsDetails ?? {};
+            // Prefer canonical shippingAddress; fall back to legacy `address` key.
+            const ship: Addr | null = ld.shippingAddress ?? ld.address ?? null;
+            const bill: Addr | null = ld.billingAddress ?? null;
+            const sameAsShipping = ld.sameAsShipping ?? (!bill || JSON.stringify(bill) === JSON.stringify(ship));
+            if (!ship && !bill) return null;
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                {ship && <AddressBlock title="Shipping to" icon={<MapPin className="h-4 w-4" />} addr={ship} />}
+                {bill && !sameAsShipping ? (
+                  <AddressBlock title="Billing to" icon={<Receipt className="h-4 w-4" />} addr={bill} />
+                ) : ship ? (
+                  <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100 flex items-center justify-center text-sm text-gray-500">
+                    Billing address same as shipping
+                  </div>
+                ) : null}
+              </div>
+            );
+          })()}
 
           <div className="bg-amber-50 border border-amber-100 rounded-2xl p-5 text-sm text-amber-900">
             <div className="flex items-start gap-2">

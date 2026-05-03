@@ -135,12 +135,25 @@ router.get("/shop/addresses", shopAuthenticate, async (req: ShopAuthRequest, res
   res.json({ success: true, data: rows });
 });
 
+const ADDRESS_TYPES = new Set(["shipping", "billing", "both"]);
+
 router.post("/shop/addresses", shopAuthenticate, async (req: ShopAuthRequest, res) => {
   const b = (req.body ?? {}) as Record<string, any>;
   if (!b["name"] || !b["phone"] || !b["line1"] || !b["city"] || !b["state"] || !b["pincode"]) {
     res.status(400).json({ success: false, error: { code: "BAD_REQUEST", message: "name, phone, line1, city, state, pincode are required" } });
     return;
   }
+  const phone = String(b["phone"]).replace(/\D/g, "");
+  const pincode = String(b["pincode"]).replace(/\D/g, "");
+  if (phone.length < 10) {
+    res.status(400).json({ success: false, error: { code: "BAD_REQUEST", message: "Phone must contain at least 10 digits" } });
+    return;
+  }
+  if (pincode.length !== 6) {
+    res.status(400).json({ success: false, error: { code: "BAD_REQUEST", message: "Pincode must be 6 digits" } });
+    return;
+  }
+  const addressType = ADDRESS_TYPES.has(b["addressType"]) ? b["addressType"] : "both";
   const cid = req.customer!.id;
   const existing = await db.select().from(customerAddressesTable).where(eq(customerAddressesTable.customerId, cid));
   const isDefault = !!b["isDefault"] || existing.length === 0;
@@ -152,13 +165,14 @@ router.post("/shop/addresses", shopAuthenticate, async (req: ShopAuthRequest, re
     customerId: cid,
     label: b["label"] ?? null,
     name: b["name"],
-    phone: b["phone"],
+    phone,
     line1: b["line1"],
     line2: b["line2"] ?? null,
     city: b["city"],
     state: b["state"],
-    pincode: b["pincode"],
+    pincode,
     landmark: b["landmark"] ?? null,
+    addressType: addressType as "shipping" | "billing" | "both",
     isDefault,
   }).returning();
   res.status(201).json({ success: true, data: created });
@@ -174,6 +188,19 @@ router.put("/shop/addresses/:id", shopAuthenticate, async (req: ShopAuthRequest,
   const patch: Record<string, unknown> = { updatedAt: new Date() };
   for (const k of ["label","name","phone","line1","line2","city","state","pincode","landmark"]) {
     if (b[k] !== undefined) patch[k] = b[k];
+  }
+  if (typeof b["phone"] === "string") {
+    const phone = b["phone"].replace(/\D/g, "");
+    if (phone.length < 10) { res.status(400).json({ success: false, error: { code: "BAD_REQUEST", message: "Phone must contain at least 10 digits" } }); return; }
+    patch["phone"] = phone;
+  }
+  if (typeof b["pincode"] === "string") {
+    const pincode = b["pincode"].replace(/\D/g, "");
+    if (pincode.length !== 6) { res.status(400).json({ success: false, error: { code: "BAD_REQUEST", message: "Pincode must be 6 digits" } }); return; }
+    patch["pincode"] = pincode;
+  }
+  if (typeof b["addressType"] === "string" && ADDRESS_TYPES.has(b["addressType"])) {
+    patch["addressType"] = b["addressType"];
   }
   if (b["isDefault"] === true) {
     await db.update(customerAddressesTable).set({ isDefault: false }).where(eq(customerAddressesTable.customerId, cid));
@@ -237,6 +264,8 @@ router.post("/shop/orders", shopAuthenticate, async (req: ShopAuthRequest, res) 
   const body = (req.body ?? {}) as {
     items: Array<{ productId: string; variantId: string; qty: number }>;
     addressId?: string;
+    shippingAddressId?: string;
+    billingAddressId?: string;
     paymentMode?: "COD" | "UPI" | "BANK";
     notes?: string;
   };
@@ -257,21 +286,32 @@ router.post("/shop/orders", shopAuthenticate, async (req: ShopAuthRequest, res) 
   const cust = (await db.select().from(customersTable).where(eq(customersTable.id, cid)).limit(1))[0];
   if (!cust) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Customer not found" } }); return; }
 
-  let address = null;
-  if (body.addressId) {
-    const aRows = await db.select().from(customerAddressesTable)
-      .where(and(eq(customerAddressesTable.id, body.addressId), eq(customerAddressesTable.customerId, cid))).limit(1);
-    address = aRows[0] ?? null;
-  }
-  if (!address) {
+  const fetchAddr = async (id: string) => {
+    const rows = await db.select().from(customerAddressesTable)
+      .where(and(eq(customerAddressesTable.id, id), eq(customerAddressesTable.customerId, cid))).limit(1);
+    return rows[0] ?? null;
+  };
+  // Shipping: prefer shippingAddressId, then legacy addressId, then customer's default.
+  let shippingAddress = null;
+  const shippingIdInput = body.shippingAddressId ?? body.addressId;
+  if (shippingIdInput) shippingAddress = await fetchAddr(shippingIdInput);
+  if (!shippingAddress) {
     const aRows = await db.select().from(customerAddressesTable)
       .where(and(eq(customerAddressesTable.customerId, cid), eq(customerAddressesTable.isDefault, true))).limit(1);
-    address = aRows[0] ?? null;
+    shippingAddress = aRows[0] ?? null;
   }
-  if (!address) {
+  if (!shippingAddress) {
     res.status(400).json({ success: false, error: { code: "NO_ADDRESS", message: "Please add a delivery address before placing an order" } });
     return;
   }
+  // Billing: prefer billingAddressId; otherwise reuse shipping.
+  let billingAddress = shippingAddress;
+  if (body.billingAddressId && body.billingAddressId !== shippingAddress.id) {
+    const ba = await fetchAddr(body.billingAddressId);
+    if (ba) billingAddress = ba;
+  }
+  // Legacy local var for downstream code that referenced `address`.
+  const address = shippingAddress;
 
   const settingsRows = await db.select().from(settingsTable).where(eq(settingsTable.key, "pricing")).limit(1);
   const pricingSettings = (settingsRows[0]?.value ?? {}) as any;
@@ -321,11 +361,19 @@ router.post("/shop/orders", shopAuthenticate, async (req: ShopAuthRequest, res) 
   const locRows = await db.execute<{ id: string }>(sql`SELECT id FROM locations LIMIT 1`);
   const locationId = (locRows.rows?.[0] as any)?.id;
 
+  const toInline = (a: typeof shippingAddress) => ({
+    name: a.name, phone: a.phone, line1: a.line1, line2: a.line2,
+    city: a.city, state: a.state, pincode: a.pincode, landmark: a.landmark,
+  });
+  const shippingInline = toInline(shippingAddress);
+  const billingInline = billingAddress.id === shippingAddress.id ? shippingInline : toInline(billingAddress);
   const logistics = {
-    address: {
-      name: address.name, phone: address.phone, line1: address.line1, line2: address.line2,
-      city: address.city, state: address.state, pincode: address.pincode, landmark: address.landmark,
-    },
+    // New canonical keys.
+    shippingAddress: shippingInline,
+    billingAddress: billingInline,
+    sameAsShipping: billingAddress.id === shippingAddress.id,
+    // Legacy alias retained so older order-detail / receipt code keeps working.
+    address: shippingInline,
     paymentMode,
     status: "pending_confirmation",
     notes: body.notes ?? null,
@@ -344,8 +392,10 @@ router.post("/shop/orders", shopAuthenticate, async (req: ShopAuthRequest, res) 
     invoice = await db.transaction(async (tx) => {
       if (locationId) {
         for (const item of resolvedItems) {
-          // appendLedger uses the global db, but a single failed stock write
-          // must abort the order — surface the error.
+          // Pass `tx` so stock-ledger and stock-level writes participate in
+          // the same transaction as the invoice insert. Without this they
+          // commit independently and a failed invoice insert would leave
+          // orphaned ledger rows.
           await appendLedger({
             productId: item.productId,
             variantId: item.variantId,
@@ -354,7 +404,7 @@ router.post("/shop/orders", shopAuthenticate, async (req: ShopAuthRequest, res) 
             qty: -item.qty,
             refType: "INVOICE",
             createdBy: undefined,
-          });
+          }, tx);
         }
       }
       const [inv] = await tx.insert(invoicesTable).values({

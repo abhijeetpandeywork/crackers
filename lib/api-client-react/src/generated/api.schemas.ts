@@ -715,6 +715,20 @@ export type CreateInvoiceBodyItemsItem = {
 
 export type CreateInvoiceBodyLogisticsDetails = { [key: string]: unknown };
 
+/**
+ * Inline address used on invoices, orders and printed documents.
+ */
+export interface AddressInline {
+  name: string;
+  phone: string;
+  line1: string;
+  line2?: string | null;
+  city: string;
+  state: string;
+  pincode: string;
+  landmark?: string | null;
+}
+
 export interface CreateInvoiceBody {
   customerId?: string;
   priceListId?: string;
@@ -725,6 +739,8 @@ export interface CreateInvoiceBody {
   paymentMode: string;
   channel?: string;
   items: CreateInvoiceBodyItemsItem[];
+  shippingAddress?: AddressInline;
+  billingAddress?: AddressInline;
   logisticsDetails?: CreateInvoiceBodyLogisticsDetails;
 }
 
@@ -1742,6 +1758,15 @@ export interface ShopMeResponse {
   data?: ShopCustomer;
 }
 
+export type ShopAddressAddressType =
+  (typeof ShopAddressAddressType)[keyof typeof ShopAddressAddressType];
+
+export const ShopAddressAddressType = {
+  shipping: "shipping",
+  billing: "billing",
+  both: "both",
+} as const;
+
 export interface ShopAddress {
   id?: string;
   label?: string | null;
@@ -1753,8 +1778,18 @@ export interface ShopAddress {
   state?: string;
   pincode?: string;
   landmark?: string | null;
+  addressType?: ShopAddressAddressType;
   isDefault?: boolean;
 }
+
+export type ShopAddressBodyAddressType =
+  (typeof ShopAddressBodyAddressType)[keyof typeof ShopAddressBodyAddressType];
+
+export const ShopAddressBodyAddressType = {
+  shipping: "shipping",
+  billing: "billing",
+  both: "both",
+} as const;
 
 export interface ShopAddressBody {
   label?: string;
@@ -1766,6 +1801,7 @@ export interface ShopAddressBody {
   state: string;
   pincode: string;
   landmark?: string;
+  addressType?: ShopAddressBodyAddressType;
   isDefault?: boolean;
 }
 
@@ -1807,7 +1843,11 @@ export const PlaceShopOrderBodyPaymentMode = {
 
 export interface PlaceShopOrderBody {
   items: PlaceShopOrderBodyItemsItem[];
+  /** Legacy alias for shippingAddressId. Used for shipping if shippingAddressId is omitted. */
   addressId?: string;
+  shippingAddressId?: string;
+  /** Optional. Defaults to shippingAddressId / addressId when omitted. */
+  billingAddressId?: string;
   paymentMode?: PlaceShopOrderBodyPaymentMode;
   notes?: string;
 }
