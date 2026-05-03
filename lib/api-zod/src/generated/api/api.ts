@@ -182,6 +182,100 @@ export const GetAgentPerformanceResponse = zod.object({
 });
 
 /**
+ * @summary Per-location sales, stock and shift metrics
+ */
+export const GetDashboardByLocationResponse = zod.object({
+  success: zod.boolean().optional(),
+  data: zod
+    .array(
+      zod.object({
+        locationId: zod.string().optional(),
+        locationName: zod.string().optional(),
+        type: zod.string().optional(),
+        city: zod.string().nullish(),
+        todaySales: zod.number().optional(),
+        todayInvoices: zod.number().optional(),
+        monthSales: zod.number().optional(),
+        monthInvoices: zod.number().optional(),
+        averageOrderValue: zod.number().optional(),
+        lowStockCount: zod.number().optional(),
+        openShifts: zod.number().optional(),
+      }),
+    )
+    .optional(),
+});
+
+/**
+ * @summary Daily sales time series for last N days
+ */
+export const getDailySalesQueryDaysDefault = 30;
+
+export const GetDailySalesQueryParams = zod.object({
+  days: zod.coerce.number().default(getDailySalesQueryDaysDefault),
+  locationId: zod.coerce.string().optional(),
+});
+
+export const GetDailySalesResponse = zod.object({
+  success: zod.boolean().optional(),
+  data: zod
+    .array(
+      zod.object({
+        date: zod.string().optional(),
+        revenue: zod.number().optional(),
+        count: zod.number().optional(),
+      }),
+    )
+    .optional(),
+});
+
+/**
+ * @summary Business-wide KPIs (MTD, YTD, growth, payment mix, top customers, GST)
+ */
+export const GetBusinessOverviewResponse = zod.object({
+  success: zod.boolean().optional(),
+  data: zod
+    .object({
+      mtdRevenue: zod.number().optional(),
+      mtdInvoices: zod.number().optional(),
+      prevMonthRevenue: zod.number().optional(),
+      monthGrowth: zod.number().optional(),
+      ytdRevenue: zod.number().optional(),
+      ytdInvoices: zod.number().optional(),
+      averageOrderValue: zod.number().optional(),
+      activeCustomers: zod.number().optional(),
+      activeProducts: zod.number().optional(),
+      gstCollectedMtd: zod.number().optional(),
+      gstBreakdown: zod
+        .object({
+          cgst: zod.number().optional(),
+          sgst: zod.number().optional(),
+          igst: zod.number().optional(),
+        })
+        .optional(),
+      paymentModeMix: zod
+        .array(
+          zod.object({
+            mode: zod.string().optional(),
+            revenue: zod.number().optional(),
+            count: zod.number().optional(),
+          }),
+        )
+        .optional(),
+      topCustomers: zod
+        .array(
+          zod.object({
+            customerId: zod.string().nullish(),
+            customerName: zod.string().optional(),
+            revenue: zod.number().optional(),
+            orders: zod.number().optional(),
+          }),
+        )
+        .optional(),
+    })
+    .optional(),
+});
+
+/**
  * @summary List all products
  */
 export const listProductsQueryPageDefault = 1;

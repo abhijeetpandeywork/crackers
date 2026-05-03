@@ -242,6 +242,61 @@ paths:
               schema:
                 $ref: "#/components/schemas/AgentPerformanceResponse"
 
+  /v1/dashboard/by-location:
+    get:
+      operationId: getDashboardByLocation
+      tags: [dashboard]
+      summary: Per-location sales, stock and shift metrics
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Location metrics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardByLocationResponse"
+
+  /v1/dashboard/daily-sales:
+    get:
+      operationId: getDailySales
+      tags: [dashboard]
+      summary: Daily sales time series for last N days
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: days
+          in: query
+          schema:
+            type: integer
+            default: 30
+        - name: locationId
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Daily sales series
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DailySalesResponse"
+
+  /v1/dashboard/business-overview:
+    get:
+      operationId: getBusinessOverview
+      tags: [dashboard]
+      summary: Business-wide KPIs (MTD, YTD, growth, payment mix, top customers, GST)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Business overview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BusinessOverviewResponse"
+
   # ============================================================
   # PRODUCTS
   # ============================================================
@@ -5568,6 +5623,87 @@ components:
                 type: number
               achievement:
                 type: number
+
+    DashboardByLocationItem:
+      type: object
+      properties:
+        locationId: { type: string }
+        locationName: { type: string }
+        type: { type: string }
+        city: { type: string, nullable: true }
+        todaySales: { type: number }
+        todayInvoices: { type: integer }
+        monthSales: { type: number }
+        monthInvoices: { type: integer }
+        averageOrderValue: { type: number }
+        lowStockCount: { type: integer }
+        openShifts: { type: integer }
+
+    DashboardByLocationResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/DashboardByLocationItem"
+
+    DailySalesPoint:
+      type: object
+      properties:
+        date: { type: string }
+        revenue: { type: number }
+        count: { type: integer }
+
+    DailySalesResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/DailySalesPoint"
+
+    BusinessOverviewResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data:
+          type: object
+          properties:
+            mtdRevenue: { type: number }
+            mtdInvoices: { type: integer }
+            prevMonthRevenue: { type: number }
+            monthGrowth: { type: number }
+            ytdRevenue: { type: number }
+            ytdInvoices: { type: integer }
+            averageOrderValue: { type: number }
+            activeCustomers: { type: integer }
+            activeProducts: { type: integer }
+            gstCollectedMtd: { type: number }
+            gstBreakdown:
+              type: object
+              properties:
+                cgst: { type: number }
+                sgst: { type: number }
+                igst: { type: number }
+            paymentModeMix:
+              type: array
+              items:
+                type: object
+                properties:
+                  mode: { type: string }
+                  revenue: { type: number }
+                  count: { type: integer }
+            topCustomers:
+              type: array
+              items:
+                type: object
+                properties:
+                  customerId: { type: string, nullable: true }
+                  customerName: { type: string }
+                  revenue: { type: number }
+                  orders: { type: integer }
 
     # ============================================================
     # SITE CONTENT (CMS)

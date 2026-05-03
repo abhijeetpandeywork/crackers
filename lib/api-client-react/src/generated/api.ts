@@ -27,6 +27,7 @@ import type {
   BrandListResponse,
   BrandResponse,
   BrochureParseResponse,
+  BusinessOverviewResponse,
   ChangeShopPasswordBody,
   CloseShiftBody,
   CommissionReportResponse,
@@ -53,7 +54,9 @@ import type {
   Customer,
   CustomerListResponse,
   CustomerStatementResponse,
+  DailySalesResponse,
   DamageListResponse,
+  DashboardByLocationResponse,
   DashboardSummary,
   DaybookResponse,
   DeleteBrandResponse,
@@ -65,6 +68,7 @@ import type {
   GetAgentCommissionParams,
   GetCommissionReportParams,
   GetCurrentShiftParams,
+  GetDailySalesParams,
   GetDaybookReportParams,
   GetGstReportParams,
   GetNotificationLogParams,
@@ -1007,6 +1011,257 @@ export function useGetAgentPerformance<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetAgentPerformanceQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Per-location sales, stock and shift metrics
+ */
+export const getGetDashboardByLocationUrl = () => {
+  return `/api/v1/dashboard/by-location`;
+};
+
+export const getDashboardByLocation = async (
+  options?: RequestInit,
+): Promise<DashboardByLocationResponse> => {
+  return customFetch<DashboardByLocationResponse>(
+    getGetDashboardByLocationUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetDashboardByLocationQueryKey = () => {
+  return [`/api/v1/dashboard/by-location`] as const;
+};
+
+export const getGetDashboardByLocationQueryOptions = <
+  TData = Awaited<ReturnType<typeof getDashboardByLocation>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getDashboardByLocation>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetDashboardByLocationQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getDashboardByLocation>>
+  > = ({ signal }) => getDashboardByLocation({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getDashboardByLocation>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetDashboardByLocationQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getDashboardByLocation>>
+>;
+export type GetDashboardByLocationQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Per-location sales, stock and shift metrics
+ */
+
+export function useGetDashboardByLocation<
+  TData = Awaited<ReturnType<typeof getDashboardByLocation>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getDashboardByLocation>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetDashboardByLocationQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Daily sales time series for last N days
+ */
+export const getGetDailySalesUrl = (params?: GetDailySalesParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/v1/dashboard/daily-sales?${stringifiedParams}`
+    : `/api/v1/dashboard/daily-sales`;
+};
+
+export const getDailySales = async (
+  params?: GetDailySalesParams,
+  options?: RequestInit,
+): Promise<DailySalesResponse> => {
+  return customFetch<DailySalesResponse>(getGetDailySalesUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetDailySalesQueryKey = (params?: GetDailySalesParams) => {
+  return [
+    `/api/v1/dashboard/daily-sales`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getGetDailySalesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getDailySales>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetDailySalesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getDailySales>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetDailySalesQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getDailySales>>> = ({
+    signal,
+  }) => getDailySales(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getDailySales>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetDailySalesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getDailySales>>
+>;
+export type GetDailySalesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Daily sales time series for last N days
+ */
+
+export function useGetDailySales<
+  TData = Awaited<ReturnType<typeof getDailySales>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetDailySalesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getDailySales>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetDailySalesQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Business-wide KPIs (MTD, YTD, growth, payment mix, top customers, GST)
+ */
+export const getGetBusinessOverviewUrl = () => {
+  return `/api/v1/dashboard/business-overview`;
+};
+
+export const getBusinessOverview = async (
+  options?: RequestInit,
+): Promise<BusinessOverviewResponse> => {
+  return customFetch<BusinessOverviewResponse>(getGetBusinessOverviewUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetBusinessOverviewQueryKey = () => {
+  return [`/api/v1/dashboard/business-overview`] as const;
+};
+
+export const getGetBusinessOverviewQueryOptions = <
+  TData = Awaited<ReturnType<typeof getBusinessOverview>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getBusinessOverview>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetBusinessOverviewQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getBusinessOverview>>
+  > = ({ signal }) => getBusinessOverview({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getBusinessOverview>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetBusinessOverviewQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getBusinessOverview>>
+>;
+export type GetBusinessOverviewQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Business-wide KPIs (MTD, YTD, growth, payment mix, top customers, GST)
+ */
+
+export function useGetBusinessOverview<
+  TData = Awaited<ReturnType<typeof getBusinessOverview>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getBusinessOverview>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetBusinessOverviewQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

@@ -8,6 +8,8 @@ import NotFound from "@/pages/not-found";
 
 import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
+import LocationsDashboard from "@/pages/dashboard/locations";
+import BusinessOverview from "@/pages/dashboard/business";
 import ProductsList from "@/pages/products/index";
 import ProductDetail from "@/pages/products/[id]";
 import BrandsList from "@/pages/brands/index";
@@ -69,6 +71,12 @@ function Router() {
       <Route path="/login" component={Login} />
       <Route path="/">
         {(params) => <ProtectedRoute component={Dashboard} {...params} />}
+      </Route>
+      <Route path="/dashboard/locations">
+        {(params) => <ProtectedRoute component={LocationsDashboard} {...params} />}
+      </Route>
+      <Route path="/dashboard/business">
+        {(params) => <ProtectedRoute component={BusinessOverview} {...params} />}
       </Route>
       <Route path="/products">
         {(params) => <ProtectedRoute component={ProductsList} {...params} />}

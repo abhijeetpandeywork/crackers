@@ -1609,6 +1609,76 @@ export interface AgentPerformanceResponse {
   data?: AgentPerformanceResponseDataItem[];
 }
 
+export interface DashboardByLocationItem {
+  locationId?: string;
+  locationName?: string;
+  type?: string;
+  city?: string | null;
+  todaySales?: number;
+  todayInvoices?: number;
+  monthSales?: number;
+  monthInvoices?: number;
+  averageOrderValue?: number;
+  lowStockCount?: number;
+  openShifts?: number;
+}
+
+export interface DashboardByLocationResponse {
+  success?: boolean;
+  data?: DashboardByLocationItem[];
+}
+
+export interface DailySalesPoint {
+  date?: string;
+  revenue?: number;
+  count?: number;
+}
+
+export interface DailySalesResponse {
+  success?: boolean;
+  data?: DailySalesPoint[];
+}
+
+export type BusinessOverviewResponseDataGstBreakdown = {
+  cgst?: number;
+  sgst?: number;
+  igst?: number;
+};
+
+export type BusinessOverviewResponseDataPaymentModeMixItem = {
+  mode?: string;
+  revenue?: number;
+  count?: number;
+};
+
+export type BusinessOverviewResponseDataTopCustomersItem = {
+  customerId?: string | null;
+  customerName?: string;
+  revenue?: number;
+  orders?: number;
+};
+
+export type BusinessOverviewResponseData = {
+  mtdRevenue?: number;
+  mtdInvoices?: number;
+  prevMonthRevenue?: number;
+  monthGrowth?: number;
+  ytdRevenue?: number;
+  ytdInvoices?: number;
+  averageOrderValue?: number;
+  activeCustomers?: number;
+  activeProducts?: number;
+  gstCollectedMtd?: number;
+  gstBreakdown?: BusinessOverviewResponseDataGstBreakdown;
+  paymentModeMix?: BusinessOverviewResponseDataPaymentModeMixItem[];
+  topCustomers?: BusinessOverviewResponseDataTopCustomersItem[];
+};
+
+export interface BusinessOverviewResponse {
+  success?: boolean;
+  data?: BusinessOverviewResponseData;
+}
+
 export interface SiteContentSection {
   [key: string]: unknown;
 }
@@ -1890,6 +1960,11 @@ export type GetSalesByChannelParams = {
 
 export type GetTopProductsParams = {
   limit?: number;
+};
+
+export type GetDailySalesParams = {
+  days?: number;
+  locationId?: string;
 };
 
 export type ListProductsParams = {
