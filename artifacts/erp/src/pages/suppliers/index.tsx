@@ -7,7 +7,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { 
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter 
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter 
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Plus, Search, Truck, Phone, User, Building, Loader2 } from "lucide-react";
@@ -62,6 +62,7 @@ export default function SuppliersList() {
             <form onSubmit={handleCreate}>
               <DialogHeader>
                 <DialogTitle>Add New Supplier</DialogTitle>
+                <DialogDescription>Add a vendor or manufacturer you purchase stock from.</DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">

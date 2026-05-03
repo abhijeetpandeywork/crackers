@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter 
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter 
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Plus, Search, User, MapPin, Phone, CreditCard, Loader2 } from "lucide-react";
@@ -70,6 +70,7 @@ export default function CustomersList() {
             <form onSubmit={handleCreate}>
               <DialogHeader>
                 <DialogTitle>Add New Customer</DialogTitle>
+                <DialogDescription>Add a buyer to your customer list. You can manage their addresses and ledger after saving.</DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">

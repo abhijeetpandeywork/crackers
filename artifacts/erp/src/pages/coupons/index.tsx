@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { 
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter 
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter 
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -82,6 +82,7 @@ export default function CouponsList() {
             <form onSubmit={handleCreate}>
               <DialogHeader>
                 <DialogTitle>Create New Discount Coupon</DialogTitle>
+                <DialogDescription>Define a coupon code, discount type, and validity window for customer orders.</DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">

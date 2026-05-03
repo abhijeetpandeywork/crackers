@@ -7,7 +7,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { 
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter 
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter 
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -63,6 +63,7 @@ export default function AgentsList() {
             <form onSubmit={handleCreate}>
               <DialogHeader>
                 <DialogTitle>Add New Sales Agent</DialogTitle>
+                <DialogDescription>Add a sales agent who will earn commission on orders they bring in.</DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
