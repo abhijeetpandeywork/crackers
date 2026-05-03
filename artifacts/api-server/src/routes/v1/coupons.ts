@@ -30,30 +30,31 @@ router.get("/coupons/public", async (req, res) => {
 });
 
 router.post("/coupons/validate", async (req, res) => {
-  const { code, cartTotal, customerId, channel } = req.body as {
-    code: string; cartTotal: number; customerId?: string; channel?: string;
+  const { code, cartTotal, channel, customerType } = req.body as {
+    code: string; cartTotal: number; customerId?: string; channel?: string; customerType?: string;
+  };
+  const fail = (error: string) => {
+    res.json({ success: true, data: { valid: false, discountAmount: 0, discountDescription: "", couponId: null, error } });
   };
   const rows = await db.select().from(couponsTable).where(eq(couponsTable.code, code.toUpperCase())).limit(1);
   const coupon = rows[0];
-  if (!coupon) {
-    res.json({ success: true, data: { valid: false, discountAmount: 0, discountDescription: "", couponId: null, error: "Coupon not found" } });
-    return;
-  }
-  if (coupon.status !== "active") {
-    res.json({ success: true, data: { valid: false, discountAmount: 0, discountDescription: "", couponId: null, error: "Coupon is not active" } });
-    return;
-  }
+  if (!coupon) { fail("Coupon not found"); return; }
+  if (coupon.status !== "active") { fail("Coupon is not active"); return; }
   const now = new Date().toISOString().slice(0, 10);
-  if (now < coupon.validFrom || now > coupon.validUntil) {
-    res.json({ success: true, data: { valid: false, discountAmount: 0, discountDescription: "", couponId: null, error: "Coupon expired or not yet valid" } });
+  if (now < coupon.validFrom || now > coupon.validUntil) { fail("Coupon expired or not yet valid"); return; }
+  if (coupon.usageLimit && coupon.usedCount >= coupon.usageLimit) { fail("Coupon usage limit reached"); return; }
+  if (coupon.minOrderValue && cartTotal < Number(coupon.minOrderValue)) { fail(`Minimum order value: ₹${coupon.minOrderValue}`); return; }
+
+  // Channel & customer-type gating. Empty arrays mean "no restriction" so
+  // existing coupons keep working without a backfill.
+  const channels = (coupon.applicableChannels ?? []) as string[];
+  if (channels.length > 0 && channel && !channels.includes(channel)) {
+    fail(`Coupon not valid for ${channel === "pos" ? "in-store" : channel} orders`);
     return;
   }
-  if (coupon.usageLimit && coupon.usedCount >= coupon.usageLimit) {
-    res.json({ success: true, data: { valid: false, discountAmount: 0, discountDescription: "", couponId: null, error: "Coupon usage limit reached" } });
-    return;
-  }
-  if (coupon.minOrderValue && cartTotal < Number(coupon.minOrderValue)) {
-    res.json({ success: true, data: { valid: false, discountAmount: 0, discountDescription: "", couponId: null, error: `Minimum order value: ₹${coupon.minOrderValue}` } });
+  const types = (coupon.applicableCustomerTypes ?? []) as string[];
+  if (types.length > 0 && customerType && !types.includes(customerType)) {
+    fail(`Coupon not valid for ${customerType} customers`);
     return;
   }
 
