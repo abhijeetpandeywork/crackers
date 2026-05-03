@@ -34,6 +34,30 @@ const PinLogin = () => {
     }
   }, [pin, userId]);
 
+  // Physical keyboard support: 0-9, Backspace, Enter, Escape.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === "INPUT" || tag === "SELECT") return;
+      if (/^[0-9]$/.test(e.key)) {
+        e.preventDefault();
+        handleNumberClick(e.key);
+      } else if (e.key === "Backspace") {
+        e.preventDefault();
+        handleDelete();
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        setPin("");
+      } else if (e.key === "Enter" && pin.length === 4 && userId) {
+        e.preventDefault();
+        handleLogin();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pin, userId]);
+
   const handleLogin = () => {
     const cashier = cashiers.find(c => c.id === userId);
     if (!cashier) {
