@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Search, Tags, Pencil, Loader2, Globe, Store, Briefcase, Building2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { BulkIO } from "@/components/bulk-io";
 
 // All channels a coupon can be restricted to. Empty array = available
 // everywhere (the most common case for a generic offer).
@@ -246,9 +247,12 @@ export default function CouponsList() {
           <h2 className="text-3xl font-bold tracking-tight">Coupons & Offers</h2>
           <p className="text-muted-foreground">Manage discounts and decide which channels can use each one.</p>
         </div>
-        <Button onClick={openNew} data-testid="btn-new-coupon">
-          <Plus className="mr-2 h-4 w-4" /> New Coupon
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <BulkIO resource="coupons" label="Coupons" onImported={() => qc.invalidateQueries({ queryKey: ["coupons"] })} />
+          <Button onClick={openNew} data-testid="btn-new-coupon">
+            <Plus className="mr-2 h-4 w-4" /> New Coupon
+          </Button>
+        </div>
       </div>
 
       <div className="relative w-full max-w-sm">

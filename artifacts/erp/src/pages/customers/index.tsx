@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Plus, Search, User, MapPin, Phone, CreditCard, Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { BulkIO } from "@/components/bulk-io";
 
 export default function CustomersList() {
   const [search, setSearch] = useState("");
@@ -60,6 +61,8 @@ export default function CustomersList() {
           <p className="text-muted-foreground">Manage your retail and wholesale customer base.</p>
         </div>
         
+        <div className="flex flex-wrap items-center gap-2">
+        <BulkIO resource="customers" label="Customers" onImported={() => refetch()} />
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button>
@@ -118,6 +121,7 @@ export default function CustomersList() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 items-center bg-card p-4 rounded-lg border">

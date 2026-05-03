@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Building2, Store, Pencil, Trash2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { BulkIO } from "@/components/bulk-io";
 
 type LocationType = "warehouse" | "shop";
 
@@ -169,9 +170,12 @@ export default function LocationsList() {
           <h2 className="text-3xl font-bold tracking-tight">Business Locations</h2>
           <p className="text-muted-foreground">Manage warehouses and retail outlet points.</p>
         </div>
-        <Button onClick={openNew} data-testid="btn-new-location">
-          <Plus className="mr-2 h-4 w-4" /> New Location
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <BulkIO resource="locations" label="Locations" onImported={() => void reload()} />
+          <Button onClick={openNew} data-testid="btn-new-location">
+            <Plus className="mr-2 h-4 w-4" /> New Location
+          </Button>
+        </div>
       </div>
 
       <div className="border rounded-md bg-card">

@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Plus, Search, Truck, Phone, User, Building, Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { BulkIO } from "@/components/bulk-io";
 
 export default function SuppliersList() {
   const [search, setSearch] = useState("");
@@ -52,6 +53,8 @@ export default function SuppliersList() {
           <p className="text-muted-foreground">Manage raw material and cracker suppliers.</p>
         </div>
         
+        <div className="flex flex-wrap items-center gap-2">
+        <BulkIO resource="suppliers" label="Suppliers" onImported={() => refetch()} />
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button>
@@ -99,6 +102,7 @@ export default function SuppliersList() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <div className="relative w-full max-w-sm">

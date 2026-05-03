@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Search, Filter } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { BulkIO } from "@/components/bulk-io";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function ProductsList() {
   const [search, setSearch] = useState("");
@@ -23,6 +25,7 @@ export default function ProductsList() {
   if (category !== "ALL") queryParams.category = category;
 
   const { data, isLoading } = useListProducts(queryParams);
+  const qc = useQueryClient();
 
   // Dynamic category list — managed at /categories.
   const { data: categoriesResp } = useQuery({
@@ -43,11 +46,14 @@ export default function ProductsList() {
           <h2 className="text-3xl font-bold tracking-tight">Products Catalog</h2>
           <p className="text-muted-foreground">Manage firecracker catalog, variants, and pricing.</p>
         </div>
-        <Button asChild>
-          <Link href="/products/new">
-            <Plus className="mr-2 h-4 w-4" /> Add Product
-          </Link>
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <BulkIO resource="products" label="Products" onImported={() => qc.invalidateQueries()} />
+          <Button asChild>
+            <Link href="/products/new">
+              <Plus className="mr-2 h-4 w-4" /> Add Product
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 items-center bg-card p-4 rounded-lg border">

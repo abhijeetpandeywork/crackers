@@ -21,6 +21,7 @@ import {
 import { Plus, Pencil, Trash2, ImageIcon, Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { BulkIO } from "@/components/bulk-io";
 
 type BrandForm = {
   id?: string;
@@ -126,6 +127,8 @@ export default function BrandsPage() {
           <h2 className="text-3xl font-bold tracking-tight">Brand Master</h2>
           <p className="text-muted-foreground">Manufacturer brands available for product variants. Each brand can have its own logo.</p>
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+        <BulkIO resource="brands" label="Brands" onImported={() => refetch()} />
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={openNew} data-testid="btn-new-brand">
@@ -211,6 +214,7 @@ export default function BrandsPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <Card>

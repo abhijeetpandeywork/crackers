@@ -15,6 +15,7 @@ import {
 import { Plus, Pencil, Trash2, Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { BulkIO } from "@/components/bulk-io";
 
 type Category = {
   id: string;
@@ -144,7 +145,10 @@ export default function CategoriesPage() {
           <h2 className="text-3xl font-bold tracking-tight">Categories</h2>
           <p className="text-muted-foreground">Manage the catalogue's product categories — used by the website, POS and ERP.</p>
         </div>
-        <Button onClick={openNew} data-testid="btn-add-category"><Plus className="mr-2 h-4 w-4" /> Add Category</Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <BulkIO resource="categories" label="Categories" onImported={() => qc.invalidateQueries({ queryKey: ["categories"] })} />
+          <Button onClick={openNew} data-testid="btn-add-category"><Plus className="mr-2 h-4 w-4" /> Add Category</Button>
+        </div>
       </div>
 
       <div className="rounded-lg border bg-card">

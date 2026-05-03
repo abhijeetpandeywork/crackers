@@ -31,6 +31,7 @@ import shopRouter from "./v1/shop.js";
 import systemRouter from "./v1/system.js";
 import auditLogRouter from "./v1/auditLog.js";
 import rbacRouter from "./v1/rbac.js";
+import bulkRouter from "./v1/bulk.js";
 
 const router: IRouter = Router();
 
@@ -66,5 +67,6 @@ router.use("/v1", shopRouter);
 router.use("/v1", systemRouter);
 router.use("/v1", auditLogRouter);
 router.use("/v1", rbacRouter);
+router.use("/v1", bulkRouter);
 
 export default router;

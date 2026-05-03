@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Search, UserRound, Phone, Ticket, Percent, Target, Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { BulkIO } from "@/components/bulk-io";
 
 export default function AgentsList() {
   const [search, setSearch] = useState("");
@@ -53,6 +54,8 @@ export default function AgentsList() {
           <p className="text-muted-foreground">Manage agents, promo codes, and commission structures.</p>
         </div>
         
+        <div className="flex flex-wrap items-center gap-2">
+        <BulkIO resource="agents" label="Agents" onImported={() => refetch()} />
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button>
@@ -96,6 +99,7 @@ export default function AgentsList() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <div className="relative w-full max-w-sm">
