@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useListProducts, useGetStockLevels, useAdjustStock } from "@workspace/api-client-react";
+import { useState } from "react";
+import { useListProducts, useGetStockLevels, useAdjustStock, useListLocations } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,8 +22,9 @@ export default function StockAdjust() {
   const [variantId, setVariantId] = useState("");
   const [adjustment, setAdjustment] = useState<number>(0);
   const [reason, setReason] = useState("");
-  const [locations, setLocations] = useState<any[]>([]);
 
+  const { data: locationsResp } = useListLocations();
+  const locations = locationsResp?.data ?? [];
   const { data: productsData } = useListProducts({});
   const { data: stockLevels } = useGetStockLevels({
     locationId: locationId || undefined,
@@ -50,16 +51,6 @@ export default function StockAdjust() {
       }
     }
   });
-
-  useEffect(() => {
-    const token = localStorage.getItem("wh_token");
-    fetch("/api/v1/locations", {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-    .then(res => res.json())
-    .then(data => setLocations(data.data || []))
-    .catch(() => {});
-  }, []);
 
   const currentStockItem = stockLevels?.data?.find(s => s.variantId === variantId);
   const currentQty = currentStockItem?.currentQty || 0;
@@ -106,7 +97,7 @@ export default function StockAdjust() {
                     </SelectTrigger>
                     <SelectContent>
                       {locations.map(loc => (
-                        <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                        <SelectItem key={loc.id} value={loc.id ?? ""}>{loc.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>

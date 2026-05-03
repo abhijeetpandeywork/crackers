@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useListProducts, useCreateTransfer } from "@workspace/api-client-react";
+import { useState } from "react";
+import { useListProducts, useCreateTransfer, useListLocations } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,7 +35,8 @@ export default function NewTransfer() {
   const [fromLocationId, setFromLocationId] = useState("");
   const [toLocationId, setToLocationId] = useState("");
   const [items, setItems] = useState<TransferItem[]>([]);
-  const [locations, setLocations] = useState<any[]>([]);
+  const { data: locationsResp } = useListLocations();
+  const locations = locationsResp?.data ?? [];
 
   const { data: productsData } = useListProducts({});
   const createMutation = useCreateTransfer({
@@ -53,16 +54,6 @@ export default function NewTransfer() {
       }
     }
   });
-
-  useEffect(() => {
-    const token = localStorage.getItem("wh_token");
-    fetch("/api/v1/locations", {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-    .then(res => res.json())
-    .then(data => setLocations(data.data || []))
-    .catch(() => {});
-  }, []);
 
   const addItem = () => {
     setItems([...items, { productId: "", variantId: "", quantity: 1 }]);
@@ -140,7 +131,7 @@ export default function NewTransfer() {
                 </SelectTrigger>
                 <SelectContent>
                   {locations.map(loc => (
-                    <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                    <SelectItem key={loc.id} value={loc.id ?? ""}>{loc.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -153,7 +144,7 @@ export default function NewTransfer() {
                 </SelectTrigger>
                 <SelectContent>
                   {locations.map(loc => (
-                    <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                    <SelectItem key={loc.id} value={loc.id ?? ""}>{loc.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

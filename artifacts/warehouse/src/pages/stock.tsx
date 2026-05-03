@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useGetStockLevels } from "@workspace/api-client-react";
+import { useGetStockLevels, useListLocations } from "@workspace/api-client-react";
 import { Input } from "@/components/ui/input";
 import { 
   Table, 
@@ -26,21 +26,15 @@ export default function StockLevels() {
   const [search, setSearch] = useState("");
   const [locationId, setLocationId] = useState<string>("all");
   const [lowStockOnly, setLowStockOnly] = useState(false);
-  const [locations, setLocations] = useState<Array<{ id: string; name: string }>>([]);
+  const { data: locationsResp } = useListLocations();
+  const locations = locationsResp?.data ?? [];
 
+  // Default to the first real location once data arrives.
   useEffect(() => {
-    const token = localStorage.getItem("wh_token");
-    if (!token) return;
-    fetch("/api/v1/locations", { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json())
-      .then(res => {
-        const list = res?.data ?? [];
-        setLocations(list);
-        // Default to the first real location when one isn't already selected.
-        if (list.length > 0) setLocationId((prev) => (prev === "all" ? list[0].id : prev));
-      })
-      .catch(() => {});
-  }, []);
+    if (locations.length > 0) {
+      setLocationId((prev) => (prev === "all" ? (locations[0].id ?? "all") : prev));
+    }
+  }, [locations]);
 
   const { data: stockData, isLoading } = useGetStockLevels({
     locationId: locationId === "all" ? undefined : locationId,
@@ -91,7 +85,7 @@ export default function StockLevels() {
                 <SelectContent>
                   <SelectItem value="all">All Locations</SelectItem>
                   {locations.map(loc => (
-                    <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                    <SelectItem key={loc.id} value={loc.id ?? ""}>{loc.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

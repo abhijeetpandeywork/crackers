@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useGetStockLedger } from "@workspace/api-client-react";
+import { useState } from "react";
+import { useGetStockLedger, useListLocations } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,17 +25,8 @@ export default function StockLedger() {
   const [search, setSearch] = useState("");
   const [locationId, setLocationId] = useState<string>("all");
   const [type, setType] = useState<string>("all");
-  const [locations, setLocations] = useState<any[]>([]);
-
-  useEffect(() => {
-    const token = localStorage.getItem("wh_token");
-    fetch("/api/v1/locations", {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-    .then(res => res.json())
-    .then(data => setLocations(data.data || []))
-    .catch(() => {});
-  }, []);
+  const { data: locationsResp } = useListLocations();
+  const locations = locationsResp?.data ?? [];
 
   const { data: ledgerData, isLoading } = useGetStockLedger({
     locationId: locationId === "all" ? undefined : locationId,
@@ -80,7 +71,7 @@ export default function StockLedger() {
                 <SelectContent>
                   <SelectItem value="all">All Locations</SelectItem>
                   {locations.map(loc => (
-                    <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                    <SelectItem key={loc.id} value={loc.id ?? ""}>{loc.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

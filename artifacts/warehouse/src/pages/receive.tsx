@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useListProducts, useReceiveStock } from "@workspace/api-client-react";
+import { useListProducts, useReceiveStock, useListLocations } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,7 +36,8 @@ export default function ReceiveStock() {
   const [locationId, setLocationId] = useState("");
   const [reference, setReference] = useState("");
   const [items, setItems] = useState<LineItem[]>([]);
-  const [locations, setLocations] = useState<any[]>([]);
+  const { data: locationsResp } = useListLocations();
+  const locations = locationsResp?.data ?? [];
 
   const { data: productsData } = useListProducts({});
   const receiveMutation = useReceiveStock({
@@ -56,25 +57,12 @@ export default function ReceiveStock() {
     }
   });
 
-  // Real locations fetch with default-select on first load
+  // Default-select the first warehouse once locations arrive.
   useEffect(() => {
-    const token = localStorage.getItem("wh_token");
-    if (!token) return;
-    fetch("/api/v1/locations", {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-    .then(res => res.json())
-    .then(data => {
-      const list = data?.data ?? [];
-      setLocations(list);
-      if (list.length > 0) {
-        // Prefer the first warehouse for receive flows; fallback to first location.
-        const wh = list.find((l: any) => l.type === "warehouse") ?? list[0];
-        setLocationId((prev) => prev || wh.id);
-      }
-    })
-    .catch(() => {});
-  }, []);
+    if (locations.length === 0) return;
+    const wh = locations.find((l: any) => l.type === "warehouse") ?? locations[0];
+    setLocationId((prev) => prev || (wh.id ?? ""));
+  }, [locations]);
 
   const addItem = () => {
     setItems([...items, { productId: "", variantId: "", quantity: 1 }]);
@@ -148,7 +136,7 @@ export default function ReceiveStock() {
                 </SelectTrigger>
                 <SelectContent>
                   {locations.map(loc => (
-                    <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                    <SelectItem key={loc.id} value={loc.id ?? ""}>{loc.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

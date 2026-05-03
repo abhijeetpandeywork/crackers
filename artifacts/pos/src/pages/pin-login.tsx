@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useLocation } from "wouter";
 import { usePinLogin } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Delete } from "lucide-react";
+import { Loader2, Delete, RefreshCw } from "lucide-react";
 import logoUrl from "@assets/rathinam_logo.png";
 
 type Cashier = { id: string; name: string; username: string; role: string; locationIds?: string[] | null };
@@ -16,39 +16,55 @@ const PinLogin = () => {
   const [locationId, setLocationId] = useState("");
   const [cashiers, setCashiers] = useState<Cashier[]>([]);
   const [shops, setShops] = useState<Shop[]>([]);
+  const [bootstrapState, setBootstrapState] = useState<"loading" | "ready" | "error">("loading");
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { mutate: login, isPending } = usePinLogin();
 
   // Load real cashiers and shops from the bootstrap endpoint. Cashier names
   // are not secret in a POS context — they're printed on receipts.
-  useEffect(() => {
-    fetch("/api/v1/auth/pos-bootstrap")
-      .then((r) => r.json())
-      .then((res) => {
-        if (res?.success) {
-          const list: Cashier[] = res.data?.cashiers ?? [];
-          const shopList: Shop[] = res.data?.shops ?? [];
-          setCashiers(list);
-          setShops(shopList);
-          // Restore last-used selections so a returning terminal lands on
-          // the right shop+cashier combo without re-picking.
-          const lastLoc = localStorage.getItem("pos_location_id");
-          if (lastLoc && shopList.some((s) => s.id === lastLoc)) {
-            setLocationId(lastLoc);
-            const lastUser = localStorage.getItem("pos_user_id");
-            const cashierBelongs = lastUser && list.some(
-              (c) => c.id === lastUser && (c.locationIds ?? []).includes(lastLoc),
-            );
-            if (cashierBelongs) setUserId(lastUser as string);
-          } else if (shopList.length === 1) {
-            // Single-shop deployments: skip the shop picker entirely.
-            setLocationId(shopList[0].id);
-          }
-        }
-      })
-      .catch(() => toast({ title: "Could not load login info", description: "Check your network and refresh.", variant: "destructive" }));
+  // Wrapped in useCallback so we can re-fire on Retry / window focus without
+  // stranding the cashier on a stuck "Loading shops…" state if the first
+  // request blips.
+  const loadBootstrap = useCallback(async () => {
+    setBootstrapState("loading");
+    try {
+      const r = await fetch("/api/v1/auth/pos-bootstrap");
+      const res = await r.json();
+      if (!res?.success) throw new Error("bad response");
+      const list: Cashier[] = res.data?.cashiers ?? [];
+      const shopList: Shop[] = res.data?.shops ?? [];
+      setCashiers(list);
+      setShops(shopList);
+      // Restore last-used selections so a returning terminal lands on
+      // the right shop+cashier combo without re-picking.
+      const lastLoc = localStorage.getItem("pos_location_id");
+      if (lastLoc && shopList.some((s) => s.id === lastLoc)) {
+        setLocationId(lastLoc);
+        const lastUser = localStorage.getItem("pos_user_id");
+        const cashierBelongs = lastUser && list.some(
+          (c) => c.id === lastUser && (c.locationIds ?? []).includes(lastLoc),
+        );
+        if (cashierBelongs) setUserId(lastUser as string);
+      } else if (shopList.length === 1) {
+        // Single-shop deployments: skip the shop picker entirely.
+        setLocationId(shopList[0].id);
+      }
+      setBootstrapState("ready");
+    } catch {
+      setBootstrapState("error");
+      toast({ title: "Could not load login info", description: "Tap Retry or check your network.", variant: "destructive" });
+    }
   }, [toast]);
+
+  useEffect(() => { loadBootstrap(); }, [loadBootstrap]);
+
+  // Auto-retry when the terminal regains focus after a network blip.
+  useEffect(() => {
+    const onFocus = () => { if (bootstrapState === "error") loadBootstrap(); };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [bootstrapState, loadBootstrap]);
 
   // Cashiers visible for the picked shop. Each shop has its own roster —
   // matches the brick-and-mortar reality where Madurai's staff is different
@@ -145,9 +161,24 @@ const PinLogin = () => {
 
         <div className="space-y-3">
           {/* Shop is picked first — each store keeps its own roster. */}
+          {bootstrapState === "error" && (
+            <Button
+              variant="outline"
+              className="w-full h-12 bg-red-950/40 border-red-700 text-red-200 hover:bg-red-900/60"
+              onClick={loadBootstrap}
+              data-testid="pos-bootstrap-retry"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" /> Couldn't load. Tap to retry
+            </Button>
+          )}
           <Select onValueChange={setLocationId} value={locationId}>
             <SelectTrigger className="w-full h-14 bg-[hsl(200,30%,10%)] border-[hsl(197,50%,22%)] text-lg text-zinc-100" data-testid="pos-location-select">
-              <SelectValue placeholder={shops.length === 0 ? "Loading shops…" : "Select Shop"} />
+              <SelectValue placeholder={
+                bootstrapState === "loading" ? "Loading shops…" :
+                bootstrapState === "error" ? "Tap Retry above" :
+                shops.length === 0 ? "No shops configured" :
+                "Select Shop"
+              } />
             </SelectTrigger>
             <SelectContent className="bg-[hsl(200,30%,10%)] border-[hsl(197,50%,22%)]">
               {shops.map((s) => (
