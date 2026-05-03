@@ -102,14 +102,14 @@ const SaleScreen = () => {
 
   const {
     items, addItem, removeItem, updateQty, clearCart, loadHeldBill,
-    subtotal, gst, discount, total: cartTotal,
+    subtotal, gst, discount, total: cartTotal, taxRate,
     coupon, applyCoupon, customer, setCustomer,
   } = useCart();
 
   // Sale total includes the manual discount on top of coupon discount.
   const md = Math.max(0, parseFloat(manualDiscount) || 0);
   const taxableAmount = Math.max(0, subtotal - discount - md);
-  const gstAdj = taxableAmount * 0.18;
+  const gstAdj = taxableAmount * taxRate;
   const total = taxableAmount + gstAdj;
 
   const { toast } = useToast();
@@ -737,7 +737,7 @@ const SaleScreen = () => {
             {md > 0 && (
               <div className="flex justify-between text-green-500"><span>Manual discount</span><span>- ₹{md.toLocaleString("en-IN")}</span></div>
             )}
-            <div className="flex justify-between"><span>GST (18%)</span><span>₹{Math.round(gstAdj).toLocaleString("en-IN")}</span></div>
+            <div className="flex justify-between"><span>GST ({Math.round(taxRate * 100)}%)</span><span>₹{Math.round(gstAdj).toLocaleString("en-IN")}</span></div>
             <div className="flex justify-between text-white text-3xl font-black pt-2 border-t border-zinc-800">
               <span>TOTAL</span><span className="text-primary">₹{Math.round(total).toLocaleString("en-IN")}</span>
             </div>

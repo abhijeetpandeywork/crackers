@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useGetPricingSettings } from '@workspace/api-client-react';
 
 export interface CartItem {
   productId: string;
@@ -29,6 +30,7 @@ interface CartContextType {
   gst: number;
   discount: number;
   total: number;
+  taxRate: number;
   coupon: CouponData | null;
   applyCoupon: (coupon: CouponData | null) => void;
   customer: any | null;
@@ -95,14 +97,20 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }
 
+  // Tax rate must come from server pricing settings, not be hardcoded — the
+  // POS sale endpoint validates `tenderSum === server-computed total`, so a
+  // mismatch (e.g. 18% vs 12%) makes every checkout fail with TENDER_MISMATCH.
+  const { data: pricingResp } = useGetPricingSettings();
+  const taxRate = Number((pricingResp as any)?.taxRate ?? (pricingResp as any)?.data?.taxRate ?? 0.12);
+
   const taxableAmount = subtotal - discount;
-  const gst = taxableAmount * 0.18;
+  const gst = taxableAmount * taxRate;
   const total = taxableAmount + gst;
 
   return (
     <CartContext.Provider value={{ 
       items, addItem, removeItem, updateQty, clearCart, loadHeldBill,
-      subtotal, gst, discount, total, 
+      subtotal, gst, discount, total, taxRate, 
       coupon, applyCoupon: setCoupon,
       customer, setCustomer
     }}>
