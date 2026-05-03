@@ -38,6 +38,8 @@ import GstReport from "@/pages/reports/gst";
 import UsersList from "@/pages/users/index";
 import LocationsList from "@/pages/locations/index";
 import Settings from "@/pages/settings/index";
+import SiteContent from "@/pages/site-content/index";
+import ReviewsModeration from "@/pages/reviews/index";
 import HelpIndex from "@/pages/help/index";
 import HelpTopic from "@/pages/help/topic";
 import Verifier from "@/pages/verifier";
@@ -152,6 +154,12 @@ function Router() {
       </Route>
       <Route path="/settings">
         {(params) => <ProtectedRoute component={Settings} {...params} />}
+      </Route>
+      <Route path="/site-content">
+        {(params) => <ProtectedRoute component={SiteContent} {...params} />}
+      </Route>
+      <Route path="/reviews">
+        {(params) => <ProtectedRoute component={ReviewsModeration} {...params} />}
       </Route>
       <Route path="/help">
         {(params) => <ProtectedRoute component={HelpIndex} {...params} />}

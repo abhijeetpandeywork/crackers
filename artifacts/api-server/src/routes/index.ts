@@ -22,6 +22,8 @@ import locationsRouter from "./v1/locations.js";
 import notificationsRouter from "./v1/notifications.js";
 import packingJobsRouter from "./v1/packingJobs.js";
 import brochureRouter from "./v1/brochure.js";
+import siteContentRouter from "./v1/siteContent.js";
+import reviewsRouter from "./v1/reviews.js";
 
 const router: IRouter = Router();
 
@@ -48,5 +50,7 @@ router.use("/v1", locationsRouter);
 router.use("/v1", notificationsRouter);
 router.use("/v1", packingJobsRouter);
 router.use("/v1", brochureRouter);
+router.use("/v1", siteContentRouter);
+router.use("/v1", reviewsRouter);
 
 export default router;

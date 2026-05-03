@@ -2688,6 +2688,252 @@ export const UpdatePricingSettingsResponse = zod.object({
 });
 
 /**
+ * @summary Public CMS content for the website (no auth)
+ */
+export const GetPublicSiteContentResponse = zod.object({
+  success: zod.boolean().optional(),
+  data: zod
+    .object({
+      occasions: zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+      categories: zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+      stats: zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+      testimonials: zod
+        .array(zod.record(zod.string(), zod.unknown()))
+        .optional(),
+      press: zod.array(zod.string()).optional(),
+      howItWorks: zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+      homeFaqs: zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+      helpSections: zod
+        .array(zod.record(zod.string(), zod.unknown()))
+        .optional(),
+      helpFaqs: zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+      productFaqs: zod
+        .array(zod.record(zod.string(), zod.unknown()))
+        .optional(),
+      contact: zod.record(zod.string(), zod.unknown()).optional(),
+      whyUs: zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+    })
+    .optional()
+    .describe(
+      "Free-form CMS blob for public website (homepage, help, product FAQs).",
+    ),
+});
+
+/**
+ * @summary Get site content (admin)
+ */
+export const GetSiteContentResponse = zod.object({
+  success: zod.boolean().optional(),
+  data: zod
+    .object({
+      occasions: zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+      categories: zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+      stats: zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+      testimonials: zod
+        .array(zod.record(zod.string(), zod.unknown()))
+        .optional(),
+      press: zod.array(zod.string()).optional(),
+      howItWorks: zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+      homeFaqs: zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+      helpSections: zod
+        .array(zod.record(zod.string(), zod.unknown()))
+        .optional(),
+      helpFaqs: zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+      productFaqs: zod
+        .array(zod.record(zod.string(), zod.unknown()))
+        .optional(),
+      contact: zod.record(zod.string(), zod.unknown()).optional(),
+      whyUs: zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+    })
+    .optional()
+    .describe(
+      "Free-form CMS blob for public website (homepage, help, product FAQs).",
+    ),
+});
+
+/**
+ * @summary Update site content (admin)
+ */
+export const UpdateSiteContentBody = zod
+  .object({
+    occasions: zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+    categories: zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+    stats: zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+    testimonials: zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+    press: zod.array(zod.string()).optional(),
+    howItWorks: zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+    homeFaqs: zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+    helpSections: zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+    helpFaqs: zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+    productFaqs: zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+    contact: zod.record(zod.string(), zod.unknown()).optional(),
+    whyUs: zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+  })
+  .describe(
+    "Free-form CMS blob for public website (homepage, help, product FAQs).",
+  );
+
+export const UpdateSiteContentResponse = zod.object({
+  success: zod.boolean().optional(),
+  data: zod
+    .object({
+      occasions: zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+      categories: zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+      stats: zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+      testimonials: zod
+        .array(zod.record(zod.string(), zod.unknown()))
+        .optional(),
+      press: zod.array(zod.string()).optional(),
+      howItWorks: zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+      homeFaqs: zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+      helpSections: zod
+        .array(zod.record(zod.string(), zod.unknown()))
+        .optional(),
+      helpFaqs: zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+      productFaqs: zod
+        .array(zod.record(zod.string(), zod.unknown()))
+        .optional(),
+      contact: zod.record(zod.string(), zod.unknown()).optional(),
+      whyUs: zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+    })
+    .optional()
+    .describe(
+      "Free-form CMS blob for public website (homepage, help, product FAQs).",
+    ),
+});
+
+/**
+ * @summary List approved reviews for a product (public)
+ */
+export const ListPublicProductReviewsParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const ListPublicProductReviewsResponse = zod.object({
+  success: zod.boolean().optional(),
+  data: zod
+    .array(
+      zod.object({
+        id: zod.string().optional(),
+        productId: zod.string().optional(),
+        authorName: zod.string().optional(),
+        city: zod.string().optional(),
+        rating: zod.number().optional(),
+        title: zod.string().optional(),
+        body: zod.string().optional(),
+        verified: zod.boolean().optional(),
+        status: zod
+          .string()
+          .optional()
+          .describe("pending | approved | rejected"),
+        createdAt: zod.string().optional(),
+      }),
+    )
+    .optional(),
+  summary: zod
+    .object({
+      total: zod.number().optional(),
+      average: zod.number().optional(),
+      distribution: zod
+        .array(
+          zod.object({
+            stars: zod.number().optional(),
+            count: zod.number().optional(),
+            pct: zod.number().optional(),
+          }),
+        )
+        .optional(),
+    })
+    .optional(),
+});
+
+/**
+ * @summary Submit a review (public, queued for moderation)
+ */
+export const SubmitProductReviewParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const submitProductReviewBodyRatingMax = 5;
+
+export const SubmitProductReviewBody = zod.object({
+  authorName: zod.string(),
+  city: zod.string().optional(),
+  rating: zod.number().min(1).max(submitProductReviewBodyRatingMax),
+  title: zod.string().optional(),
+  body: zod.string(),
+});
+
+/**
+ * @summary List all reviews (admin moderation)
+ */
+export const ListAllReviewsQueryParams = zod.object({
+  status: zod.coerce.string().optional(),
+});
+
+export const ListAllReviewsResponse = zod.object({
+  success: zod.boolean().optional(),
+  data: zod
+    .array(
+      zod.object({
+        id: zod.string().optional(),
+        productId: zod.string().optional(),
+        authorName: zod.string().optional(),
+        city: zod.string().optional(),
+        rating: zod.number().optional(),
+        title: zod.string().optional(),
+        body: zod.string().optional(),
+        verified: zod.boolean().optional(),
+        status: zod
+          .string()
+          .optional()
+          .describe("pending | approved | rejected"),
+        createdAt: zod.string().optional(),
+      }),
+    )
+    .optional(),
+});
+
+/**
+ * @summary Approve, reject, or update a review (admin)
+ */
+export const UpdateReviewStatusParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpdateReviewStatusBody = zod.object({
+  status: zod.string().optional(),
+  verified: zod.boolean().optional(),
+  title: zod.string().optional(),
+  body: zod.string().optional(),
+  rating: zod.number().optional(),
+});
+
+export const UpdateReviewStatusResponse = zod.object({
+  id: zod.string().optional(),
+  productId: zod.string().optional(),
+  authorName: zod.string().optional(),
+  city: zod.string().optional(),
+  rating: zod.number().optional(),
+  title: zod.string().optional(),
+  body: zod.string().optional(),
+  verified: zod.boolean().optional(),
+  status: zod.string().optional().describe("pending | approved | rejected"),
+  createdAt: zod.string().optional(),
+});
+
+/**
+ * @summary Delete a review (admin)
+ */
+export const DeleteReviewParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const DeleteReviewResponse = zod.object({
+  success: zod.boolean().optional(),
+});
+
+/**
  * @summary List users
  */
 export const ListUsersResponse = zod.object({

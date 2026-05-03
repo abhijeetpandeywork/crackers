@@ -1,11 +1,19 @@
 import { Link } from "wouter";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
-import { Sparkles, ShoppingBag, FileText, Truck, Shield, Phone } from "lucide-react";
+import {
+  Sparkles, ShoppingBag, FileText, Truck, Shield, Phone, Award, Heart, Clock, BadgeCheck,
+  type LucideIcon,
+} from "lucide-react";
+import { useGetPublicSiteContent } from "@workspace/api-client-react";
 
-const SECTIONS = [
+const ICONS: Record<string, LucideIcon> = {
+  ShoppingBag, FileText, Truck, Shield, Sparkles, Award, Heart, Clock, BadgeCheck,
+};
+
+const DEFAULT_SECTIONS = [
   {
-    icon: ShoppingBag,
+    icon: "ShoppingBag",
     title: "How to order",
     items: [
       "Browse the Catalogue or pick a category from the home page.",
@@ -16,7 +24,7 @@ const SECTIONS = [
     ],
   },
   {
-    icon: FileText,
+    icon: "FileText",
     title: "GST invoice",
     items: [
       "Tick 'I need GST invoice' at checkout.",
@@ -25,7 +33,7 @@ const SECTIONS = [
     ],
   },
   {
-    icon: Truck,
+    icon: "Truck",
     title: "Delivery",
     items: [
       "We ship pan-India via licensed cracker logistics partners only.",
@@ -34,7 +42,7 @@ const SECTIONS = [
     ],
   },
   {
-    icon: Shield,
+    icon: "Shield",
     title: "Safety & compliance",
     items: [
       "All products are PESO-licensed and conform to Indian fireworks safety standards.",
@@ -44,7 +52,7 @@ const SECTIONS = [
   },
 ];
 
-const FAQS = [
+const DEFAULT_FAQS = [
   { q: "Do I need to create an account?", a: "No. Checkout is guest-only — phone number is the order reference." },
   { q: "Can I order in bulk for a wedding/event?", a: "Yes. Orders of 10+ units of the same item automatically get the wholesale rate. For very large orders, call us directly." },
   { q: "How do I pay?", a: "Cash on delivery or bank transfer. Our team will call within 24 hours to confirm and arrange payment." },
@@ -53,6 +61,14 @@ const FAQS = [
 ];
 
 export default function WebsiteHelp() {
+  const { data: contentResp } = useGetPublicSiteContent();
+  const c = (contentResp?.data ?? {}) as Record<string, any>;
+  const SECTIONS = (c.helpSections?.length ? c.helpSections : DEFAULT_SECTIONS) as Array<{ icon: string; title: string; items: string[] }>;
+  const FAQS = (c.helpFaqs?.length ? c.helpFaqs : DEFAULT_FAQS) as Array<{ q: string; a: string }>;
+  const contact = (c.contact ?? {}) as { phone?: string; email?: string };
+  const phone = contact.phone ?? "+91 99999 99999";
+  const email = contact.email ?? "support@rathinamcracker.com";
+
   return (
     <div className="min-h-screen bg-cream flex flex-col" style={{ background: "#fff8ed" }}>
       <Navbar />
@@ -73,19 +89,22 @@ export default function WebsiteHelp() {
 
         <section className="max-w-4xl mx-auto px-4 py-10 space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {SECTIONS.map((s) => (
-              <div key={s.title} className="rounded-lg bg-white shadow-sm border border-amber-100 p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="rounded-md bg-[#9b2335]/10 p-1.5">
-                    <s.icon className="h-5 w-5 text-[#9b2335]" />
+            {SECTIONS.map((s) => {
+              const Icon = ICONS[s.icon] ?? Sparkles;
+              return (
+                <div key={s.title} className="rounded-lg bg-white shadow-sm border border-amber-100 p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="rounded-md bg-[#9b2335]/10 p-1.5">
+                      <Icon className="h-5 w-5 text-[#9b2335]" />
+                    </div>
+                    <h3 className="font-bold text-[#9b2335]">{s.title}</h3>
                   </div>
-                  <h3 className="font-bold text-[#9b2335]">{s.title}</h3>
+                  <ul className="space-y-1.5 text-sm text-slate-700">
+                    {s.items.map((it) => <li key={it}>• {it}</li>)}
+                  </ul>
                 </div>
-                <ul className="space-y-1.5 text-sm text-slate-700">
-                  {s.items.map((it) => <li key={it}>• {it}</li>)}
-                </ul>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="rounded-lg bg-white shadow-sm border border-amber-100 p-5">
@@ -106,7 +125,7 @@ export default function WebsiteHelp() {
               <h3 className="font-bold text-[#9b2335]">Need more help?</h3>
             </div>
             <p className="text-sm text-slate-700">
-              Call us on <strong>+91 99999 99999</strong> · Email <strong>support@rathinamcracker.com</strong> · We respond within 24 hours.
+              Call us on <strong>{phone}</strong> · Email <strong>{email}</strong> · We respond within 24 hours.
             </p>
             <Link href="/catalogue" className="inline-block mt-3 text-sm font-semibold text-[#9b2335] underline">
               ← Back to shopping

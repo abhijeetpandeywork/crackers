@@ -51,6 +51,10 @@ tags:
     description: Order brochure
   - name: dashboard
     description: Dashboard data
+  - name: siteContent
+    description: Public website CMS content (homepage, help, FAQs)
+  - name: reviews
+    description: Product reviews (public submission, admin moderation)
 
 paths:
   /healthz:
@@ -2183,6 +2187,169 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PricingSettings"
+
+  # ============================================================
+  # SITE CONTENT (CMS)
+  # ============================================================
+  /v1/site-content/public:
+    get:
+      operationId: getPublicSiteContent
+      tags: [siteContent]
+      summary: Public CMS content for the website (no auth)
+      responses:
+        "200":
+          description: Site content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SiteContentResponse"
+
+  /v1/site-content:
+    get:
+      operationId: getSiteContent
+      tags: [siteContent]
+      summary: Get site content (admin)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Site content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SiteContentResponse"
+    put:
+      operationId: updateSiteContent
+      tags: [siteContent]
+      summary: Update site content (admin)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SiteContent"
+      responses:
+        "200":
+          description: Site content updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SiteContentResponse"
+
+  # ============================================================
+  # PRODUCT REVIEWS
+  # ============================================================
+  /v1/products/{id}/reviews/public:
+    get:
+      operationId: listPublicProductReviews
+      tags: [reviews]
+      summary: List approved reviews for a product (public)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Approved reviews + summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductReviewsResponse"
+
+  /v1/products/{id}/reviews:
+    post:
+      operationId: submitProductReview
+      tags: [reviews]
+      summary: Submit a review (public, queued for moderation)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitReviewBody"
+      responses:
+        "201":
+          description: Review submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductReview"
+
+  /v1/reviews:
+    get:
+      operationId: listAllReviews
+      tags: [reviews]
+      summary: List all reviews (admin moderation)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Reviews
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductReviewListResponse"
+
+  /v1/reviews/{id}:
+    put:
+      operationId: updateReviewStatus
+      tags: [reviews]
+      summary: Approve, reject, or update a review (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateReviewBody"
+      responses:
+        "200":
+          description: Review updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductReview"
+    delete:
+      operationId: deleteReview
+      tags: [reviews]
+      summary: Delete a review (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
 
   # ============================================================
   # USERS
@@ -4599,3 +4766,177 @@ components:
                 type: number
               achievement:
                 type: number
+
+    # ============================================================
+    # SITE CONTENT (CMS)
+    # ============================================================
+    SiteContentSection:
+      type: object
+      additionalProperties: true
+    SiteContent:
+      type: object
+      description: Free-form CMS blob for public website (homepage, help, product FAQs).
+      additionalProperties: true
+      properties:
+        occasions:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        categories:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        stats:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        testimonials:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        press:
+          type: array
+          items:
+            type: string
+        howItWorks:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        homeFaqs:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        helpSections:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        helpFaqs:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        productFaqs:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        contact:
+          type: object
+          additionalProperties: true
+        whyUs:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+    SiteContentResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: "#/components/schemas/SiteContent"
+
+    # ============================================================
+    # PRODUCT REVIEWS
+    # ============================================================
+    ProductReview:
+      type: object
+      properties:
+        id:
+          type: string
+        productId:
+          type: string
+        authorName:
+          type: string
+        city:
+          type: string
+        rating:
+          type: integer
+        title:
+          type: string
+        body:
+          type: string
+        verified:
+          type: boolean
+        status:
+          type: string
+          description: pending | approved | rejected
+        createdAt:
+          type: string
+    SubmitReviewBody:
+      type: object
+      required: [authorName, rating, body]
+      properties:
+        authorName:
+          type: string
+        city:
+          type: string
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        title:
+          type: string
+        body:
+          type: string
+    UpdateReviewBody:
+      type: object
+      properties:
+        status:
+          type: string
+        verified:
+          type: boolean
+        title:
+          type: string
+        body:
+          type: string
+        rating:
+          type: integer
+    ProductReviewsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductReview"
+        summary:
+          type: object
+          properties:
+            total:
+              type: integer
+            average:
+              type: number
+            distribution:
+              type: array
+              items:
+                type: object
+                properties:
+                  stars:
+                    type: integer
+                  count:
+                    type: integer
+                  pct:
+                    type: integer
+    ProductReviewListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductReview"
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean

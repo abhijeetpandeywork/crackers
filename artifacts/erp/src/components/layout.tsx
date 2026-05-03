@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { 
   BarChart3, Box, Package, Users, UsersRound, Truck, 
   ShoppingCart, Tags, FileText, FileBarChart, Settings, LogOut,
-  HelpCircle, ShieldCheck
+  HelpCircle, ShieldCheck, Globe, MessageSquare
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -32,6 +32,8 @@ const reportItems = [
 const settingsItems = [
   { label: "Users", href: "/users" },
   { label: "Locations", href: "/locations" },
+  { label: "Website Content", href: "/site-content" },
+  { label: "Product Reviews", href: "/reviews" },
   { label: "General Settings", href: "/settings" },
 ];
 

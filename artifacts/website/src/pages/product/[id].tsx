@@ -1,6 +1,11 @@
 import { useState, useMemo, useEffect } from "react";
 import { useParams, Link } from "wouter";
-import { useListPublicProducts } from "@workspace/api-client-react";
+import {
+  useListPublicProducts,
+  useListPublicProductReviews,
+  useSubmitProductReview,
+  useGetPublicSiteContent,
+} from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -189,22 +194,27 @@ const defaultBrandInfo = {
   emoji: "🎇",
 };
 
-// ---- Mock customer reviews --------------------------------------------------
-const mockReviews = [
-  { name: "Ramesh K.", city: "Chennai", rating: 5, date: "2 weeks ago", title: "Loved the burst pattern!", body: "Used these for Diwali this year — the effect was stunning and the kids loved it. Will definitely reorder.", verified: true },
-  { name: "Priya S.", city: "Madurai", rating: 4, date: "1 month ago", title: "Great quality for the price", body: "Solid product, good packaging, arrived on time. One sparkler in the pack didn't light but the rest were perfect.", verified: true },
-  { name: "Arun M.", city: "Coimbatore", rating: 5, date: "1 month ago", title: "Sivakasi quality shines through", body: "You can really tell the difference between cheap imports and authentic Sivakasi crackers. Bright colours, clean burn.", verified: true },
-  { name: "Lakshmi V.", city: "Bengaluru", rating: 5, date: "6 weeks ago", title: "Perfect for weddings", body: "Ordered the larger pack for my daughter's wedding reception. Beautiful display, no duds, everyone was impressed.", verified: false },
-];
-
-const mockFaqs = [
+const DEFAULT_PRODUCT_FAQS = [
   { q: "Is this product PESO/CCOE approved?", a: "Yes. All fireworks sold by Rathinam Crackers are PESO-approved with valid CCOE licences. Our SKUs and HSN codes are registered with the Tamil Nadu Pyrotechnics Board." },
   { q: "Can I get a tax invoice (GST)?", a: "Absolutely. Every order ships with a proper GST tax invoice. Add your GSTIN at checkout to claim input credit if you're a business buyer." },
   { q: "How is this product shipped?", a: "Fireworks ship by surface-only courier (legal requirement). Packaging is double-walled corrugated with anti-static lining. Delivery is 3-7 working days across Tamil Nadu and 5-10 days pan-India." },
   { q: "What is the shelf life?", a: "Fireworks are best used within 18 months from the manufacturing date stamped on the pack. Store in a cool, dry place away from heat and direct sunlight." },
-  { q: "Do you offer bulk discounts?", a: "Yes — bulk pricing kicks in automatically at 10+ units. For wholesale (50+ units) please call our bulk desk on +91 98765 43210 for a custom quote." },
+  { q: "Do you offer bulk discounts?", a: "Yes — bulk pricing kicks in automatically at 10+ units. For wholesale (50+ units) please call our bulk desk for a custom quote." },
   { q: "What is the return / refund policy?", a: "Damaged-in-transit items can be returned within 48 hours of delivery with photos. Used or partially-used fireworks cannot be returned for safety reasons." },
 ];
+
+function timeAgo(iso?: string): string {
+  if (!iso) return "";
+  const d = new Date(iso).getTime();
+  if (!Number.isFinite(d)) return "";
+  const diff = Math.max(0, Date.now() - d);
+  const days = Math.floor(diff / 86400000);
+  if (days < 1) return "Today";
+  if (days < 7) return `${days} day${days === 1 ? "" : "s"} ago`;
+  if (days < 30) return `${Math.floor(days / 7)} week${Math.floor(days / 7) === 1 ? "" : "s"} ago`;
+  if (days < 365) return `${Math.floor(days / 30)} month${Math.floor(days / 30) === 1 ? "" : "s"} ago`;
+  return `${Math.floor(days / 365)} year${Math.floor(days / 365) === 1 ? "" : "s"} ago`;
+}
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -218,6 +228,31 @@ export default function ProductDetail() {
   const [wishlisted, setWishlisted] = useState(false);
 
   const { data: publicProducts, isLoading } = useListPublicProducts({ limit: 500 });
+  const { data: reviewsResp, refetch: refetchReviews } = useListPublicProductReviews(id ?? "");
+  const { data: siteContent } = useGetPublicSiteContent();
+  const submitReview = useSubmitProductReview();
+
+  const reviews = ((reviewsResp as any)?.data ?? []) as Array<{
+    id: string;
+    authorName: string;
+    city?: string;
+    rating: number;
+    title?: string;
+    body: string;
+    verified?: boolean;
+    createdAt?: string;
+  }>;
+  const reviewSummary = ((reviewsResp as any)?.summary ?? null) as
+    | { total: number; average: number; distribution: Array<{ stars: number; count: number; pct: number }> }
+    | null;
+
+  const productFaqs =
+    ((siteContent?.data as any)?.productFaqs?.length
+      ? (siteContent?.data as any).productFaqs
+      : DEFAULT_PRODUCT_FAQS) as Array<{ q: string; a: string }>;
+
+  const [reviewForm, setReviewForm] = useState({ name: "", city: "", rating: 5, title: "", body: "" });
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
 
   const product = useMemo(() => {
     return publicProducts?.data?.find((p: any) => p.id === id);
@@ -383,16 +418,34 @@ export default function ProductDetail() {
   const attrs = categoryAttrs[product.category as string] ?? defaultAttrs;
   const currentBrandInfo = (selectedBrand && brandInfo[selectedBrand]) || defaultBrandInfo;
 
-  // Mock review aggregate.
-  const avgRating = 4.6;
-  const totalReviews = 247;
-  const ratingDistribution = [
-    { stars: 5, count: 178, pct: 72 },
-    { stars: 4, count: 49, pct: 20 },
-    { stars: 3, count: 12, pct: 5 },
-    { stars: 2, count: 5, pct: 2 },
-    { stars: 1, count: 3, pct: 1 },
-  ];
+  // Real review aggregate (zeros when no reviews yet).
+  const avgRating = reviewSummary?.average ?? 0;
+  const totalReviews = reviewSummary?.total ?? 0;
+  const ratingDistribution =
+    reviewSummary?.distribution ?? [5, 4, 3, 2, 1].map((stars) => ({ stars, count: 0, pct: 0 }));
+
+  const handleSubmitReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!product) return;
+    try {
+      await submitReview.mutateAsync({
+        id: product.id ?? "",
+        data: {
+          authorName: reviewForm.name,
+          city: reviewForm.city,
+          rating: reviewForm.rating,
+          title: reviewForm.title,
+          body: reviewForm.body,
+        } as any,
+      });
+      setReviewSubmitted(true);
+      setReviewForm({ name: "", city: "", rating: 5, title: "", body: "" });
+      toast({ title: "Thank you!", description: "Your review has been submitted for moderation." });
+      refetchReviews();
+    } catch {
+      toast({ title: "Could not submit", description: "Please try again later.", variant: "destructive" });
+    }
+  };
 
   // Bulk pricing tiers (computed from wholesale/retail).
   const tierPrice = (tierMul: number) => onlinePrice > 0 ? Math.max(wholesalePrice, onlinePrice * tierMul) : 0;
@@ -537,8 +590,8 @@ export default function ProductDetail() {
                         className={`h-4 w-4 ${s <= Math.round(avgRating) ? "fill-amber-400 text-amber-400" : "text-gray-300"}`}
                       />
                     ))}
-                    <span className="ml-2 font-bold text-gray-900">{avgRating.toFixed(1)}</span>
-                    <a href="#reviews" className="ml-1 text-xs text-gray-500 hover:text-red-600">({totalReviews} reviews)</a>
+                    <span className="ml-2 font-bold text-gray-900">{avgRating > 0 ? avgRating.toFixed(1) : "—"}</span>
+                    <a href="#reviews" className="ml-1 text-xs text-gray-500 hover:text-red-600">({totalReviews} review{totalReviews === 1 ? "" : "s"})</a>
                   </div>
                   <Separator orientation="vertical" className="h-4" />
                   <span className="flex items-center text-xs text-gray-500">
@@ -982,13 +1035,13 @@ export default function ProductDetail() {
               <TabsContent value="reviews" className="mt-8" data-testid="reviews-content">
                 <div id="reviews" className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100 p-6 text-center">
-                    <p className="text-5xl font-extrabold text-gray-900">{avgRating.toFixed(1)}</p>
+                    <p className="text-5xl font-extrabold text-gray-900">{avgRating > 0 ? avgRating.toFixed(1) : "—"}</p>
                     <div className="flex justify-center my-2">
                       {[1,2,3,4,5].map((s) => (
                         <Star key={s} className={`h-5 w-5 ${s <= Math.round(avgRating) ? "fill-amber-400 text-amber-400" : "text-gray-300"}`} />
                       ))}
                     </div>
-                    <p className="text-sm text-gray-600 font-medium">{totalReviews} verified reviews</p>
+                    <p className="text-sm text-gray-600 font-medium">{totalReviews} review{totalReviews === 1 ? "" : "s"}</p>
                     <Separator className="my-4" />
                     <div className="space-y-1.5 text-left">
                       {ratingDistribution.map((r) => (
@@ -1002,35 +1055,102 @@ export default function ProductDetail() {
                   </div>
 
                   <div className="md:col-span-2 space-y-4">
-                    {mockReviews.map((r, i) => (
-                      <div key={i} className="rounded-2xl border border-gray-100 p-5 bg-white" data-testid={`review-${i}`}>
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex items-center">
-                            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-red-500 to-amber-500 text-white font-bold flex items-center justify-center mr-3">
-                              {r.name.charAt(0)}
+                    {reviews.length === 0 ? (
+                      <div className="rounded-2xl border border-dashed border-gray-200 p-8 text-center bg-gray-50">
+                        <p className="text-sm text-gray-600">No reviews yet. Be the first to share your experience!</p>
+                      </div>
+                    ) : (
+                      reviews.map((r, i) => (
+                        <div key={r.id ?? i} className="rounded-2xl border border-gray-100 p-5 bg-white" data-testid={`review-${i}`}>
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex items-center">
+                              <div className="h-10 w-10 rounded-full bg-gradient-to-br from-red-500 to-amber-500 text-white font-bold flex items-center justify-center mr-3">
+                                {(r.authorName || "·").charAt(0)}
+                              </div>
+                              <div>
+                                <p className="font-bold text-gray-900 text-sm flex items-center">
+                                  {r.authorName}
+                                  {r.verified && (
+                                    <span className="ml-2 text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-semibold flex items-center">
+                                      <CheckCircle2 className="h-2.5 w-2.5 mr-0.5" /> Verified
+                                    </span>
+                                  )}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {[r.city, timeAgo(r.createdAt)].filter(Boolean).join(" · ")}
+                                </p>
+                              </div>
                             </div>
-                            <div>
-                              <p className="font-bold text-gray-900 text-sm flex items-center">
-                                {r.name}
-                                {r.verified && (
-                                  <span className="ml-2 text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-semibold flex items-center">
-                                    <CheckCircle2 className="h-2.5 w-2.5 mr-0.5" /> Verified
-                                  </span>
-                                )}
-                              </p>
-                              <p className="text-xs text-gray-500">{r.city} · {r.date}</p>
+                            <div className="flex">
+                              {[1,2,3,4,5].map((s) => (
+                                <Star key={s} className={`h-3.5 w-3.5 ${s <= r.rating ? "fill-amber-400 text-amber-400" : "text-gray-300"}`} />
+                              ))}
                             </div>
                           </div>
-                          <div className="flex">
+                          {r.title ? <p className="font-semibold text-gray-900 text-sm mb-1">{r.title}</p> : null}
+                          <p className="text-sm text-gray-600 leading-relaxed">{r.body}</p>
+                        </div>
+                      ))
+                    )}
+
+                    <div className="rounded-2xl border border-gray-100 p-5 bg-white" data-testid="review-form">
+                      <h3 className="font-bold text-gray-900 mb-1">Write a review</h3>
+                      <p className="text-xs text-gray-500 mb-3">Reviews are checked by our team before publishing.</p>
+                      {reviewSubmitted ? (
+                        <p className="text-sm text-green-700 bg-green-50 border border-green-100 rounded p-3">
+                          Thanks! Your review will appear once approved.
+                        </p>
+                      ) : (
+                        <form onSubmit={handleSubmitReview} className="space-y-3">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <Input
+                              placeholder="Your name"
+                              required
+                              value={reviewForm.name}
+                              onChange={(e) => setReviewForm({ ...reviewForm, name: e.target.value })}
+                              data-testid="review-name"
+                            />
+                            <Input
+                              placeholder="City (optional)"
+                              value={reviewForm.city}
+                              onChange={(e) => setReviewForm({ ...reviewForm, city: e.target.value })}
+                              data-testid="review-city"
+                            />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-gray-600">Rating:</span>
                             {[1,2,3,4,5].map((s) => (
-                              <Star key={s} className={`h-3.5 w-3.5 ${s <= r.rating ? "fill-amber-400 text-amber-400" : "text-gray-300"}`} />
+                              <button
+                                type="button"
+                                key={s}
+                                onClick={() => setReviewForm({ ...reviewForm, rating: s })}
+                                aria-label={`${s} star${s === 1 ? "" : "s"}`}
+                                data-testid={`review-star-${s}`}
+                              >
+                                <Star className={`h-5 w-5 ${s <= reviewForm.rating ? "fill-amber-400 text-amber-400" : "text-gray-300"}`} />
+                              </button>
                             ))}
                           </div>
-                        </div>
-                        <p className="font-semibold text-gray-900 text-sm mb-1">{r.title}</p>
-                        <p className="text-sm text-gray-600 leading-relaxed">{r.body}</p>
-                      </div>
-                    ))}
+                          <Input
+                            placeholder="Review title (optional)"
+                            value={reviewForm.title}
+                            onChange={(e) => setReviewForm({ ...reviewForm, title: e.target.value })}
+                            data-testid="review-title"
+                          />
+                          <textarea
+                            className="w-full rounded-md border border-gray-200 p-3 text-sm min-h-[100px]"
+                            placeholder="Tell us how it went…"
+                            required
+                            value={reviewForm.body}
+                            onChange={(e) => setReviewForm({ ...reviewForm, body: e.target.value })}
+                            data-testid="review-body"
+                          />
+                          <Button type="submit" disabled={submitReview.isPending} data-testid="review-submit">
+                            {submitReview.isPending ? "Submitting…" : "Submit review"}
+                          </Button>
+                        </form>
+                      )}
+                    </div>
                   </div>
                 </div>
               </TabsContent>
@@ -1039,7 +1159,7 @@ export default function ProductDetail() {
               <TabsContent value="faqs" className="mt-8" data-testid="faqs-content">
                 <div className="max-w-3xl mx-auto">
                   <Accordion type="single" collapsible className="space-y-3">
-                    {mockFaqs.map((f, i) => (
+                    {productFaqs.map((f, i) => (
                       <AccordionItem
                         key={i}
                         value={`faq-${i}`}

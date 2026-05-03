@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import { useEffect, useMemo, useState } from "react";
-import { useListPublicProducts } from "@workspace/api-client-react";
+import { useListPublicProducts, useGetPublicSiteContent } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -44,7 +44,9 @@ function useDiwaliCountdown() {
   return { days, hours, minutes, seconds, target };
 }
 
-const OCCASIONS = [
+const HOW_ICONS: Record<string, typeof Sparkles> = { Sparkles, Gift, Truck, Award, ShieldCheck, Heart, Clock, BadgeCheck };
+
+const DEFAULT_OCCASIONS = [
   { key: "diwali",   label: "Diwali",        emoji: "🪔", tag: "Festival",  color: "from-amber-400 via-orange-500 to-red-600" },
   { key: "wedding",  label: "Weddings",      emoji: "💐", tag: "Bulk",      color: "from-pink-400 via-rose-500 to-red-500" },
   { key: "birthday", label: "Birthdays",     emoji: "🎂", tag: "Family",    color: "from-purple-400 via-fuchsia-500 to-pink-500" },
@@ -53,7 +55,7 @@ const OCCASIONS = [
   { key: "corporate",label: "Corporate",     emoji: "🏢", tag: "B2B",       color: "from-emerald-400 via-teal-500 to-cyan-600" },
 ];
 
-const CATEGORIES = [
+const DEFAULT_CATEGORIES = [
   { name: "Ground",  emoji: "🎇", color: "from-orange-500 to-red-600" },
   { name: "Aerial",  emoji: "🚀", color: "from-blue-500 to-indigo-600" },
   { name: "Sparkler",emoji: "✨", color: "from-yellow-400 to-amber-600" },
@@ -62,31 +64,40 @@ const CATEGORIES = [
   { name: "Novelty", emoji: "🎭", color: "from-cyan-500 to-blue-600" },
 ];
 
-const STATS = [
+const DEFAULT_STATS = [
   { value: "40+",     label: "Years of trust",          sub: "Since 1985" },
   { value: "500+",    label: "Premium products",        sub: "Across 6 categories" },
   { value: "50,000+", label: "Happy families",          sub: "Across India" },
   { value: "120+",    label: "Cities served",           sub: "Pan-India network" },
 ];
 
-const TESTIMONIALS = [
+const DEFAULT_TESTIMONIALS = [
   { name: "Priya Krishnan", city: "Chennai",   text: "Ordered the family bundle for Diwali and the kids could not stop smiling. Crackers were dry, fresh and beautifully packed.", rating: 5 },
   { name: "Arjun Mehta",    city: "Mumbai",    text: "Bulk order for our daughter's wedding — 200 boxes delivered on time with a clean GST invoice. Highly recommended for big events.", rating: 5 },
   { name: "Lakshmi Iyer",   city: "Bengaluru", text: "Their sparkler tin lasted twice as long as the local brand. You really feel the Sivakasi quality.", rating: 5 },
   { name: "Ravi Subramanian", city: "Hyderabad", text: "Customer support called within an hour of placing my order. Felt like dealing with a family business — because it is one.", rating: 5 },
 ];
 
-const PRESS = [
+const DEFAULT_PRESS = [
   "The Hindu", "Times of India", "Vikatan", "ET Now", "Dinamalar", "Mint",
 ];
 
-const HOW_IT_WORKS = [
-  { step: "01", icon: Sparkles, title: "Browse the catalogue", desc: "500+ items across aerial, ground, sparklers, gift boxes and family bundles. Filter by occasion or budget." },
-  { step: "02", icon: Gift,     title: "Place your order",     desc: "Add to cart, apply your coupon, request a GST invoice and check out as a guest. No account needed." },
-  { step: "03", icon: Truck,    title: "Celebrate at home",    desc: "Our team confirms by phone within 24 hours. Licensed logistics deliver safely to your doorstep." },
+const DEFAULT_HOW_IT_WORKS = [
+  { step: "01", icon: "Sparkles", title: "Browse the catalogue", desc: "500+ items across aerial, ground, sparklers, gift boxes and family bundles. Filter by occasion or budget." },
+  { step: "02", icon: "Gift",     title: "Place your order",     desc: "Add to cart, apply your coupon, request a GST invoice and check out as a guest. No account needed." },
+  { step: "03", icon: "Truck",    title: "Celebrate at home",    desc: "Our team confirms by phone within 24 hours. Licensed logistics deliver safely to your doorstep." },
 ];
 
-const FAQS = [
+const DEFAULT_WHY_US = [
+  { icon: "Award",       title: "Premium quality",       desc: "Every batch hand-checked at our Sivakasi unit. Fresh stock for every season — no leftover inventory.", iconBg: "bg-red-50 text-red-600" },
+  { icon: "Truck",       title: "Pan-India delivery",     desc: "Specialised, licensed cracker logistics. Tracked, insured and delivered to 120+ cities across India.", iconBg: "bg-amber-50 text-amber-600" },
+  { icon: "ShieldCheck", title: "GST & PESO compliant",   desc: "Every product PESO-licensed. Every invoice GST-compliant. 100% legal, 100% transparent.", iconBg: "bg-green-50 text-green-600" },
+  { icon: "Heart",       title: "Family-run since 1985",  desc: "Three generations, one promise — to treat every customer's home like our own celebration.", iconBg: "bg-pink-50 text-pink-600" },
+  { icon: "Clock",       title: "24-hour confirmation",   desc: "Real humans call you within 24 hours of every order. No bots, no chatbots — just our team.", iconBg: "bg-blue-50 text-blue-600" },
+  { icon: "BadgeCheck",  title: "Fair pricing",            desc: "Direct-from-manufacturer rates. Wholesale prices auto-applied for 10+ unit orders. No hidden fees.", iconBg: "bg-purple-50 text-purple-600" },
+];
+
+const DEFAULT_FAQS = [
   { q: "Do I need to create an account to order?", a: "No. Checkout is guest-only — your phone number is the order reference. We will call within 24 hours to confirm." },
   { q: "Can I get a GST invoice?",                  a: "Yes. Tick 'I need GST invoice' at checkout and enter your GSTIN. We issue a fully GST-compliant invoice (CGST 9% + SGST 9% intra-state, IGST 18% inter-state)." },
   { q: "Do you ship across India?",                 a: "Yes. We ship pan-India through licensed cracker logistics partners only. Delivery times vary by state, generally 5-10 working days during peak season." },
@@ -96,13 +107,26 @@ const FAQS = [
 
 export default function Home() {
   const { data: featuredData, isLoading } = useListPublicProducts({ featured: true, limit: 8 });
+  const { data: contentResp } = useGetPublicSiteContent();
+  const c = (contentResp?.data ?? {}) as Record<string, any>;
+  const OCCASIONS = (c.occasions?.length ? c.occasions : DEFAULT_OCCASIONS) as typeof DEFAULT_OCCASIONS;
+  const CATEGORIES = (c.categories?.length ? c.categories : DEFAULT_CATEGORIES) as typeof DEFAULT_CATEGORIES;
+  const STATS = (c.stats?.length ? c.stats : DEFAULT_STATS) as typeof DEFAULT_STATS;
+  const TESTIMONIALS = (c.testimonials?.length ? c.testimonials : DEFAULT_TESTIMONIALS) as typeof DEFAULT_TESTIMONIALS;
+  const PRESS = (c.press?.length ? c.press : DEFAULT_PRESS) as string[];
+  const HOW_IT_WORKS = (c.howItWorks?.length ? c.howItWorks : DEFAULT_HOW_IT_WORKS) as Array<{ step: string; icon: string; title: string; desc: string }>;
+  const WHY_US = (c.whyUs?.length ? c.whyUs : DEFAULT_WHY_US) as Array<{ icon: string; title: string; desc: string; iconBg?: string }>;
+  const FAQS = (c.homeFaqs?.length ? c.homeFaqs : DEFAULT_FAQS) as Array<{ q: string; a: string }>;
   const products: Product[] = (featuredData?.data ?? []) as Product[];
   const { days, hours, minutes, seconds } = useDiwaliCountdown();
   const [active, setActive] = useState(0);
   useEffect(() => {
+    if (TESTIMONIALS.length === 0) return;
     const t = setInterval(() => setActive((a) => (a + 1) % TESTIMONIALS.length), 6000);
     return () => clearInterval(t);
-  }, []);
+  }, [TESTIMONIALS.length]);
+  const safeActive = TESTIMONIALS.length > 0 ? active % TESTIMONIALS.length : 0;
+  const currentTestimonial = TESTIMONIALS[safeActive];
 
   return (
     <Layout>
@@ -363,12 +387,14 @@ export default function Home() {
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mt-3">How it works</h2>
           </div>
           <div className="grid md:grid-cols-3 gap-8">
-            {HOW_IT_WORKS.map((s, i) => (
+            {HOW_IT_WORKS.map((s, i) => {
+              const Icon = HOW_ICONS[s.icon] ?? Sparkles;
+              return (
               <div key={s.step} className="relative bg-gradient-to-br from-red-50 to-amber-50 border border-amber-100 rounded-3xl p-8 hover:shadow-xl transition-shadow">
                 <div className="absolute -top-4 -left-4 text-7xl font-extrabold text-red-600/10 select-none">{s.step}</div>
                 <div className="relative z-10">
                   <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-red-600 to-amber-500 flex items-center justify-center text-white shadow-lg mb-5">
-                    <s.icon className="h-7 w-7" />
+                    <Icon className="h-7 w-7" />
                   </div>
                   <h3 className="text-xl font-bold text-gray-900 mb-2">{s.title}</h3>
                   <p className="text-gray-600 leading-relaxed">{s.desc}</p>
@@ -377,7 +403,8 @@ export default function Home() {
                   <ChevronRight className="hidden md:block absolute top-1/2 -right-6 h-8 w-8 text-amber-400/60" />
                 )}
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
@@ -390,22 +417,18 @@ export default function Home() {
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mt-3">Why families choose us, year after year</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[
-              { icon: Award,       title: "Premium quality",       desc: "Every batch hand-checked at our Sivakasi unit. Fresh stock for every season — no leftover inventory.", iconBg: "bg-red-50 text-red-600" },
-              { icon: Truck,       title: "Pan-India delivery",     desc: "Specialised, licensed cracker logistics. Tracked, insured and delivered to 120+ cities across India.", iconBg: "bg-amber-50 text-amber-600" },
-              { icon: ShieldCheck, title: "GST & PESO compliant",   desc: "Every product PESO-licensed. Every invoice GST-compliant. 100% legal, 100% transparent.", iconBg: "bg-green-50 text-green-600" },
-              { icon: Heart,       title: "Family-run since 1985",  desc: "Three generations, one promise — to treat every customer's home like our own celebration.", iconBg: "bg-pink-50 text-pink-600" },
-              { icon: Clock,       title: "24-hour confirmation",   desc: "Real humans call you within 24 hours of every order. No bots, no chatbots — just our team.", iconBg: "bg-blue-50 text-blue-600" },
-              { icon: BadgeCheck,  title: "Fair pricing",            desc: "Direct-from-manufacturer rates. Wholesale prices auto-applied for 10+ unit orders. No hidden fees.", iconBg: "bg-purple-50 text-purple-600" },
-            ].map((f) => (
+            {WHY_US.map((f) => {
+              const Icon = HOW_ICONS[f.icon] ?? Award;
+              return (
               <div key={f.title} className="bg-white rounded-2xl p-7 border border-gray-100 hover:border-red-200 hover:shadow-lg transition-all">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${f.iconBg}`}>
-                  <f.icon className="h-6 w-6" />
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${f.iconBg ?? "bg-red-50 text-red-600"}`}>
+                  <Icon className="h-6 w-6" />
                 </div>
                 <h3 className="font-bold text-lg text-gray-900 mb-2">{f.title}</h3>
                 <p className="text-gray-600 text-sm leading-relaxed">{f.desc}</p>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
@@ -422,20 +445,20 @@ export default function Home() {
             <div className="bg-gradient-to-br from-red-50 to-amber-50 border border-amber-200 rounded-3xl p-8 md:p-12 shadow-sm relative overflow-hidden">
               <Quote className="absolute top-6 right-6 h-16 w-16 text-red-200/60" />
               <div className="flex items-center gap-1 mb-5">
-                {[...Array(TESTIMONIALS[active].rating)].map((_, i) => (
+                {[...Array(currentTestimonial?.rating ?? 5)].map((_, i) => (
                   <Star key={i} className="h-5 w-5 fill-amber-500 text-amber-500" />
                 ))}
               </div>
               <p className="text-lg md:text-xl text-gray-800 leading-relaxed mb-6 font-medium">
-                "{TESTIMONIALS[active].text}"
+                "{currentTestimonial?.text ?? ""}"
               </p>
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-amber-500 flex items-center justify-center text-white font-bold text-lg">
-                  {TESTIMONIALS[active].name.charAt(0)}
+                  {(currentTestimonial?.name ?? "·").charAt(0)}
                 </div>
                 <div>
-                  <div className="font-bold text-gray-900">{TESTIMONIALS[active].name}</div>
-                  <div className="text-sm text-gray-500">{TESTIMONIALS[active].city}</div>
+                  <div className="font-bold text-gray-900">{currentTestimonial?.name}</div>
+                  <div className="text-sm text-gray-500">{currentTestimonial?.city}</div>
                 </div>
               </div>
             </div>
@@ -445,7 +468,7 @@ export default function Home() {
                   key={i}
                   onClick={() => setActive(i)}
                   aria-label={`Show testimonial ${i + 1}`}
-                  className={`h-2 rounded-full transition-all ${i === active ? "w-8 bg-red-600" : "w-2 bg-gray-300 hover:bg-gray-400"}`}
+                  className={`h-2 rounded-full transition-all ${i === safeActive ? "w-8 bg-red-600" : "w-2 bg-gray-300 hover:bg-gray-400"}`}
                 />
               ))}
             </div>

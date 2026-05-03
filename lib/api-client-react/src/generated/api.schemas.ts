@@ -1417,6 +1417,117 @@ export interface AgentPerformanceResponse {
   data?: AgentPerformanceResponseDataItem[];
 }
 
+export interface SiteContentSection {
+  [key: string]: unknown;
+}
+
+export type SiteContentOccasionsItem = { [key: string]: unknown };
+
+export type SiteContentCategoriesItem = { [key: string]: unknown };
+
+export type SiteContentStatsItem = { [key: string]: unknown };
+
+export type SiteContentTestimonialsItem = { [key: string]: unknown };
+
+export type SiteContentHowItWorksItem = { [key: string]: unknown };
+
+export type SiteContentHomeFaqsItem = { [key: string]: unknown };
+
+export type SiteContentHelpSectionsItem = { [key: string]: unknown };
+
+export type SiteContentHelpFaqsItem = { [key: string]: unknown };
+
+export type SiteContentProductFaqsItem = { [key: string]: unknown };
+
+export type SiteContentContact = { [key: string]: unknown };
+
+export type SiteContentWhyUsItem = { [key: string]: unknown };
+
+/**
+ * Free-form CMS blob for public website (homepage, help, product FAQs).
+ */
+export interface SiteContent {
+  occasions?: SiteContentOccasionsItem[];
+  categories?: SiteContentCategoriesItem[];
+  stats?: SiteContentStatsItem[];
+  testimonials?: SiteContentTestimonialsItem[];
+  press?: string[];
+  howItWorks?: SiteContentHowItWorksItem[];
+  homeFaqs?: SiteContentHomeFaqsItem[];
+  helpSections?: SiteContentHelpSectionsItem[];
+  helpFaqs?: SiteContentHelpFaqsItem[];
+  productFaqs?: SiteContentProductFaqsItem[];
+  contact?: SiteContentContact;
+  whyUs?: SiteContentWhyUsItem[];
+  [key: string]: unknown;
+}
+
+export interface SiteContentResponse {
+  success?: boolean;
+  data?: SiteContent;
+}
+
+export interface ProductReview {
+  id?: string;
+  productId?: string;
+  authorName?: string;
+  city?: string;
+  rating?: number;
+  title?: string;
+  body?: string;
+  verified?: boolean;
+  /** pending | approved | rejected */
+  status?: string;
+  createdAt?: string;
+}
+
+export interface SubmitReviewBody {
+  authorName: string;
+  city?: string;
+  /**
+   * @minimum 1
+   * @maximum 5
+   */
+  rating: number;
+  title?: string;
+  body: string;
+}
+
+export interface UpdateReviewBody {
+  status?: string;
+  verified?: boolean;
+  title?: string;
+  body?: string;
+  rating?: number;
+}
+
+export type ProductReviewsResponseSummaryDistributionItem = {
+  stars?: number;
+  count?: number;
+  pct?: number;
+};
+
+export type ProductReviewsResponseSummary = {
+  total?: number;
+  average?: number;
+  distribution?: ProductReviewsResponseSummaryDistributionItem[];
+};
+
+export interface ProductReviewsResponse {
+  success?: boolean;
+  data?: ProductReview[];
+  summary?: ProductReviewsResponseSummary;
+}
+
+export interface ProductReviewListResponse {
+  success?: boolean;
+  data?: ProductReview[];
+}
+
+export interface SuccessResponse {
+  success?: boolean;
+}
+
 export type GetSalesByChannelParams = {
   dateFrom?: string;
   dateTo?: string;
@@ -1616,6 +1727,10 @@ export type GetNotificationLogParams = {
   recipientId?: string;
   page?: number;
   limit?: number;
+};
+
+export type ListAllReviewsParams = {
+  status?: string;
 };
 
 export type ListLocationsParams = {

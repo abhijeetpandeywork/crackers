@@ -178,3 +178,19 @@ Cleaned up the easy-win TypeScript warnings across ERP / POS / Warehouse / api-s
 `pnpm run typecheck` now exits **0** at the repo root across libs, api-server, ERP, POS, Warehouse, website, mockup-sandbox, and scripts. The cleanup aligned the client code to the generated `@workspace/api-client-react` types rather than introducing any new `as any` casts (existing pre-task `as any` casts in PDF generators, reports, and a couple of badge-variant fallbacks remain untouched). The orphan `scripts/seed.ts` (references missing `@workspace/db` / `bcryptjs`, pre-existing) stays excluded via `scripts/tsconfig.json`.
 
 To make the UI's "use the entity returned by `useGet*` directly" pattern correct at runtime as well as at the type level, the api-server detail/create/update routes for `customers`, `agents`, `suppliers`, `products`, `invoices`, `estimates`, `purchase-orders`, `coupons`, and `transfers` POST were changed to return the bare entity (matching `Promise<Customer>` / `Promise<Product>` / etc.). List endpoints still return `{ success, data, meta }` to match `*ListResponse`. The spec's two transfer outliers — `getTransfer` (typed as `TransferResponse` wrapper) and `dispatchTransfer` / `receiveTransfer` (`SuccessMessage`) — keep their wrapped shapes. 404 error bodies retain the `{ success: false, error }` envelope.
+
+## Site CMS + Reviews (May 2026)
+
+- **Website is now fully data-driven** via a single CMS blob persisted in `settings` (key `siteContent`).
+  - Public route `GET /api/v1/site-content/public` returns the merged blob (DB overrides + defaults).
+  - Admin routes `GET/PUT /api/v1/site-content` (auth required) edit the blob.
+  - Wired into `home.tsx`, `help.tsx`, `product/[id].tsx` with safe DEFAULT_* fallbacks; icon names are mapped via a `HOW_ICONS` table.
+- **Product reviews** with moderation:
+  - `lib/db/src/schema/reviews.ts` (`product_reviews`, status `pending|approved|rejected`).
+  - Public: `GET /api/v1/products/:id/reviews/public` (approved only, with rating summary), `POST /api/v1/products/:id/reviews` (submits as pending).
+  - Admin: `GET /api/v1/reviews?status=`, `PUT /api/v1/reviews/:id` (status/edit), `DELETE /api/v1/reviews/:id`.
+  - Website product page: shows live reviews + summary, includes a submit form (`review-*` data-testids).
+- **ERP additions**:
+  - `/site-content` — JSON CMS editor (textarea + Save/Reset).
+  - `/reviews` — moderation queue with status filters (Pending/Approved/Rejected/All), Approve / Reject / Delete actions.
+  - Both linked from the sidebar under Settings.
