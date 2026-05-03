@@ -1,12 +1,32 @@
 import { Router } from "express";
 import { db, estimatesTable, productsTable, settingsTable } from "@workspace/db";
-import { eq, and, sql, gte, lte, ilike } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
+import { z } from "zod/v4";
 import { authenticate } from "../../middleware/authenticate.js";
 import { resolvePrice, type PricingChannel } from "../../lib/pricing.js";
 import { nextEstimateNo } from "../../lib/counter.js";
+import { auditWrite } from "../../lib/audit.js";
 import type { AuthRequest } from "../../middleware/authenticate.js";
 
 const router = Router();
+
+// The estimate POST handler does heavy server-side pricing work, so we can't
+// just hand the raw insert to drizzle. This narrow schema exists purely to
+// reject obviously-bad payloads with a clean 400 instead of letting them
+// crash the insert with a NaN or missing-enum DB error.
+const createEstimateSchema = z.object({
+  type: z.enum(["WHOLESALE", "RETAIL", "AGENT"]),
+  customerId: z.string().optional(),
+  agentId: z.string().optional(),
+  priceListId: z.string().optional(),
+  couponCode: z.string().optional(),
+  notes: z.string().optional(),
+  items: z.array(z.object({
+    productId: z.string().min(1),
+    variantId: z.string().min(1),
+    qty: z.number().positive(),
+  })).min(1, "At least one item is required"),
+});
 
 async function getWholesaleThreshold(): Promise<number> {
   const rows = await db.select().from(settingsTable).where(eq(settingsTable.key, "pricing")).limit(1);
@@ -37,15 +57,12 @@ router.get("/estimates", authenticate, async (req, res) => {
 });
 
 router.post("/estimates", authenticate, async (req: AuthRequest, res) => {
-  const { type, customerId, agentId, priceListId, couponCode, items, notes } = req.body as {
-    type: "WHOLESALE" | "RETAIL" | "AGENT";
-    customerId?: string;
-    agentId?: string;
-    priceListId?: string;
-    couponCode?: string;
-    items: Array<{ productId: string; variantId: string; qty: number }>;
-    notes?: string;
-  };
+  const parsed = createEstimateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ success: false, error: { code: "VALIDATION_ERROR", message: z.prettifyError(parsed.error) } });
+    return;
+  }
+  const { type, customerId, agentId, priceListId, couponCode, items, notes } = parsed.data;
 
   const threshold = await getWholesaleThreshold();
   const channel: PricingChannel = type === "WHOLESALE" ? "WHOLESALE" : type === "AGENT" ? "AGENT" : "RETAIL";
@@ -92,6 +109,7 @@ router.post("/estimates", authenticate, async (req: AuthRequest, res) => {
     createdBy: req.user?.id,
   }).returning();
 
+  await auditWrite(req, { action: "CREATE", entityType: "estimate", entityId: estimate?.id, after: estimate });
   res.status(201).json(estimate);
 });
 

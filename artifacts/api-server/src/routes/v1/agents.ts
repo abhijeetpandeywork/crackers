@@ -1,6 +1,7 @@
 import { Router } from "express";
-import { db, agentsTable, invoicesTable } from "@workspace/db";
-import { eq, ilike, and, sql, gte, lte, desc } from "drizzle-orm";
+import { db, agentsTable, invoicesTable, insertAgentSchema } from "@workspace/db";
+import { eq, ilike, and, sql, gte, lte } from "drizzle-orm";
+import { z } from "zod/v4";
 import { authenticate, requireRole, type AuthRequest } from "../../middleware/authenticate.js";
 import { auditWrite } from "../../lib/audit.js";
 
@@ -8,6 +9,7 @@ const router = Router();
 
 const requireWrite = requireRole("SUPER_ADMIN", "ADMIN", "ERP_MANAGER");
 const requireDelete = requireRole("SUPER_ADMIN", "ADMIN");
+const updateAgentSchema = insertAgentSchema.partial();
 
 router.get("/agents", authenticate, async (req, res) => {
   const { search, page = "1", limit = "20" } = req.query as Record<string, string>;
@@ -26,7 +28,12 @@ router.get("/agents", authenticate, async (req, res) => {
 });
 
 router.post("/agents", authenticate, requireWrite, async (req: AuthRequest, res) => {
-  const [agent] = await db.insert(agentsTable).values({ ...req.body, id: crypto.randomUUID() }).returning();
+  const parsed = insertAgentSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ success: false, error: { code: "VALIDATION_ERROR", message: z.prettifyError(parsed.error) } });
+    return;
+  }
+  const [agent] = await db.insert(agentsTable).values({ ...parsed.data, id: crypto.randomUUID() }).returning();
   await auditWrite(req, { action: "CREATE", entityType: "agent", entityId: agent?.id, after: agent });
   res.status(201).json(agent);
 });
@@ -39,8 +46,13 @@ router.get("/agents/:id", authenticate, async (req, res) => {
 
 router.put("/agents/:id", authenticate, requireWrite, async (req: AuthRequest, res) => {
   const id = req.params["id"] as string;
+  const parsed = updateAgentSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ success: false, error: { code: "VALIDATION_ERROR", message: z.prettifyError(parsed.error) } });
+    return;
+  }
   const before = (await db.select().from(agentsTable).where(eq(agentsTable.id, id)).limit(1))[0] ?? null;
-  const [agent] = await db.update(agentsTable).set(req.body).where(eq(agentsTable.id, id)).returning();
+  const [agent] = await db.update(agentsTable).set(parsed.data).where(eq(agentsTable.id, id)).returning();
   if (!agent) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Agent not found" } }); return; }
   await auditWrite(req, { action: "UPDATE", entityType: "agent", entityId: id, before, after: agent });
   res.json(agent);

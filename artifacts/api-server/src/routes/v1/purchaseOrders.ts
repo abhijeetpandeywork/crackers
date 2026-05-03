@@ -1,14 +1,31 @@
 import { Router } from "express";
-import { db, purchaseOrdersTable, suppliersTable, locationsTable } from "@workspace/db";
-import { eq, and, sql, gte, lte } from "drizzle-orm";
+import { db, purchaseOrdersTable, suppliersTable } from "@workspace/db";
+import { eq, and, sql } from "drizzle-orm";
+import { z } from "zod/v4";
 import { authenticate } from "../../middleware/authenticate.js";
 import { nextPoNumber } from "../../lib/counter.js";
 import { appendLedger } from "../../lib/stockService.js";
+import { auditWrite } from "../../lib/audit.js";
 import type { AuthRequest } from "../../middleware/authenticate.js";
 
 const E2E_TEST_HOOKS = process.env["E2E_TEST_HOOKS"] === "1";
 
 const router = Router();
+
+// Narrow guard so a malformed PO payload returns a clean 400 instead of
+// crashing the insert on NaN totals or missing supplier ids.
+const createPurchaseOrderSchema = z.object({
+  supplierId: z.string().min(1),
+  warehouseId: z.string().min(1),
+  expectedDate: z.string().optional(),
+  notes: z.string().optional(),
+  items: z.array(z.object({
+    productId: z.string().min(1),
+    variantId: z.string().min(1),
+    orderedQty: z.number().positive(),
+    unitPrice: z.number().nonnegative(),
+  })).min(1, "At least one item is required"),
+});
 
 router.get("/purchase-orders", authenticate, async (req, res) => {
   const { status, supplierId, page = "1", limit = "20" } = req.query as Record<string, string>;
@@ -28,7 +45,12 @@ router.get("/purchase-orders", authenticate, async (req, res) => {
 });
 
 router.post("/purchase-orders", authenticate, async (req: AuthRequest, res) => {
-  const { supplierId, warehouseId, items, expectedDate, notes } = req.body;
+  const parsed = createPurchaseOrderSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ success: false, error: { code: "VALIDATION_ERROR", message: z.prettifyError(parsed.error) } });
+    return;
+  }
+  const { supplierId, warehouseId, items, expectedDate, notes } = parsed.data;
   const supplierRows = await db.select().from(suppliersTable).where(eq(suppliersTable.id, supplierId)).limit(1);
   const poNumber = await nextPoNumber();
   const totalAmount = items.reduce((s: number, i: any) => s + i.orderedQty * i.unitPrice, 0);
@@ -44,6 +66,7 @@ router.post("/purchase-orders", authenticate, async (req: AuthRequest, res) => {
     notes,
     createdBy: req.user?.id,
   }).returning();
+  await auditWrite(req, { action: "CREATE", entityType: "purchaseOrder", entityId: po?.id, after: po });
   // OpenAPI spec types this endpoint as returning the bare PurchaseOrder entity.
   res.status(201).json(po);
 });

@@ -1,11 +1,13 @@
 import { Router } from "express";
-import { db, productsTable } from "@workspace/db";
+import { db, productsTable, insertProductSchema } from "@workspace/db";
 import { eq, ilike, and, sql, arrayContains } from "drizzle-orm";
+import { z } from "zod/v4";
 import { authenticate, type AuthRequest } from "../../middleware/authenticate.js";
 import { resolvePrice, type PricingChannel } from "../../lib/pricing.js";
 import { auditWrite } from "../../lib/audit.js";
 
 const router = Router();
+const updateProductSchema = insertProductSchema.partial();
 
 router.get("/products", authenticate, async (req, res) => {
   const { category, status, search, page = "1", limit = "20", onlineDisplay, occasion } = req.query as Record<string, string>;
@@ -56,17 +58,26 @@ router.get("/products/:id", authenticate, async (req, res) => {
 });
 
 router.post("/products", authenticate, async (req: AuthRequest, res) => {
-  const body = req.body;
+  const parsed = insertProductSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ success: false, error: { code: "VALIDATION_ERROR", message: z.prettifyError(parsed.error) } });
+    return;
+  }
   const id = crypto.randomUUID();
-  const [product] = await db.insert(productsTable).values({ ...body, id }).returning();
+  const [product] = await db.insert(productsTable).values({ ...parsed.data, id }).returning();
   await auditWrite(req, { action: "CREATE", entityType: "product", entityId: id, after: product });
   res.status(201).json(product);
 });
 
 router.put("/products/:id", authenticate, async (req: AuthRequest, res) => {
   const id = req.params["id"] as string;
+  const parsed = updateProductSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ success: false, error: { code: "VALIDATION_ERROR", message: z.prettifyError(parsed.error) } });
+    return;
+  }
   const before = (await db.select().from(productsTable).where(eq(productsTable.id, id)).limit(1))[0] ?? null;
-  const [product] = await db.update(productsTable).set({ ...req.body, updatedAt: new Date() }).where(eq(productsTable.id, id)).returning();
+  const [product] = await db.update(productsTable).set({ ...parsed.data, updatedAt: new Date() }).where(eq(productsTable.id, id)).returning();
   if (!product) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Product not found" } }); return; }
   await auditWrite(req, { action: "UPDATE", entityType: "product", entityId: id, before, after: product });
   res.json(product);

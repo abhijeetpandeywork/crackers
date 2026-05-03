@@ -11,7 +11,7 @@ import logoUrl from "@assets/rathinam_logo.png";
 
 const navItems = [
   { icon: BarChart3, label: "Dashboard", href: "/" },
-  { icon: BarChart3, label: "Locations", href: "/dashboard/locations" },
+  { icon: BarChart3, label: "Locations Overview", href: "/dashboard/locations" },
   { icon: BarChart3, label: "Business Overview", href: "/dashboard/business" },
   { icon: Box, label: "Products", href: "/products" },
   { icon: Award, label: "Brands", href: "/brands" },

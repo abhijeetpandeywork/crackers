@@ -1,6 +1,7 @@
 import { Router } from "express";
-import { db, suppliersTable } from "@workspace/db";
+import { db, suppliersTable, insertSupplierSchema } from "@workspace/db";
 import { eq, ilike, and, sql } from "drizzle-orm";
+import { z } from "zod/v4";
 import { authenticate, requireRole, type AuthRequest } from "../../middleware/authenticate.js";
 import { auditWrite } from "../../lib/audit.js";
 
@@ -8,6 +9,7 @@ const router = Router();
 
 const requireWrite = requireRole("SUPER_ADMIN", "ADMIN", "ERP_MANAGER");
 const requireDelete = requireRole("SUPER_ADMIN", "ADMIN");
+const updateSupplierSchema = insertSupplierSchema.partial();
 
 router.get("/suppliers", authenticate, async (req, res) => {
   const { search, page = "1", limit = "20" } = req.query as Record<string, string>;
@@ -26,7 +28,12 @@ router.get("/suppliers", authenticate, async (req, res) => {
 });
 
 router.post("/suppliers", authenticate, requireWrite, async (req: AuthRequest, res) => {
-  const [supplier] = await db.insert(suppliersTable).values({ ...req.body, id: crypto.randomUUID() }).returning();
+  const parsed = insertSupplierSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ success: false, error: { code: "VALIDATION_ERROR", message: z.prettifyError(parsed.error) } });
+    return;
+  }
+  const [supplier] = await db.insert(suppliersTable).values({ ...parsed.data, id: crypto.randomUUID() }).returning();
   await auditWrite(req, { action: "CREATE", entityType: "supplier", entityId: supplier?.id, after: supplier });
   res.status(201).json(supplier);
 });
@@ -39,8 +46,13 @@ router.get("/suppliers/:id", authenticate, async (req, res) => {
 
 router.put("/suppliers/:id", authenticate, requireWrite, async (req: AuthRequest, res) => {
   const id = req.params["id"] as string;
+  const parsed = updateSupplierSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ success: false, error: { code: "VALIDATION_ERROR", message: z.prettifyError(parsed.error) } });
+    return;
+  }
   const before = (await db.select().from(suppliersTable).where(eq(suppliersTable.id, id)).limit(1))[0] ?? null;
-  const [supplier] = await db.update(suppliersTable).set(req.body).where(eq(suppliersTable.id, id)).returning();
+  const [supplier] = await db.update(suppliersTable).set(parsed.data).where(eq(suppliersTable.id, id)).returning();
   if (!supplier) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Supplier not found" } }); return; }
   await auditWrite(req, { action: "UPDATE", entityType: "supplier", entityId: id, before, after: supplier });
   res.json(supplier);

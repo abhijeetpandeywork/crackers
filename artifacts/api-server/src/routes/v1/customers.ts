@@ -10,12 +10,15 @@ import {
   customerWishlistTable,
   productsTable,
   agentsTable,
+  insertCustomerSchema,
 } from "@workspace/db";
 import { eq, ilike, and, sql, desc } from "drizzle-orm";
+import { z } from "zod/v4";
 import { authenticate, type AuthRequest } from "../../middleware/authenticate.js";
 import { auditWrite } from "../../lib/audit.js";
 
 const router = Router();
+const updateCustomerSchema = insertCustomerSchema.partial();
 
 router.get("/customers", authenticate, async (req, res) => {
   const { search, customerType, agentId, page = "1", limit = "20" } = req.query as Record<string, string>;
@@ -38,14 +41,19 @@ router.get("/customers", authenticate, async (req, res) => {
 });
 
 router.post("/customers", authenticate, async (req: AuthRequest, res) => {
-  const phone = typeof req.body?.phone === "string" ? req.body.phone.trim() : "";
+  const parsed = insertCustomerSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ success: false, error: { code: "VALIDATION_ERROR", message: z.prettifyError(parsed.error) } });
+    return;
+  }
+  const phone = typeof parsed.data.phone === "string" ? parsed.data.phone.trim() : "";
   // Provenance: cashier-added walk-ins are tagged "pos"; everything else
   // staff-creates from the ERP UI defaults to "erp". The only client-supplied
   // override we honour is "import" (for bulk loaders) — and only when the
   // caller is a privileged operator. Any other body value is dropped so a
   // cashier or compromised token can't spoof "website" provenance and skew
   // acquisition analytics.
-  const bodySource = typeof req.body?.source === "string" ? req.body.source : "";
+  const bodySource = typeof parsed.data.source === "string" ? parsed.data.source : "";
   const role = req.user?.role ?? "";
   const isPrivileged = role === "SUPER_ADMIN" || role === "ADMIN" || role === "ERP_MANAGER";
   const inferred = role === "CASHIER" ? "pos" : "erp";
@@ -65,7 +73,7 @@ router.post("/customers", authenticate, async (req: AuthRequest, res) => {
     }
   }
   try {
-    const [customer] = await db.insert(customersTable).values({ ...req.body, phone, source, id: crypto.randomUUID() }).returning();
+    const [customer] = await db.insert(customersTable).values({ ...parsed.data, phone, source, id: crypto.randomUUID() }).returning();
     await auditWrite(req, { action: "CREATE", entityType: "customer", entityId: customer?.id, after: customer });
     res.status(201).json(customer);
   } catch (err: any) {
@@ -90,8 +98,13 @@ router.get("/customers/:id", authenticate, async (req, res) => {
 
 router.put("/customers/:id", authenticate, async (req: AuthRequest, res) => {
   const id = req.params["id"] as string;
+  const parsed = updateCustomerSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ success: false, error: { code: "VALIDATION_ERROR", message: z.prettifyError(parsed.error) } });
+    return;
+  }
   const before = (await db.select().from(customersTable).where(eq(customersTable.id, id)).limit(1))[0] ?? null;
-  const [customer] = await db.update(customersTable).set({ ...req.body, updatedAt: new Date() }).where(eq(customersTable.id, id)).returning();
+  const [customer] = await db.update(customersTable).set({ ...parsed.data, updatedAt: new Date() }).where(eq(customersTable.id, id)).returning();
   if (!customer) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Customer not found" } }); return; }
   await auditWrite(req, { action: "UPDATE", entityType: "customer", entityId: id, before, after: customer });
   res.json(customer);

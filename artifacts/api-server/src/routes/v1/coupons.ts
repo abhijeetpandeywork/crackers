@@ -1,10 +1,12 @@
 import { Router } from "express";
-import { db, couponsTable, couponUsagesTable } from "@workspace/db";
+import { db, couponsTable, insertCouponSchema } from "@workspace/db";
 import { eq, and, sql } from "drizzle-orm";
+import { z } from "zod/v4";
 import { authenticate, type AuthRequest } from "../../middleware/authenticate.js";
 import { auditWrite } from "../../lib/audit.js";
 
 const router = Router();
+const updateCouponSchema = insertCouponSchema.partial();
 
 router.get("/coupons", authenticate, async (req, res) => {
   const { status, page = "1", limit = "20" } = req.query as Record<string, string>;
@@ -79,7 +81,12 @@ router.post("/coupons/validate", async (req, res) => {
 });
 
 router.post("/coupons", authenticate, async (req: AuthRequest, res) => {
-  const [coupon] = await db.insert(couponsTable).values({ ...req.body, id: crypto.randomUUID(), code: req.body.code.toUpperCase() }).returning();
+  const parsed = insertCouponSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ success: false, error: { code: "VALIDATION_ERROR", message: z.prettifyError(parsed.error) } });
+    return;
+  }
+  const [coupon] = await db.insert(couponsTable).values({ ...parsed.data, id: crypto.randomUUID(), code: parsed.data.code.toUpperCase() }).returning();
   await auditWrite(req, { action: "CREATE", entityType: "coupon", entityId: coupon?.id, after: coupon });
   res.status(201).json(coupon);
 });
@@ -92,8 +99,15 @@ router.get("/coupons/:id", authenticate, async (req, res) => {
 
 router.put("/coupons/:id", authenticate, async (req: AuthRequest, res) => {
   const id = req.params["id"] as string;
+  const parsed = updateCouponSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ success: false, error: { code: "VALIDATION_ERROR", message: z.prettifyError(parsed.error) } });
+    return;
+  }
+  const patch: Record<string, unknown> = { ...parsed.data };
+  if (typeof patch["code"] === "string") patch["code"] = (patch["code"] as string).toUpperCase();
   const before = (await db.select().from(couponsTable).where(eq(couponsTable.id, id)).limit(1))[0] ?? null;
-  const [coupon] = await db.update(couponsTable).set(req.body).where(eq(couponsTable.id, id)).returning();
+  const [coupon] = await db.update(couponsTable).set(patch).where(eq(couponsTable.id, id)).returning();
   if (!coupon) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Coupon not found" } }); return; }
   await auditWrite(req, { action: "UPDATE", entityType: "coupon", entityId: id, before, after: coupon });
   res.json(coupon);
