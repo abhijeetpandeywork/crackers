@@ -7,12 +7,14 @@ import { sql } from "drizzle-orm";
 // Previously a read-then-write pattern could hand out duplicate INV/RTN/CN
 // numbers under POS rush load, breaking the unique constraints downstream.
 async function getAndIncrement(key: string, prefix: string, pad = 5): Promise<string> {
+  // settings.value is jsonb, so we must cast through text before incrementing
+  // and wrap the result with to_jsonb to keep the column type happy.
   const [row] = await db
     .insert(settingsTable)
     .values({ key, value: 1 })
     .onConflictDoUpdate({
       target: settingsTable.key,
-      set: { value: sql`(${settingsTable.value})::int + 1` },
+      set: { value: sql`to_jsonb((${settingsTable.value})::text::int + 1)` },
     })
     .returning({ value: settingsTable.value });
   const next = Number((row?.value as number | string | undefined) ?? 1);
