@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useLocation, Link } from "wouter";
+import { formatVariantLabel } from "@/lib/variant-label";
 import {
   useGetPosProducts,
   useHoldBill,
@@ -264,7 +265,9 @@ const SaleScreen = () => {
   // -------- Helpers --------
   const variantPrice = (v: Variant) => Number(v.price) || 0;
   const variantId = (v: Variant) => v.variantId ?? v.id ?? "";
-  const variantLabel = (v: Variant) => v.size ?? v.label ?? "Standard";
+  // Self-describing label so cashiers can tell "Small / Sky" apart from
+  // "Small / Bijili" instead of seeing "Small" three times in a row.
+  const variantLabel = (v: Variant, siblings?: Variant[]) => formatVariantLabel(v, siblings);
 
   const addVariantToCart = useCallback((product: Product, variant: Variant) => {
     const stock = typeof variant.stock === "number" ? variant.stock : Infinity;
@@ -707,7 +710,7 @@ const SaleScreen = () => {
                                   : "bg-zinc-800/60 border-zinc-700 hover:bg-amber-400 hover:text-zinc-950 hover:border-amber-300 active:scale-[0.97]"
                               }`}
                             >
-                              <div className="text-[10px] uppercase tracking-wide opacity-70 truncate">{variantLabel(variant)}</div>
+                              <div className="text-[10px] uppercase tracking-wide opacity-70 truncate">{variantLabel(variant, variants)}</div>
                               <div className="text-xs font-bold leading-tight">₹{variantPrice(variant)}</div>
                               {low && <span className="absolute -top-1 -right-1 h-3.5 min-w-3.5 rounded-full bg-amber-500 text-[9px] text-black font-black px-1 leading-[14px]">{stock}</span>}
                             </button>

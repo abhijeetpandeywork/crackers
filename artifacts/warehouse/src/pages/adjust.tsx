@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useListProducts, useGetStockLevels, useAdjustStock, useListLocations } from "@workspace/api-client-react";
+import { formatVariantLabel } from "@/lib/variant-label";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -126,8 +127,8 @@ export default function StockAdjust() {
                   <SelectContent>
                     {productsData?.data
                       ?.find(p => p.id === productId)
-                      ?.variants?.map(v => (
-                        <SelectItem key={v.variantId} value={v.variantId ?? ""}>{v.size}</SelectItem>
+                      ?.variants?.map((v, _i, all) => (
+                        <SelectItem key={v.variantId} value={v.variantId ?? ""}>{formatVariantLabel(v, all)}</SelectItem>
                       ))}
                   </SelectContent>
                 </Select>

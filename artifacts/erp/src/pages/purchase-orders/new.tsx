@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { formatVariantLabel } from "@/lib/variant-label";
 import { 
   useListSuppliers, 
   useListProducts, 
@@ -204,9 +205,14 @@ export default function NewPurchaseOrder() {
                           <SelectValue placeholder="Variant" />
                         </SelectTrigger>
                         <SelectContent>
-                          {products?.data?.find((p: any) => p.id === item.productId)?.variants?.map((v: any) => (
-                            <SelectItem key={v.id} value={v.id}>{v.label}</SelectItem>
-                          ))}
+                          {(() => {
+                            const all = products?.data?.find((p: any) => p.id === item.productId)?.variants ?? [];
+                            return all.map((v: any) => (
+                              <SelectItem key={v.variantId ?? v.id} value={v.variantId ?? v.id}>
+                                {formatVariantLabel(v, all)}
+                              </SelectItem>
+                            ));
+                          })()}
                         </SelectContent>
                       </Select>
                     </TableCell>

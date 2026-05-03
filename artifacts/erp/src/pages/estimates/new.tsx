@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { formatVariantLabel } from "@/lib/variant-label";
 import { 
   useListCustomers, 
   useListAgents, 
@@ -291,8 +292,8 @@ function LineItemRow({ item, products, customerId, onChange, onRemove }: LineIte
             <SelectValue placeholder="Select Variant" />
           </SelectTrigger>
           <SelectContent>
-            {selectedProduct?.variants?.map((v) => (
-              <SelectItem key={v.variantId} value={v.variantId!}>{v.size} ({v.packContent})</SelectItem>
+            {selectedProduct?.variants?.map((v, _i, all) => (
+              <SelectItem key={v.variantId} value={v.variantId!}>{formatVariantLabel(v, all)}</SelectItem>
             ))}
           </SelectContent>
         </Select>
