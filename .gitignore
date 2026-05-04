@@ -47,3 +47,6 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Replit chat upload screenshots — keep out of git
+attached_assets/
