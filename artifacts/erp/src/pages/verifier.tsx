@@ -27,7 +27,7 @@ async function http(path: string, init: RequestInit = {}) {
   return { status: res.status, body };
 }
 
-async function login(username: string, password: string): Promise<string | null> {
+async function loginOnce(username: string, password: string): Promise<string | null> {
   const r = await http("/api/v1/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -36,6 +36,25 @@ async function login(username: string, password: string): Promise<string | null>
   if (r.status !== 200) return null;
   const b = r.body as { data?: { accessToken?: string } };
   return b?.data?.accessToken ?? null;
+}
+
+// Default credentials differ between the original seed (admin/admin123) and
+// the hardened seed (admin/Admin@12345, cashier/admin123). Try both so the
+// verifier keeps working regardless of which seed the deployment used.
+const ADMIN_PASSWORDS = ["Admin@12345", "admin123"];
+const CASHIER_PASSWORDS = ["admin123", "Cashier@12345"];
+
+async function login(username: string, password?: string): Promise<string | null> {
+  const candidates = password
+    ? [password]
+    : username === "cashier"
+      ? CASHIER_PASSWORDS
+      : ADMIN_PASSWORDS;
+  for (const pw of candidates) {
+    const tok = await loginOnce(username, pw);
+    if (tok) return tok;
+  }
+  return null;
 }
 
 const SECTIONS: Array<{ name: string; run: () => Promise<Check[]> }> = [
@@ -69,8 +88,8 @@ const SECTIONS: Array<{ name: string; run: () => Promise<Check[]> }> = [
         body: JSON.stringify({ username: "admin", password: "wrong" }),
       });
       out.push({ name: "Wrong password returns 401", passed: bad.status === 401, detail: `status=${bad.status}` });
-      const tok = await login("admin", "admin123");
-      out.push({ name: "Admin login succeeds (admin/admin123)", passed: !!tok });
+      const tok = await login("admin");
+      out.push({ name: "Admin login succeeds (admin / default password)", passed: !!tok });
       if (tok) {
         const me = await http("/api/v1/auth/me", { headers: { Authorization: `Bearer ${tok}` } });
         out.push({ name: "GET /auth/me returns 200 with valid token", passed: me.status === 200, detail: `status=${me.status}` });
@@ -82,7 +101,7 @@ const SECTIONS: Array<{ name: string; run: () => Promise<Check[]> }> = [
     name: "Pricing Engine (5-tier)",
     run: async () => {
       const out: Check[] = [];
-      const tok = await login("admin", "admin123");
+      const tok = await login("admin");
       if (!tok) { out.push({ name: "Skipped — no token", passed: false }); return out; }
       const headers = { Authorization: `Bearer ${tok}` };
       const products = await http("/api/v1/products?limit=1", { headers });
@@ -109,7 +128,7 @@ const SECTIONS: Array<{ name: string; run: () => Promise<Check[]> }> = [
     name: "Stock System (immutable ledger)",
     run: async () => {
       const out: Check[] = [];
-      const tok = await login("admin", "admin123");
+      const tok = await login("admin");
       if (!tok) { out.push({ name: "Skipped — no token", passed: false }); return out; }
       const headers = { Authorization: `Bearer ${tok}` };
       const lvl = await http("/api/v1/stock/levels", { headers });
@@ -138,7 +157,7 @@ const SECTIONS: Array<{ name: string; run: () => Promise<Check[]> }> = [
     name: "Customers, Suppliers, Agents",
     run: async () => {
       const out: Check[] = [];
-      const tok = await login("admin", "admin123");
+      const tok = await login("admin");
       if (!tok) { out.push({ name: "Skipped — no token", passed: false }); return out; }
       const headers = { Authorization: `Bearer ${tok}` };
       for (const ep of ["/api/v1/customers?limit=1", "/api/v1/suppliers?limit=1", "/api/v1/agents?limit=1"]) {
@@ -152,7 +171,7 @@ const SECTIONS: Array<{ name: string; run: () => Promise<Check[]> }> = [
     name: "Estimates / Invoices / Coupons",
     run: async () => {
       const out: Check[] = [];
-      const tok = await login("admin", "admin123");
+      const tok = await login("admin");
       if (!tok) { out.push({ name: "Skipped — no token", passed: false }); return out; }
       const headers = { Authorization: `Bearer ${tok}` };
       for (const ep of ["/api/v1/estimates?limit=1", "/api/v1/invoices?limit=1", "/api/v1/coupons?limit=1"]) {
@@ -172,7 +191,7 @@ const SECTIONS: Array<{ name: string; run: () => Promise<Check[]> }> = [
     name: "POS / Warehouse / Reports",
     run: async () => {
       const out: Check[] = [];
-      const tok = await login("admin", "admin123");
+      const tok = await login("admin");
       if (!tok) { out.push({ name: "Skipped — no token", passed: false }); return out; }
       const headers = { Authorization: `Bearer ${tok}` };
       for (const ep of ["/api/v1/pos/products?limit=1", "/api/v1/transfers?limit=1", "/api/v1/purchase-orders?limit=1"]) {
@@ -190,7 +209,7 @@ const SECTIONS: Array<{ name: string; run: () => Promise<Check[]> }> = [
     name: "Locations, Users & Settings (admin)",
     run: async () => {
       const out: Check[] = [];
-      const tok = await login("admin", "admin123");
+      const tok = await login("admin");
       if (!tok) { out.push({ name: "Skipped — no token", passed: false }); return out; }
       const headers = { Authorization: `Bearer ${tok}` };
 
@@ -212,7 +231,7 @@ const SECTIONS: Array<{ name: string; run: () => Promise<Check[]> }> = [
       const users = await http("/api/v1/users", { headers });
       out.push({ name: "GET /users returns 200 (admin)", passed: users.status === 200, detail: `status=${users.status}` });
       // RBAC: a non-admin (CASHIER) MUST be rejected with 403.
-      const cashierTok = await login("cashier", "admin123");
+      const cashierTok = await login("cashier");
       const cashierHeaders = { Authorization: `Bearer ${cashierTok}` };
       const usersAsCashier = await http("/api/v1/users", { headers: cashierHeaders });
       out.push({
@@ -373,6 +392,135 @@ const SECTIONS: Array<{ name: string; run: () => Promise<Check[]> }> = [
           }
         }
       }
+      return out;
+    },
+  },
+  {
+    name: "Online Order Lifecycle",
+    run: async () => {
+      const out: Check[] = [];
+      const tok = await login("admin");
+      if (!tok) { out.push({ name: "Skipped — no token", passed: false }); return out; }
+      const headers = { Authorization: `Bearer ${tok}` };
+
+      // List endpoint reachable + role-gated.
+      const list = await http("/api/v1/admin/orders", { headers });
+      out.push({ name: "GET /admin/orders returns 200 (admin)", passed: list.status === 200, detail: `status=${list.status}` });
+      const noAuth = await http("/api/v1/admin/orders");
+      out.push({ name: "GET /admin/orders without token returns 401", passed: noAuth.status === 401, detail: `status=${noAuth.status}` });
+      const cashierTok = await login("cashier");
+      if (cashierTok) {
+        const asCashier = await http("/api/v1/admin/orders", { headers: { Authorization: `Bearer ${cashierTok}` } });
+        out.push({
+          name: "GET /admin/orders as CASHIER returns 403 (RBAC)",
+          passed: asCashier.status === 403,
+          detail: `status=${asCashier.status}`,
+        });
+      }
+
+      // Status filter shape works.
+      const filtered = await http("/api/v1/admin/orders?status=cancelled", { headers });
+      out.push({ name: "GET /admin/orders?status=cancelled returns 200", passed: filtered.status === 200 });
+
+      // Lifecycle guards.
+      const badStatus = await http("/api/v1/admin/orders/non-existent/status", {
+        method: "PATCH",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "foobar" }),
+      });
+      out.push({
+        name: "PATCH /admin/orders/:id/status with invalid status → 400",
+        passed: badStatus.status === 400,
+        detail: `status=${badStatus.status}`,
+      });
+      const useDispatch = await http("/api/v1/admin/orders/non-existent/status", {
+        method: "PATCH",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "dispatched" }),
+      });
+      out.push({
+        name: "PATCH /admin/orders/:id/status status=dispatched → blocked (USE_DISPATCH)",
+        passed: useDispatch.status === 400 && (useDispatch.body as any)?.error?.code === "USE_DISPATCH",
+        detail: (useDispatch.body as any)?.error?.code,
+      });
+
+      // Generic POST /invoices must reject channel=ONLINE (bypass guard).
+      const onlineCreate = await http("/api/v1/invoices", {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ channel: "ONLINE", paymentMode: "COD", items: [] }),
+      });
+      out.push({
+        name: "POST /invoices with channel=ONLINE blocked (USE_SHOP_PLACEMENT)",
+        passed: onlineCreate.status === 400 && (onlineCreate.body as any)?.error?.code === "USE_SHOP_PLACEMENT",
+        detail: (onlineCreate.body as any)?.error?.code,
+      });
+
+      // Returns must reject pending/cancelled online orders.
+      const lb = list.body as { data?: Array<{ id: string; items: any[]; logisticsDetails?: any; status?: string }> };
+      const pending = (lb.data ?? []).find(o => (o.logisticsDetails?.status ?? "pending_confirmation") === "pending_confirmation");
+      const cancelled = (lb.data ?? []).find(o => o.status === "cancelled");
+      if (pending && pending.items?.[0]) {
+        const it = pending.items[0];
+        const r = await http("/api/v1/returns", {
+          method: "POST",
+          headers: { ...headers, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "CUSTOMER_RETURN",
+            referenceId: pending.id,
+            reason: "verifier",
+            refundMode: "CREDIT_NOTE",
+            items: [{ productId: it.productId, variantId: it.variantId, qty: 1 }],
+          }),
+        });
+        out.push({
+          name: "POST /returns on pending online order → blocked (NOT_DELIVERED)",
+          passed: r.status === 409 && (r.body as any)?.error?.code === "NOT_DELIVERED",
+          detail: (r.body as any)?.error?.code,
+        });
+      }
+      if (cancelled && cancelled.items?.[0]) {
+        const it = cancelled.items[0];
+        const r = await http("/api/v1/returns", {
+          method: "POST",
+          headers: { ...headers, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "CUSTOMER_RETURN",
+            referenceId: cancelled.id,
+            reason: "verifier",
+            refundMode: "CREDIT_NOTE",
+            items: [{ productId: it.productId, variantId: it.variantId, qty: 1 }],
+          }),
+        });
+        out.push({
+          name: "POST /returns on cancelled online order → blocked (ORDER_CANCELLED)",
+          passed: r.status === 409 && (r.body as any)?.error?.code === "ORDER_CANCELLED",
+          detail: (r.body as any)?.error?.code,
+        });
+      }
+
+      // Customer cancel endpoint requires shop auth (admin token wrong audience).
+      const shopCancelNoAuth = await http(`/api/v1/shop/orders/${pending?.id ?? "x"}/cancel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: "v" }),
+      });
+      out.push({
+        name: "POST /shop/orders/:id/cancel without shop token → 401",
+        passed: shopCancelNoAuth.status === 401,
+        detail: `status=${shopCancelNoAuth.status}`,
+      });
+      const shopCancelAdmin = await http(`/api/v1/shop/orders/${pending?.id ?? "x"}/cancel`, {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: "v" }),
+      });
+      out.push({
+        name: "POST /shop/orders/:id/cancel with admin token (wrong audience) → 401",
+        passed: shopCancelAdmin.status === 401,
+        detail: `status=${shopCancelAdmin.status}`,
+      });
+
       return out;
     },
   },
