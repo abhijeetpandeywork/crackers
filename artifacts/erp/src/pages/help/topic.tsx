@@ -380,6 +380,333 @@ const TOPICS: Record<string, Topic> = {
       },
     ],
   },
+  "online-orders": {
+    title: "Online Orders Lifecycle",
+    lead: "How an order travels from website checkout to the customer's door.",
+    sections: [
+      {
+        heading: "Stages",
+        body: (
+          <ol className="list-decimal pl-5 space-y-1">
+            <li><strong>pending_confirmation</strong> — customer just placed the order; stock is already deducted via the OUT ledger entry tagged with the order id.</li>
+            <li><strong>confirmed</strong> — staff reviewed and accepted the order.</li>
+            <li><strong>packed</strong> — items physically packed, ready for courier.</li>
+            <li><strong>dispatched</strong> — handed to courier; courier name + tracking code captured (entered ONLY through the Dispatch action — not by editing the status directly).</li>
+            <li><strong>delivered</strong> — courier confirmed delivery.</li>
+          </ol>
+        ),
+      },
+      {
+        heading: "Where to manage online orders",
+        body: (
+          <>
+            <strong>Online Orders</strong> in the sidebar (visible to SUPER_ADMIN, ADMIN and ERP_MANAGER only). The list page
+            shows status filter, search, and quick stats. Click any order to open the detail view with the
+            stage stepper, item lines, courier info, customer details, and actions (Advance Stage, Dispatch, Cancel).
+          </>
+        ),
+      },
+      {
+        heading: "Dispatch",
+        body: (
+          <>
+            On a <strong>packed</strong> order, click <strong>Dispatch</strong>. The modal asks for courier name (Delhivery, BlueDart,
+            India Post, etc.) and AWB / tracking number. On submit, the status moves to <code>dispatched</code> and
+            both fields are stored in <code>logisticsDetails</code>. The customer sees the courier and tracking
+            code on their order detail page.
+          </>
+        ),
+      },
+      {
+        heading: "Staff cancellation",
+        body: (
+          <>
+            Click <strong>Cancel Order</strong> on any non-delivered, non-dispatched order. Pick a reason (Out of Stock,
+            Payment Failed, Customer Request, Address Issue, Other) and add notes. The system runs an atomic
+            transaction that:
+            <ul className="list-disc pl-5 mt-1.5 space-y-1">
+              <li>Locks the order row (<code>FOR UPDATE</code>) to prevent races</li>
+              <li>Marks the order <code>cancelled</code> with reason &amp; cancelled-by user</li>
+              <li>Restores stock by writing IN ledger entries that reference the original OUT entries (so the audit trail is perfect)</li>
+              <li>Releases reserved coupon usage and loyalty points</li>
+            </ul>
+          </>
+        ),
+      },
+      {
+        heading: "Customer cancellation",
+        body: (
+          <>
+            Customers can self-cancel from the website Account → Order detail page, but only while the order
+            is in <code>pending_confirmation</code> or <code>confirmed</code>. Once it's packed or beyond, the cancel
+            button disappears and they must contact support. Same atomic restore logic runs server-side.
+          </>
+        ),
+      },
+      {
+        type: "warn",
+        body: <>Status edits via PATCH skip the dispatch step on purpose. Trying to set status directly to
+        <code>dispatched</code> through the generic update endpoint returns <code>USE_DISPATCH</code> — you must use
+        the Dispatch action so the courier &amp; AWB are captured.</>,
+      },
+      {
+        type: "info",
+        body: <>Bypass guards: generic <code>POST /invoices</code> with <code>channel=ONLINE</code> is rejected
+        (<code>USE_SHOP_PLACEMENT</code>) — online orders must come through the shop endpoint. Returns against
+        a non-delivered online order are blocked (<code>NOT_DELIVERED</code>); against a cancelled online order
+        are blocked (<code>ORDER_CANCELLED</code>).</>,
+      },
+    ],
+  },
+  returns: {
+    title: "Returns & Refunds",
+    lead: "Recording customer returns and reversing the stock + revenue impact.",
+    sections: [
+      {
+        heading: "When a return is allowed",
+        body: (
+          <ul className="list-disc pl-5 space-y-1">
+            <li><strong>POS / Retail Estimate / Invoice</strong> — any settled invoice can have a return raised against it.</li>
+            <li><strong>Online order</strong> — only after status is <code>delivered</code>. Pending or cancelled orders are blocked at the API layer.</li>
+            <li>Return quantity per line cannot exceed the original sold quantity (server-validated).</li>
+          </ul>
+        ),
+      },
+      {
+        heading: "Recording a return",
+        body: (
+          <>
+            <strong>Returns → New Return</strong>: pick the source invoice / order, choose the lines and quantities being
+            returned, pick a reason (Damaged, Wrong Item, Customer Changed Mind, Defective, Other), and submit.
+            The system creates a return document and writes IN ledger entries to put the stock back into the
+            original location.
+          </>
+        ),
+      },
+      {
+        heading: "Refund modes",
+        body: (
+          <ul className="list-disc pl-5 space-y-1">
+            <li><strong>Cash refund</strong> — recorded against the day's cash drawer.</li>
+            <li><strong>Credit note</strong> — added to the customer's credit ledger so it can offset their next invoice.</li>
+            <li><strong>UPI / Bank transfer</strong> — staff records the reference number after refunding through their bank app.</li>
+          </ul>
+        ),
+      },
+      {
+        type: "warn",
+        body: <>Returns are append-only. To "undo" a wrongly-recorded return, raise a counter-adjustment with
+        a clear reason — never try to delete it. The audit trail is the source of truth.</>,
+      },
+    ],
+  },
+  website: {
+    title: "Website & Customer Portal",
+    lead: "What customers see and do on the public storefront.",
+    sections: [
+      {
+        heading: "Public storefront",
+        body: (
+          <>
+            Mounted at <code>/website/</code>. Catalog, product detail, search, and category pages are fully
+            public (no login). Pricing is the Retail/Online tier — same as walk-in retail. The cart works for
+            anonymous users and persists in localStorage.
+          </>
+        ),
+      },
+      {
+        heading: "Account & checkout",
+        body: (
+          <>
+            Customers register with phone + OTP (or email + password). On checkout, they pick a delivery
+            address, choose a payment mode (COD or online), and confirm. The order goes straight into the ERP's
+            Online Orders queue at <code>pending_confirmation</code>.
+          </>
+        ),
+      },
+      {
+        heading: "Order tracking",
+        body: (
+          <>
+            <strong>Account → My Orders</strong> shows every past order with status. Order detail shows the stage
+            stepper, item lines, total, courier info (after dispatch), and a Cancel button while still
+            cancellable.
+          </>
+        ),
+      },
+      {
+        heading: "Self-service cancel",
+        body: <>Allowed only at <code>pending_confirmation</code> and <code>confirmed</code>. Customer picks a reason,
+        confirms in a dialog, and the same atomic stock restore runs server-side as a staff cancel.</>,
+      },
+      {
+        heading: "CMS pages",
+        body: (
+          <>
+            About, Privacy Policy, Refund Policy, Terms, Shipping Policy, and FAQ live in <strong>Site
+            Content</strong> in the ERP. Edit any of them and the website picks up the change on next load — no
+            redeploy needed.
+          </>
+        ),
+      },
+    ],
+  },
+  "bulk-csv": {
+    title: "Bulk CSV Import / Export",
+    lead: "Move data in and out of the system using spreadsheets.",
+    sections: [
+      {
+        heading: "Where it lives",
+        body: (
+          <>
+            Every master-data list page (Products, Customers, Suppliers, Agents, Brands, Categories, Locations,
+            Coupons) has three buttons in the top-right: <strong>Template</strong>, <strong>Export CSV</strong>, <strong>Import CSV</strong>.
+          </>
+        ),
+      },
+      {
+        heading: "Template",
+        body: <>Downloads a sample CSV with the correct headers and one example row. Use this when starting
+        fresh — open in Excel or Google Sheets, fill rows, save as CSV, then click Import.</>,
+      },
+      {
+        heading: "Export CSV",
+        body: <>Downloads ALL existing rows for that resource as CSV. Use this to bulk-edit (export → edit → import)
+        or for backup before a risky change.</>,
+      },
+      {
+        heading: "Import CSV",
+        body: (
+          <>
+            Upserts rows by their unique key. Friendly column aliases work (e.g. "Mobile" → phone, "SKU" → code).
+            Unknown columns are ignored. Result dialog shows created / updated / skipped counts plus a
+            row-by-row error list for anything that failed validation.
+            <ul className="list-disc pl-5 mt-1.5 space-y-1">
+              <li><strong>Products</strong> upsert by <code>code</code></li>
+              <li><strong>Customers / Agents / Suppliers</strong> upsert by <code>phone</code></li>
+              <li><strong>Brands / Categories / Coupons</strong> upsert by <code>slug</code> / <code>code</code></li>
+              <li><strong>Locations</strong> upsert by <code>name</code></li>
+            </ul>
+          </>
+        ),
+      },
+      {
+        type: "info",
+        body: <>All bulk endpoints require an admin token. The buttons send your live ERP session token
+        automatically — if you ever see a 401, sign out and back in.</>,
+      },
+    ],
+  },
+  verifier: {
+    title: "Self-Check Verifier",
+    lead: "Built-in end-to-end smoke test you can run any time.",
+    sections: [
+      {
+        heading: "What it is",
+        body: (
+          <>
+            Open <strong>Verifier</strong> from the sidebar (or visit <code>/verifier</code>). Click <strong>Run all checks</strong>
+            and the page exercises every critical path of the system end-to-end: infrastructure, auth, RBAC,
+            pricing engine, stock immutability, sales, coupons, online orders, returns, public APIs, bypass
+            guards, etc. Each check shows green or red with a short detail.
+          </>
+        ),
+      },
+      {
+        heading: "Credentials",
+        body: (
+          <>
+            The verifier first reuses your <strong>currently logged-in admin token</strong>, so it always uses the
+            latest password — even after you change it. If you ever open <code>/verifier</code> in a fresh tab
+            without an ERP login, fill in the optional override fields at the top of the page (admin / cashier
+            password). Falls back to the seed defaults as a last resort.
+          </>
+        ),
+      },
+      {
+        heading: "When to run it",
+        body: (
+          <ul className="list-disc pl-5 space-y-1">
+            <li>Right after every deploy</li>
+            <li>Before going live for the day (morning health check)</li>
+            <li>After running a database migration</li>
+            <li>Whenever a user reports something "weird" — to narrow down the broken section quickly</li>
+          </ul>
+        ),
+      },
+      {
+        type: "success",
+        body: <>A fully green verifier run is a strong signal that the entire stack is healthy. Take a screenshot
+        and keep it as your "last known good" reference before any risky change.</>,
+      },
+    ],
+  },
+  production: {
+    title: "Production Go-Live Checklist",
+    lead: "Final pass before flipping the switch and inviting real customers.",
+    sections: [
+      {
+        heading: "1. Rotate every default password",
+        body: (
+          <>
+            Settings → Users. Change the password and PIN of every seeded account: <code>admin</code>,
+            <code> manager</code>, <code>cashier</code>, <code>warehouse</code>. Pick strong, unique passwords and store them
+            in a password manager. The verifier's auto-detect always uses your live token, so changing passwords
+            won't break it.
+          </>
+        ),
+      },
+      {
+        heading: "2. Update company info",
+        body: <>Settings → Company. Real legal name, GSTIN, address, phone, email, bank details. These print on
+        every invoice and PDF — get them right before the first real sale.</>,
+      },
+      {
+        heading: "3. Confirm pricing config",
+        body: <>Settings → Pricing. Wholesale qty threshold (default 10), loyalty earn rate (₹100 = 1 point),
+        default GST 18%. Adjust if your business runs different rules.</>,
+      },
+      {
+        heading: "4. Replace seed data",
+        body: <>Use Bulk CSV → Export to download your real product / customer / supplier / agent lists, then
+        Import them. Disable or delete the demo "Test Brand AAA" and any demo products you don't need.</>,
+      },
+      {
+        heading: "5. Stock receive",
+        body: <>Stock → Receive at each location. Enter opening stock counts as an initial IN movement so the
+        ledger starts from a real baseline. Reason: "Opening stock as on &lt;date&gt;".</>,
+      },
+      {
+        heading: "6. Configure CMS pages",
+        body: <>Site Content → edit About, Privacy, Refund, Terms, Shipping, FAQ to match your real policies.
+        These are linked from the website footer and order pages.</>,
+      },
+      {
+        heading: "7. Smoke test",
+        body: (
+          <ul className="list-disc pl-5 space-y-1">
+            <li>Run the Verifier — every section green</li>
+            <li>Place a real test sale on POS, verify printout</li>
+            <li>Place a test order on the website, advance it through the lifecycle in the ERP</li>
+            <li>Cancel a test order — verify stock is restored on the product</li>
+            <li>Raise a return on a test invoice — verify ledger</li>
+            <li>Run a GSTR-1 report — verify totals reconcile</li>
+            <li>Do a backup of the database</li>
+          </ul>
+        ),
+      },
+      {
+        heading: "8. Monitoring",
+        body: <>Bookmark the Verifier page. Schedule a daily morning run. The Reports → Dashboard surfaces
+        anomalies (low stock, negative cash drawer, overdue receivables) — make a habit of glancing at it.</>,
+      },
+      {
+        type: "success",
+        body: <>Once steps 1–8 are done and the Verifier is fully green, you are cleared for live traffic.
+        Welcome to production!</>,
+      },
+    ],
+  },
   architecture: {
     title: "Architecture & API",
     lead: "How the Rathinam system is built — for technical users and integrators.",
@@ -441,7 +768,11 @@ GET  /api/v1/reports/gst          — GSTR-1 report data`}
   },
 };
 
-const ORDER = ["quick-start", "pricing", "stock", "sales", "crm", "coupons", "pos-warehouse", "reports", "settings", "architecture"];
+const ORDER = [
+  "quick-start", "pricing", "stock", "sales", "crm", "coupons", "pos-warehouse",
+  "online-orders", "returns", "website", "bulk-csv", "reports", "settings",
+  "verifier", "production", "architecture",
+];
 
 export default function HelpTopic() {
   const [, params] = useRoute("/help/:topic");

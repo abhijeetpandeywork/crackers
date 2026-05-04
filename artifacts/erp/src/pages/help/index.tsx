@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import {
   Search, BookOpen, ShoppingCart, Package, Users, FileText,
   Tags, Truck, BarChart3, Settings, KeyRound, Zap, Box,
-  ArrowRight, HelpCircle, Workflow, Lightbulb,
+  ArrowRight, HelpCircle, Workflow, Lightbulb, Globe, RotateCcw,
+  Upload, ShieldCheck, Rocket,
 } from "lucide-react";
 
 const guides = [
@@ -90,6 +91,60 @@ const guides = [
     href: "/help/settings",
     description: "Company info, user roles, locations, system preferences",
     tags: ["admin"],
+  },
+  {
+    icon: Truck,
+    color: "text-emerald-500",
+    bg: "bg-emerald-500/10",
+    title: "Online Orders Lifecycle",
+    href: "/help/online-orders",
+    description: "End-to-end: customer places → confirm → pack → dispatch → deliver, plus cancellations",
+    tags: ["online", "operations"],
+  },
+  {
+    icon: RotateCcw,
+    color: "text-rose-500",
+    bg: "bg-rose-500/10",
+    title: "Returns & Refunds",
+    href: "/help/returns",
+    description: "When returns are allowed, ledger reversal, refund flow, online order guards",
+    tags: ["returns", "operations"],
+  },
+  {
+    icon: Globe,
+    color: "text-teal-500",
+    bg: "bg-teal-500/10",
+    title: "Website & Customer Portal",
+    href: "/help/website",
+    description: "Storefront, account portal, order tracking, customer-side cancel & return",
+    tags: ["website", "customer"],
+  },
+  {
+    icon: Upload,
+    color: "text-violet-500",
+    bg: "bg-violet-500/10",
+    title: "Bulk CSV Import / Export",
+    href: "/help/bulk-csv",
+    description: "Template, Export, Import for products, customers, brands, agents and more",
+    tags: ["data", "ops"],
+  },
+  {
+    icon: ShieldCheck,
+    color: "text-yellow-500",
+    bg: "bg-yellow-500/10",
+    title: "Self-Check Verifier",
+    href: "/help/verifier",
+    description: "Built-in end-to-end health check page — what every section validates",
+    tags: ["qa", "monitoring"],
+  },
+  {
+    icon: Rocket,
+    color: "text-fuchsia-500",
+    bg: "bg-fuchsia-500/10",
+    title: "Production Go-Live Checklist",
+    href: "/help/production",
+    description: "Secrets to rotate, defaults to change, post-deploy smoke tests, backup plan",
+    tags: ["deploy", "production"],
   },
   {
     icon: Workflow,
@@ -223,11 +278,16 @@ export default function HelpIndex() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-            <div className="rounded-md border p-3"><strong>ERP Admin</strong><br /><code className="text-xs">admin / admin123</code> (PIN 1234)</div>
-            <div className="rounded-md border p-3"><strong>ERP Manager</strong><br /><code className="text-xs">manager / admin123</code> (PIN 2345)</div>
+            <div className="rounded-md border p-3"><strong>ERP Admin</strong><br /><code className="text-xs">admin / Admin@12345</code> (PIN 1234)</div>
+            <div className="rounded-md border p-3"><strong>ERP Manager</strong><br /><code className="text-xs">manager / Manager@12345</code> (PIN 2345)</div>
             <div className="rounded-md border p-3"><strong>POS Cashier</strong><br /><code className="text-xs">cashier / admin123</code> (PIN 3456)</div>
-            <div className="rounded-md border p-3"><strong>Warehouse</strong><br /><code className="text-xs">warehouse / admin123</code> (PIN 4567)</div>
+            <div className="rounded-md border p-3"><strong>Warehouse</strong><br /><code className="text-xs">warehouse / Warehouse@12345</code> (PIN 4567)</div>
           </div>
+          <p className="text-xs text-muted-foreground mt-3">
+            <strong>Important:</strong> Rotate every default password before going live (Settings → Users → Edit). The
+            verifier auto-detects the latest admin password from your live login session, so you can change passwords
+            freely without breaking it. See the <Link href="/help/production" className="text-primary underline">Production Go-Live Checklist</Link>.
+          </p>
         </CardContent>
       </Card>
     </div>
