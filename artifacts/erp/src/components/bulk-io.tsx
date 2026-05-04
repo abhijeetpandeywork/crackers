@@ -38,7 +38,7 @@ export function BulkIO({ resource, label, onImported }: Props) {
   const [resultOpen, setResultOpen] = useState(false);
 
   const auth = (): Record<string, string> => {
-    const token = localStorage.getItem("accessToken") || "";
+    const token = localStorage.getItem("erp_token") || "";
     return token ? { Authorization: `Bearer ${token}` } : {};
   };
 

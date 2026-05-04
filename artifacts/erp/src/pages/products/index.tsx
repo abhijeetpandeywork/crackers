@@ -31,7 +31,7 @@ export default function ProductsList() {
   const { data: categoriesResp } = useQuery({
     queryKey: ["categories"],
     queryFn: async () => {
-      const token = localStorage.getItem("accessToken") || "";
+      const token = localStorage.getItem("erp_token") || "";
       const r = await fetch("/api/v1/categories", { headers: token ? { Authorization: `Bearer ${token}` } : {} });
       return r.json();
     },

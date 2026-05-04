@@ -28,7 +28,7 @@ type ApiToken = {
 };
 
 const apiFetch = async (url: string, init?: RequestInit) => {
-  const token = localStorage.getItem("accessToken") || "";
+  const token = localStorage.getItem("erp_token") || "";
   const r = await fetch(url, {
     ...init,
     headers: {
