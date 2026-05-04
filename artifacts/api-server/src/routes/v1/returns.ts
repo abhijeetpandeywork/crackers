@@ -92,6 +92,29 @@ router.post("/returns", authenticate, async (req: AuthRequest, res) => {
       res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Invoice not found" } });
       return;
     }
+    // For ONLINE-channel orders, returns are only meaningful once the goods
+    // have actually shipped. Returning before delivery would double-restock
+    // (cancellation already restocks) and ghost-return a cancelled order.
+    if (invoice.channel === "ONLINE") {
+      if (invoice.status === "cancelled") {
+        res.status(409).json({
+          success: false,
+          error: { code: "ORDER_CANCELLED", message: "Cannot return a cancelled order — stock was already restored on cancel." },
+        });
+        return;
+      }
+      const stage = (invoice.logisticsDetails as any)?.status;
+      if (stage !== "dispatched" && stage !== "delivered") {
+        res.status(409).json({
+          success: false,
+          error: {
+            code: "NOT_DELIVERED",
+            message: "Online orders can only be returned after delivery. To stop a pending order, cancel it instead.",
+          },
+        });
+        return;
+      }
+    }
   }
 
   // Guard against over-returns: total qty per (product,variant) across all

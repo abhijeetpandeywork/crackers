@@ -64,6 +64,22 @@ router.post("/invoices", authenticate, async (req: AuthRequest, res) => {
     billingAddress?: unknown;
     logisticsDetails?: Record<string, unknown>;
   };
+  // ONLINE-channel invoices have a separate lifecycle (pending_confirmation
+  // → confirmed → packed → dispatched → delivered) and must be created via
+  // the public shop placement endpoint, which seeds logistics state and
+  // sends the customer confirmation. Block this generic admin endpoint from
+  // minting orphaned ONLINE invoices that bypass that lifecycle.
+  if ((channel ?? "RETAIL").toUpperCase() === "ONLINE") {
+    res.status(400).json({
+      success: false,
+      error: {
+        code: "USE_SHOP_PLACEMENT",
+        message: "Online orders must be placed via the shop checkout, not this endpoint.",
+      },
+    });
+    return;
+  }
+
   const ship = sanitizeAddress(shippingAddress);
   const bill = sanitizeAddress(billingAddress) ?? ship;
 
