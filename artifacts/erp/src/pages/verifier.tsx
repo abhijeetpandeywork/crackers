@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { CheckCircle2, XCircle, Loader2, ShieldCheck, RefreshCw, Wrench, Activity, AlertTriangle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { CheckCircle2, XCircle, Loader2, ShieldCheck, RefreshCw, Wrench, Activity, AlertTriangle, KeyRound, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 type Check = {
@@ -38,13 +39,65 @@ async function loginOnce(username: string, password: string): Promise<string | n
   return b?.data?.accessToken ?? null;
 }
 
-// Default credentials differ between the original seed (admin/admin123) and
-// the hardened seed (admin/Admin@12345, cashier/admin123). Try both so the
-// verifier keeps working regardless of which seed the deployment used.
+// Seed defaults — used as a fallback when no live token is available.
+// Admin: original seed ("admin123") and hardened seed ("Admin@12345");
+// cashier mirrors the same convention. The user-facing override field
+// in the verifier UI takes precedence over both.
 const ADMIN_PASSWORDS = ["Admin@12345", "admin123"];
 const CASHIER_PASSWORDS = ["admin123", "Cashier@12345"];
+const ADMIN_PW_OVERRIDE_KEY = "verifier_admin_password";
+const CASHIER_PW_OVERRIDE_KEY = "verifier_cashier_password";
 
+/**
+ * Fetch the role for a given access token. Returns null if the token is
+ * invalid/expired or the call fails.
+ */
+async function tokenRole(token: string): Promise<string | null> {
+  try {
+    const r = await http("/api/v1/auth/me", { headers: { Authorization: `Bearer ${token}` } });
+    if (r.status !== 200) return null;
+    const b = r.body as { data?: { role?: string; user?: { role?: string } } };
+    return b?.data?.role ?? b?.data?.user?.role ?? null;
+  } catch {
+    return null;
+  }
+}
+
+const ADMIN_ROLES = new Set(["SUPER_ADMIN", "ADMIN", "ERP_MANAGER"]);
+
+/**
+ * Resolve a working access token for the requested role-class.
+ *
+ * Strategy (in order):
+ *   1. If username==="admin" and the user is currently logged into the ERP
+ *      with an admin-class role, reuse `localStorage.erp_token`. This always
+ *      reflects whatever the current admin password is, even after a change.
+ *   2. Try the user-supplied override password from sessionStorage (set via
+ *      the "Admin password override" field at the top of the verifier).
+ *   3. Try the explicitly-passed password if any.
+ *   4. Fall back to the known seed defaults.
+ */
 async function login(username: string, password?: string): Promise<string | null> {
+  // 1. Live ERP session token (admin-class only).
+  if (username === "admin" && typeof window !== "undefined") {
+    const live = window.localStorage.getItem("erp_token");
+    if (live) {
+      const role = await tokenRole(live);
+      if (role && ADMIN_ROLES.has(role)) return live;
+    }
+  }
+
+  // 2. User override from the verifier UI.
+  if (typeof window !== "undefined") {
+    const overrideKey = username === "cashier" ? CASHIER_PW_OVERRIDE_KEY : ADMIN_PW_OVERRIDE_KEY;
+    const override = window.sessionStorage.getItem(overrideKey);
+    if (override) {
+      const tok = await loginOnce(username, override);
+      if (tok) return tok;
+    }
+  }
+
+  // 3 & 4. Explicit password or seed defaults.
   const candidates = password
     ? [password]
     : username === "cashier"
@@ -728,6 +781,122 @@ function LiveHealthPanel() {
   );
 }
 
+/**
+ * Optional manual credential override.
+ *
+ * The verifier already prefers the currently logged-in admin's `erp_token`
+ * (so it always uses the latest password without any input), and falls back
+ * to known seed defaults. This panel exists for the edge case where both
+ * fail — e.g. the verifier is opened in a fresh tab without an ERP login,
+ * or a custom non-default cashier password is in use. Entries are kept in
+ * sessionStorage so they vanish when the browser tab closes.
+ */
+function CredentialOverridePanel() {
+  const [adminPw, setAdminPw] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
+    return window.sessionStorage.getItem(ADMIN_PW_OVERRIDE_KEY) ?? "";
+  });
+  const [cashierPw, setCashierPw] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
+    return window.sessionStorage.getItem(CASHIER_PW_OVERRIDE_KEY) ?? "";
+  });
+  const [reveal, setReveal] = useState(false);
+  const [adminTest, setAdminTest] = useState<"idle" | "ok" | "fail" | "checking">("idle");
+  const [cashierTest, setCashierTest] = useState<"idle" | "ok" | "fail" | "checking">("idle");
+  const { toast } = useToast();
+
+  const persist = (key: string, value: string) => {
+    if (typeof window === "undefined") return;
+    if (value) window.sessionStorage.setItem(key, value);
+    else window.sessionStorage.removeItem(key);
+  };
+
+  const saveAdmin = () => {
+    persist(ADMIN_PW_OVERRIDE_KEY, adminPw);
+    toast({ title: adminPw ? "Admin password override saved" : "Admin override cleared" });
+  };
+  const saveCashier = () => {
+    persist(CASHIER_PW_OVERRIDE_KEY, cashierPw);
+    toast({ title: cashierPw ? "Cashier password override saved" : "Cashier override cleared" });
+  };
+
+  const testAdmin = async () => {
+    setAdminTest("checking");
+    const tok = await login("admin");
+    setAdminTest(tok ? "ok" : "fail");
+  };
+  const testCashier = async () => {
+    setCashierTest("checking");
+    const tok = await login("cashier");
+    setCashierTest(tok ? "ok" : "fail");
+  };
+
+  const liveTokenPresent = typeof window !== "undefined" && !!window.localStorage.getItem("erp_token");
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <KeyRound className="h-4 w-4" /> Verifier credentials
+        </CardTitle>
+        <CardDescription>
+          The verifier reuses your live ERP login automatically{liveTokenPresent ? " (detected)" : ""},
+          and falls back to the known seed defaults. Only fill these in if neither works.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="grid sm:grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="vf-admin-pw" className="text-xs">Admin password (optional)</Label>
+            <div className="flex gap-2">
+              <Input
+                id="vf-admin-pw"
+                type={reveal ? "text" : "password"}
+                placeholder="leave blank to use auto-detect"
+                value={adminPw}
+                onChange={(e) => setAdminPw(e.target.value)}
+                onBlur={saveAdmin}
+                autoComplete="off"
+              />
+              <Button variant="outline" size="sm" onClick={testAdmin} disabled={adminTest === "checking"}>
+                {adminTest === "checking" ? <Loader2 className="h-3 w-3 animate-spin" /> :
+                  adminTest === "ok" ? <CheckCircle2 className="h-3 w-3 text-green-600" /> :
+                  adminTest === "fail" ? <XCircle className="h-3 w-3 text-red-600" /> : "Test"}
+              </Button>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="vf-cashier-pw" className="text-xs">Cashier password (optional)</Label>
+            <div className="flex gap-2">
+              <Input
+                id="vf-cashier-pw"
+                type={reveal ? "text" : "password"}
+                placeholder="leave blank to use auto-detect"
+                value={cashierPw}
+                onChange={(e) => setCashierPw(e.target.value)}
+                onBlur={saveCashier}
+                autoComplete="off"
+              />
+              <Button variant="outline" size="sm" onClick={testCashier} disabled={cashierTest === "checking"}>
+                {cashierTest === "checking" ? <Loader2 className="h-3 w-3 animate-spin" /> :
+                  cashierTest === "ok" ? <CheckCircle2 className="h-3 w-3 text-green-600" /> :
+                  cashierTest === "fail" ? <XCircle className="h-3 w-3 text-red-600" /> : "Test"}
+              </Button>
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => setReveal(r => !r)}>
+            {reveal ? <EyeOff className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
+            {reveal ? "Hide" : "Show"} passwords
+          </Button>
+          <span>Stored only in this browser tab (sessionStorage); cleared when the tab closes.</span>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function Verifier() {
   const [sections, setSections] = useState<Section[]>(
     SECTIONS.map((s) => ({ name: s.name, status: "pending", checks: [] })),
@@ -777,6 +946,8 @@ export default function Verifier() {
           {running ? "Running…" : "Run all checks"}
         </Button>
       </div>
+
+      <CredentialOverridePanel />
 
       <LiveHealthPanel />
 
