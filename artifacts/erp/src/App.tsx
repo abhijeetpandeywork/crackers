@@ -23,6 +23,8 @@ import NewEstimate from "@/pages/estimates/new";
 import EstimateDetail from "@/pages/estimates/[id]";
 import InvoicesList from "@/pages/invoices/index";
 import InvoiceDetail from "@/pages/invoices/[id]";
+import OnlineOrdersList from "@/pages/orders/index";
+import OnlineOrderDetail from "@/pages/orders/[id]";
 import CustomersList from "@/pages/customers/index";
 import CustomerDetail from "@/pages/customers/[id]";
 import SuppliersList from "@/pages/suppliers/index";
@@ -122,6 +124,12 @@ function Router() {
       </Route>
       <Route path="/invoices/:id">
         {(params) => <ProtectedRoute component={InvoiceDetail} {...params} />}
+      </Route>
+      <Route path="/orders">
+        {(params) => <ProtectedRoute component={OnlineOrdersList} {...params} />}
+      </Route>
+      <Route path="/orders/:id">
+        {(params) => <ProtectedRoute component={OnlineOrderDetail} {...params} />}
       </Route>
       <Route path="/customers">
         {(params) => <ProtectedRoute component={CustomersList} {...params} />}

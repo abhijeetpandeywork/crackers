@@ -2,7 +2,7 @@ import { useAuth } from "@/lib/auth";
 import { Link, useLocation } from "wouter";
 import { 
   BarChart3, Box, Package, Users, UsersRound, Truck, 
-  ShoppingCart, Tags, FileText, FileBarChart, Settings, LogOut,
+  ShoppingCart, Tags, FileText, FileBarChart, Settings, LogOut, ShoppingBag,
   HelpCircle, ShieldCheck, MessageSquare, Award, UserCircle2, RotateCcw,
   Menu
 } from "lucide-react";
@@ -23,6 +23,7 @@ const navItems = [
   { icon: Package, label: "Stock", href: "/stock" },
   { icon: FileText, label: "Estimates", href: "/estimates" },
   { icon: FileText, label: "Invoices", href: "/invoices" },
+  { icon: ShoppingBag, label: "Online Orders", href: "/orders" },
   { icon: Users, label: "Customers", href: "/customers" },
   { icon: Truck, label: "Suppliers", href: "/suppliers" },
   { icon: UsersRound, label: "Agents", href: "/agents" },

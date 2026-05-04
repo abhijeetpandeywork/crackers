@@ -18,6 +18,7 @@ import { appendLedger } from "../../lib/stockService.js";
 import { getTaxConfig, computeTax } from "../../lib/tax.js";
 import { sendEmail, sendWhatsapp } from "../../lib/notifier.js";
 import { buildInvoicePdf } from "../../lib/invoice-pdf.js";
+import { cancelOnlineOrder, notifyCustomerLifecycle, OrderCancelError } from "../../lib/orderLifecycle.js";
 
 const router = Router();
 
@@ -255,6 +256,43 @@ router.get("/shop/orders", shopAuthenticate, async (req: ShopAuthRequest, res) =
   res.json({ success: true, data: rows });
 });
 
+// Customers can cancel their own order while it's still in pending_confirmation
+// or confirmed. Once the warehouse has packed it, only staff can cancel.
+router.post("/shop/orders/:id/cancel", shopAuthenticate, async (req: ShopAuthRequest, res) => {
+  const id = req.params["id"] as string;
+  const reason = String((req.body ?? {})["reason"] ?? "").trim() || "Cancelled by customer";
+  const rows = await db.select().from(invoicesTable)
+    .where(and(eq(invoicesTable.id, id), eq(invoicesTable.customerId, req.customer!.id))).limit(1);
+  const order = rows[0];
+  if (!order) {
+    res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Order not found" } });
+    return;
+  }
+  if (order.status === "cancelled") {
+    res.status(400).json({ success: false, error: { code: "ALREADY_CANCELLED", message: "Order is already cancelled" } });
+    return;
+  }
+  try {
+    const updated = await cancelOnlineOrder(order, reason, "customer", null, [
+      "pending_confirmation",
+      "confirmed",
+    ]);
+    void notifyCustomerLifecycle(updated, "cancelled", { cancelReason: reason, cancelledBy: "customer" });
+    res.json({ success: true, data: updated });
+  } catch (err: any) {
+    if (err instanceof OrderCancelError) {
+      const status = err.code === "NOT_FOUND" ? 404 : err.code === "TOO_LATE_TO_CANCEL" ? 409 : 400;
+      const message = err.code === "TOO_LATE_TO_CANCEL"
+        ? "This order has already been packed. Please contact support to cancel."
+        : err.message;
+      res.status(status).json({ success: false, error: { code: err.code, message } });
+      return;
+    }
+    req.log?.error({ err }, "customer order cancel failed");
+    res.status(500).json({ success: false, error: { code: "CANCEL_FAILED", message: err?.message || "Could not cancel order" } });
+  }
+});
+
 router.get("/shop/orders/:id", shopAuthenticate, async (req: ShopAuthRequest, res) => {
   const id = req.params["id"] as string;
   const rows = await db.select().from(invoicesTable)
@@ -402,6 +440,11 @@ router.post("/shop/orders", shopAuthenticate, async (req: ShopAuthRequest, res) 
   const loyaltyRate = Number(pricingSettings.loyaltyEarnRate ?? 1);
   const points = Math.floor(total * loyaltyRate / 100);
 
+  // Generate the invoice id up-front so each OUT ledger entry can record
+  // `refId = invoice.id`. Cancellation reads these entries back to know which
+  // exact location/qty to restore.
+  const newInvoiceId = crypto.randomUUID();
+
   let invoice: any;
   try {
     invoice = await db.transaction(async (tx) => {
@@ -418,12 +461,13 @@ router.post("/shop/orders", shopAuthenticate, async (req: ShopAuthRequest, res) 
             type: "OUT",
             qty: -item.qty,
             refType: "INVOICE",
+            refId: newInvoiceId,
             createdBy: undefined,
           }, tx);
         }
       }
       const [inv] = await tx.insert(invoicesTable).values({
-        id: crypto.randomUUID(),
+        id: newInvoiceId,
         invoiceNo,
         customerId: cid,
         customerName: cust.name,

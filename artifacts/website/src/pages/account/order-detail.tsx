@@ -4,9 +4,15 @@ import { AccountShell } from "@/components/account-shell";
 import { useGetShopOrder } from "@workspace/api-client-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, MapPin, Receipt, Truck, Download, Share2, CheckCircle2, Circle, Clock } from "lucide-react";
+import { ArrowLeft, MapPin, Receipt, Truck, Download, Share2, CheckCircle2, Circle, Clock, XCircle, ExternalLink } from "lucide-react";
 import { useShopAuth } from "@/context/auth";
 import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 
 type Addr = {
   name?: string; phone?: string; line1?: string; line2?: string | null;
@@ -136,8 +142,38 @@ export default function OrderDetail() {
   const order = (data as any)?.data;
   const { token } = useShopAuth();
   const { toast } = useToast();
+  const qc = useQueryClient();
   const [downloading, setDownloading] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelling, setCancelling] = useState(false);
+
+  const cancelOrder = async () => {
+    if (!order || !token) return;
+    if (!cancelReason.trim()) {
+      toast({ title: "Please tell us why you'd like to cancel", variant: "destructive" });
+      return;
+    }
+    setCancelling(true);
+    try {
+      const res = await fetch(`/api/v1/shop/orders/${order.id}/cancel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ reason: cancelReason.trim() }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json?.error?.message || `HTTP ${res.status}`);
+      toast({ title: "Order cancelled", description: "Refund (if applicable) will be initiated within 5-7 days." });
+      setCancelOpen(false);
+      setCancelReason("");
+      await qc.invalidateQueries();
+    } catch (e: any) {
+      toast({ title: "Could not cancel order", description: e?.message, variant: "destructive" });
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   const downloadInvoice = async () => {
     if (!order || !token) return;
@@ -208,6 +244,45 @@ export default function OrderDetail() {
               <Button size="sm" variant="outline" onClick={() => shareInvoice("whatsapp")} disabled={sharing} data-testid="invoice-share-wa">
                 <Share2 className="h-4 w-4 mr-1" /> WhatsApp
               </Button>
+              {(() => {
+                const stage = (order.logisticsDetails?.status ?? "").toString();
+                const canCancel = order.status !== "cancelled" && (stage === "pending_confirmation" || stage === "confirmed");
+                if (!canCancel) return null;
+                return (
+                  <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
+                    <DialogTrigger asChild>
+                      <Button size="sm" variant="destructive" data-testid="btn-cancel-order">
+                        <XCircle className="h-4 w-4 mr-1" /> Cancel order
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Cancel this order?</DialogTitle>
+                        <DialogDescription>
+                          Once you cancel, we'll restore the items to stock and process any applicable refund within 5-7 business days.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div>
+                        <Label>Reason for cancelling</Label>
+                        <Textarea
+                          value={cancelReason}
+                          onChange={(e) => setCancelReason(e.target.value)}
+                          placeholder="Changed my mind, ordered wrong items, etc."
+                          data-testid="cancel-reason"
+                        />
+                      </div>
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => setCancelOpen(false)} disabled={cancelling}>
+                          Keep order
+                        </Button>
+                        <Button variant="destructive" onClick={cancelOrder} disabled={cancelling} data-testid="cancel-submit">
+                          {cancelling ? "Cancelling…" : "Yes, cancel order"}
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                );
+              })()}
             </div>
           </div>
 
@@ -265,15 +340,59 @@ export default function OrderDetail() {
             </div>
           )}
 
-          <div className="bg-amber-50 border border-amber-100 rounded-2xl p-5 text-sm text-amber-900">
-            <div className="flex items-start gap-2">
-              <Truck className="h-5 w-5 mt-0.5" />
-              <div>
-                <p className="font-bold">What happens next?</p>
-                <p>Our team will call you within 24 hours to confirm and arrange dispatch via licensed cracker logistics. You'll receive SMS / WhatsApp updates with tracking.</p>
+          {(() => {
+            const ld = order.logisticsDetails ?? {};
+            const courier = ld.courier;
+            if (courier?.name) {
+              return (
+                <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5 text-sm text-blue-900 mb-4">
+                  <div className="flex items-start gap-2">
+                    <Truck className="h-5 w-5 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="font-bold">Shipped via {courier.name}</p>
+                      {courier.trackingNumber && (
+                        <p className="font-mono text-xs mt-1">Tracking #: {courier.trackingNumber}</p>
+                      )}
+                      {courier.expectedDeliveryAt && (
+                        <p className="text-xs mt-1">Expected by {new Date(courier.expectedDeliveryAt).toLocaleDateString("en-IN")}</p>
+                      )}
+                      {courier.trackingUrl && (
+                        <a
+                          href={courier.trackingUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 mt-2 font-semibold text-blue-700 hover:underline"
+                          data-testid="link-tracking"
+                        >
+                          Track shipment <ExternalLink className="h-3 w-3" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+            if (order.status === "cancelled") {
+              return (
+                <div className="bg-red-50 border border-red-100 rounded-2xl p-5 text-sm text-red-900">
+                  <p className="font-bold">Order cancelled</p>
+                  {ld.cancelReason && <p className="mt-1">Reason: {ld.cancelReason}</p>}
+                  {ld.cancelledAt && <p className="text-xs mt-1">on {new Date(ld.cancelledAt).toLocaleString("en-IN")}</p>}
+                </div>
+              );
+            }
+            return (
+              <div className="bg-amber-50 border border-amber-100 rounded-2xl p-5 text-sm text-amber-900">
+                <div className="flex items-start gap-2">
+                  <Truck className="h-5 w-5 mt-0.5" />
+                  <div>
+                    <p className="font-bold">What happens next?</p>
+                    <p>Our team will call you within 24 hours to confirm and arrange dispatch via licensed cracker logistics. You'll receive SMS / WhatsApp updates with tracking.</p>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
+            );
+          })()}
         </>
       )}
     </AccountShell>
