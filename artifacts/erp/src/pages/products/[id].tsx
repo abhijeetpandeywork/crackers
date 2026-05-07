@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { MediaPicker } from "@/components/media-picker";
 
 type CategoryLite = { id: string; name: string; emoji: string | null; isActive: boolean };
 
@@ -573,22 +574,18 @@ export default function ProductDetail() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Cover image URL</Label>
-                <Input
+                <Label>Cover image</Label>
+                <MediaPicker
                   value={formData.imageUrl}
-                  onChange={e => setFormData(p => ({ ...p, imageUrl: e.target.value }))}
-                  placeholder="https://…"
-                  data-testid="product-image-url"
+                  onChange={(url) => setFormData((p) => ({ ...p, imageUrl: url }))}
+                  folder="products"
                 />
-                {formData.imageUrl && (
-                  <img src={formData.imageUrl} alt="" className="h-24 w-24 object-cover rounded border" />
-                )}
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label>Gallery images</Label>
                   <Button type="button" size="sm" variant="outline" onClick={addGalleryUrl}>
-                    <Plus className="h-3 w-3 mr-1" /> Add image
+                    <Plus className="h-3 w-3 mr-1" /> Add image slot
                   </Button>
                 </div>
                 {formData.gallery.length === 0 && (
@@ -597,12 +594,15 @@ export default function ProductDetail() {
                 <div className="space-y-2">
                   {formData.gallery.map((url, i) => (
                     <div key={i} className="flex gap-2 items-center">
-                      <Input
-                        value={url}
-                        onChange={e => updateGalleryUrl(i, e.target.value)}
-                        placeholder="https://…"
-                      />
-                      {url && <img src={url} alt="" className="h-9 w-9 object-cover rounded border" />}
+                      <div className="flex-1">
+                        <MediaPicker
+                          value={url}
+                          onChange={(v) => updateGalleryUrl(i, v)}
+                          folder="products"
+                          compact
+                          buttonLabel={url ? "Change" : "Pick image"}
+                        />
+                      </div>
                       <Button type="button" size="icon" variant="ghost" className="text-destructive" onClick={() => removeGalleryUrl(i)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>

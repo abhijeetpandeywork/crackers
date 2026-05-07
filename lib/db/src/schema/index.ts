@@ -26,3 +26,4 @@ export * from "./customerWishlist";
 export * from "./auditLog";
 export * from "./roles";
 export * from "./idempotencyKeys";
+export * from "./media";

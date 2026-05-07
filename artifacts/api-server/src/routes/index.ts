@@ -33,6 +33,8 @@ import auditLogRouter from "./v1/auditLog.js";
 import rbacRouter from "./v1/rbac.js";
 import bulkRouter from "./v1/bulk.js";
 import ordersAdminRouter from "./v1/ordersAdmin.js";
+import mediaRouter, { UPLOAD_DIR } from "./v1/media.js";
+import express from "express";
 
 const router: IRouter = Router();
 
@@ -70,5 +72,19 @@ router.use("/v1", auditLogRouter);
 router.use("/v1", rbacRouter);
 router.use("/v1", bulkRouter);
 router.use("/v1", ordersAdminRouter);
+router.use("/v1", mediaRouter);
+
+// Serve uploaded media as static files. The same path prefix is used by
+// nginx in production (see deploy/nginx/ratinam-subdomains.conf) which
+// short-circuits Node entirely for cached files; in development the Node
+// process serves them directly so the dev workflow works without nginx.
+router.use(
+  "/uploads",
+  express.static(UPLOAD_DIR, {
+    fallthrough: false,
+    maxAge: "30d",
+    immutable: true,
+  }),
+);
 
 export default router;

@@ -143,7 +143,10 @@ JWT_SECRET=${JWT_SECRET}
 ADMIN_BOOTSTRAP_PASSWORD=${ADMIN_BOOTSTRAP_PASSWORD}
 APP_DOMAIN=${APP_DOMAIN}
 PUBLIC_API_BASE=${API_BASE}
-UPLOADS_DIR=${UPLOADS_DIR}
+# UPLOAD_DIR is read by the API to persist uploaded media (see
+# artifacts/api-server/src/routes/v1/media.ts). nginx serves the same
+# folder directly via the /uploads/ alias for hot-cached delivery.
+UPLOAD_DIR=${UPLOADS_DIR}
 # Build-time variables consumed by Vite (frontends).
 VITE_API_BASE=${API_BASE}
 EOF

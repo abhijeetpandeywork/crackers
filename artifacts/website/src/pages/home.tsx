@@ -328,7 +328,15 @@ export default function Home() {
                     <CardContent className="p-0">
                       <div className="aspect-[4/5] bg-gradient-to-br from-primary/10 via-amber-50 to-amber-100 flex items-center justify-center relative overflow-hidden">
                         <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_50%_30%,rgba(251,191,36,0.4),transparent_60%)]" />
-                        <span className="text-7xl transform group-hover:scale-110 transition-transform duration-500 relative z-10">🎆</span>
+                        {(product as { imageUrl?: string }).imageUrl ? (
+                          <img
+                            src={(product as { imageUrl?: string }).imageUrl}
+                            alt={product.name ?? ""}
+                            className="absolute inset-0 w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500 z-0"
+                          />
+                        ) : (
+                          <span className="text-7xl transform group-hover:scale-110 transition-transform duration-500 relative z-10">🎆</span>
+                        )}
                         <div className="absolute top-3 left-3">
                           <span className="bg-white/90 backdrop-blur-sm text-primary text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider">
                             {product.category ?? "Cracker"}

@@ -418,7 +418,14 @@ export default function ProductDetail() {
   }
 
   const emoji = categoryEmoji(product.category);
-  const galleryFrames = [emoji, "🎆", "✨", "🎇"];
+  // Real uploaded images take priority over the emoji fallback. We dedupe
+  // because the cover image often appears as the first gallery entry too.
+  const productAny = product as typeof product & { imageUrl?: string; gallery?: string[] };
+  const realImages = [productAny.imageUrl, ...(productAny.gallery ?? [])]
+    .filter((u): u is string => !!u && typeof u === "string" && u.length > 0)
+    .filter((u, i, a) => a.indexOf(u) === i);
+  const galleryFrames: string[] = realImages.length > 0 ? realImages : [emoji, "🎆", "✨", "🎇"];
+  const usingRealImages = realImages.length > 0;
   const onlinePrice = Number(selectedVariant?.prices?.retailOnline) || 0;
   const estPrice = Number(selectedVariant?.prices?.retailEst) || 0;
   const wholesalePrice = Number(selectedVariant?.prices?.wholesaleBulk) || 0;
@@ -533,13 +540,23 @@ export default function ProductDetail() {
             {/* ---------- Gallery ---------- */}
             <div>
               <div className="aspect-square rounded-3xl bg-gradient-to-br from-primary/10 via-amber-500/10 to-yellow-300/10 flex items-center justify-center relative overflow-hidden group">
-                <span
-                  key={activeImage}
-                  className="text-[12rem] transform group-hover:scale-110 transition-transform duration-700 animate-in fade-in zoom-in"
-                  data-testid="product-hero-image"
-                >
-                  {galleryFrames[activeImage]}
-                </span>
+                {usingRealImages ? (
+                  <img
+                    key={activeImage}
+                    src={galleryFrames[activeImage]}
+                    alt={product.name}
+                    className="absolute inset-0 w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700 animate-in fade-in zoom-in"
+                    data-testid="product-hero-image"
+                  />
+                ) : (
+                  <span
+                    key={activeImage}
+                    className="text-[12rem] transform group-hover:scale-110 transition-transform duration-700 animate-in fade-in zoom-in"
+                    data-testid="product-hero-image"
+                  >
+                    {galleryFrames[activeImage]}
+                  </span>
+                )}
                 <div className="absolute top-6 left-6 flex flex-col gap-2">
                   <Badge className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-1.5 rounded-full text-xs uppercase tracking-widest border-none">
                     {product.category}
@@ -595,7 +612,7 @@ export default function ProductDetail() {
                   <button
                     key={idx}
                     onClick={() => setActiveImage(idx)}
-                    className={`aspect-square rounded-xl flex items-center justify-center text-3xl transition-all ${
+                    className={`aspect-square rounded-xl flex items-center justify-center text-3xl transition-all overflow-hidden ${
                       activeImage === idx
                         ? "bg-primary/10 border-2 border-primary"
                         : "bg-gray-50 border-2 border-transparent hover:border-gray-200"

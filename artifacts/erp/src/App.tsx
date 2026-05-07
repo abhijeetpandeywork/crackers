@@ -62,6 +62,7 @@ import HelpIndex from "@/pages/help/index";
 import HelpTopic from "@/pages/help/topic";
 import Verifier from "@/pages/verifier";
 import DemoDataPage from "@/pages/system/demo";
+import MediaLibraryPage from "@/pages/media/index";
 
 const queryClient = new QueryClient();
 
@@ -233,6 +234,9 @@ function Router() {
       </Route>
       <Route path="/system/demo">
         {(params) => <ProtectedRoute component={DemoDataPage} roles={SUPER_ONLY} {...params} />}
+      </Route>
+      <Route path="/media">
+        {(params) => <ProtectedRoute component={MediaLibraryPage} roles={ADMIN_ROLES} {...params} />}
       </Route>
       <Route path="/profile">
         {(params) => <ProtectedRoute component={ProfilePage} {...params} />}
