@@ -51,6 +51,11 @@ export async function resetDemoData(): Promise<ResetResult> {
   // Order matters because of FK references. We delete the most-referenced
   // tables (ledgers, idempotency, audit) first, then the parents.
   await db.transaction(async (tx) => {
+    // FK-safe order: delete the most-referencing tables first, then
+    // their parents. invoices is referenced by returns / stock_ledger /
+    // credit_ledger / loyalty_ledger / packing_jobs, and itself
+    // references pos_shifts (invoice.shift_id) — so invoices must die
+    // BEFORE pos_shifts but AFTER everything that references invoices.
     const tables: Array<[string, any]> = [
       ["idempotency_keys", idempotencyKeysTable],
       ["audit_log", auditLogTable],
@@ -65,9 +70,9 @@ export async function resetDemoData(): Promise<ResetResult> {
       ["packing_jobs", packingJobsTable],
       ["transfers", transfersTable],
       ["purchase_orders", purchaseOrdersTable],
-      ["pos_shifts", posShiftsTable],
       ["estimates", estimatesTable],
       ["invoices", invoicesTable],
+      ["pos_shifts", posShiftsTable],
     ];
     for (const [name, table] of tables) {
       const rows = await tx.delete(table).returning({ id: (table as any).id });

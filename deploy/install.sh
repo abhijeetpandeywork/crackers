@@ -62,11 +62,19 @@ APP_DOMAIN="${APP_DOMAIN:-rathinamcracker.com}"
 ACME_EMAIL="${ACME_EMAIL:-admin@${APP_DOMAIN}}"
 GITHUB_REPO_URL="${GITHUB_REPO_URL:-https://github.com/abhijeetpandeywork/crackers.git}"
 GITHUB_TOKEN="${GITHUB_TOKEN:-}"
-DATABASE_URL_INPUT="${DATABASE_URL:-}"
 APP_USER="${APP_USER:-ec2-user}"
 APP_DIR="/var/www/ratinam"
 ENV_FILE="/etc/ratinam.env"
 UPLOADS_DIR="/opt/rathinam/uploads"
+
+# CRITICAL: source the existing env file BEFORE we capture any "input"
+# values. Otherwise on a re-run we'd regenerate the local PG password
+# and lose the connection to the existing 'ratinam' database role.
+if [[ -f "$ENV_FILE" ]]; then
+  # shellcheck disable=SC1090
+  set -a; source "$ENV_FILE"; set +a
+fi
+DATABASE_URL_INPUT="${DATABASE_URL:-}"
 
 log "Domain: $APP_DOMAIN | Email: $ACME_EMAIL | App user: $APP_USER"
 
@@ -117,10 +125,6 @@ fi
 # --------------------------------------------------------------------
 gen_secret() { openssl rand -hex 48; }
 
-if [[ -f "$ENV_FILE" ]]; then
-  # shellcheck disable=SC1090
-  source "$ENV_FILE"
-fi
 SESSION_SECRET="${SESSION_SECRET:-$(gen_secret)}"
 JWT_SECRET="${JWT_SECRET:-$(gen_secret)}"
 ADMIN_BOOTSTRAP_PASSWORD="${ADMIN_BOOTSTRAP_PASSWORD:-$(openssl rand -hex 12)}"
@@ -212,7 +216,7 @@ fi
 # 7. nginx config + Let's Encrypt
 # --------------------------------------------------------------------
 log "Installing nginx config…"
-mkdir -p /etc/nginx/snippets /etc/nginx/conf.d
+mkdir -p /etc/nginx/snippets /etc/nginx/conf.d /var/www/letsencrypt
 cat > /etc/nginx/snippets/ratinam-common.conf <<'NGEOF'
 server_tokens off;
 add_header X-Frame-Options "SAMEORIGIN" always;
@@ -230,21 +234,44 @@ if ! grep -q "limit_req_zone .*zone=api" /etc/nginx/nginx.conf; then
   sed -i '/^http {/a \    limit_req_zone $binary_remote_addr zone=api:10m  rate=200r/m;\n    limit_req_zone $binary_remote_addr zone=auth:10m rate=10r/m;' /etc/nginx/nginx.conf
 fi
 
-cp "$APP_DIR/deploy/nginx/ratinam-subdomains.conf" /etc/nginx/conf.d/ratinam.conf
-nginx -t
-systemctl reload nginx
+# Bootstrap problem: the production conf in deploy/nginx/ references
+# /etc/letsencrypt/live/.../fullchain.pem, but on a fresh box those
+# files don't exist yet — `nginx -t` would fail and certbot would never
+# get the chance to run. Fix: install an HTTP-only bootstrap conf first
+# (just enough to satisfy the http-01 challenge), let certbot fetch the
+# certs, THEN swap in the real config.
+if [[ ! -f "/etc/letsencrypt/live/${APP_DOMAIN}/fullchain.pem" && "$SKIP_CERT" == "0" ]]; then
+  log "No certs yet — installing HTTP-only bootstrap config for the ACME challenge."
+  cat > /etc/nginx/conf.d/ratinam.conf <<EOF2
+server {
+  listen 80 default_server;
+  listen [::]:80 default_server;
+  server_name ${APP_DOMAIN} www.${APP_DOMAIN} api.${APP_DOMAIN} erp.${APP_DOMAIN} pos.${APP_DOMAIN} wh.${APP_DOMAIN};
+  location /.well-known/acme-challenge/ { root /var/www/letsencrypt; }
+  location / { return 200 'Provisioning Rathinam Crackers — please come back in a few minutes.\n'; add_header Content-Type text/plain; }
+}
+EOF2
+  nginx -t
+  systemctl reload nginx
 
-if [[ "$SKIP_CERT" == "0" ]]; then
-  log "Requesting Let's Encrypt certificates for all 5 subdomains…"
-  certbot --nginx --non-interactive --agree-tos -m "$ACME_EMAIL" --redirect \
+  log "Requesting Let's Encrypt certificates for all 5 subdomains (webroot mode)…"
+  certbot certonly --webroot -w /var/www/letsencrypt --non-interactive --agree-tos -m "$ACME_EMAIL" \
     -d "$APP_DOMAIN" -d "www.$APP_DOMAIN" \
     -d "api.$APP_DOMAIN" \
     -d "erp.$APP_DOMAIN" \
     -d "pos.$APP_DOMAIN" \
-    -d "wh.$APP_DOMAIN" || log "WARNING: certbot failed — re-run after DNS propagates."
+    -d "wh.$APP_DOMAIN" \
+    || die "certbot failed — check DNS for the 5 subdomains then re-run install.sh"
+fi
+
+# Now install the real subdomain config (it references the certs we
+# just obtained, or pre-existing ones from a previous run).
+if [[ "$SKIP_CERT" == "0" || -f "/etc/letsencrypt/live/${APP_DOMAIN}/fullchain.pem" ]]; then
+  cp "$APP_DIR/deploy/nginx/ratinam-subdomains.conf" /etc/nginx/conf.d/ratinam.conf
+  nginx -t
   systemctl reload nginx
 else
-  log "--skip-cert specified, leaving certs untouched."
+  log "--skip-cert with no existing certs: leaving HTTP-only bootstrap config in place. Re-run without --skip-cert to enable HTTPS."
 fi
 
 # --------------------------------------------------------------------
