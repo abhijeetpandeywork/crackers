@@ -74,10 +74,15 @@ router.use("/v1", bulkRouter);
 router.use("/v1", ordersAdminRouter);
 router.use("/v1", mediaRouter);
 
-// Serve uploaded media as static files. The same path prefix is used by
-// nginx in production (see deploy/nginx/ratinam-subdomains.conf) which
-// short-circuits Node entirely for cached files; in development the Node
-// process serves them directly so the dev workflow works without nginx.
+// Serve uploaded media as PUBLIC static files. This is intentional and
+// not an auth hole: the customer-facing website (rathinamcracker.com) is
+// anonymous, so product photos and banners must be reachable without a
+// bearer token. Filenames are unguessable nanoid(12) values so directory
+// enumeration is infeasible. In production, nginx serves the same folder
+// directly via /uploads/ alias and bypasses Node entirely for cached
+// files (see deploy/nginx/ratinam-subdomains.conf); the Node handler
+// below is a development-mode fallback so the dev workflow works without
+// nginx in front.
 router.use(
   "/uploads",
   express.static(UPLOAD_DIR, {

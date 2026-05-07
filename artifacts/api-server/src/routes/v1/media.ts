@@ -23,7 +23,20 @@ const UPLOAD_DIR =
     ? process.env.UPLOAD_DIR
     : path.resolve(process.cwd(), ".local/uploads");
 
-await fs.mkdir(UPLOAD_DIR, { recursive: true });
+/**
+ * Lazy directory bootstrap. We do NOT `await fs.mkdir` at module top-level
+ * because that would block the entire ESM import graph — if /opt/rathinam/
+ * uploads is missing or read-only the server would refuse to start, taking
+ * down all 30+ unrelated routes with it. Instead we ensure the directory
+ * exists on the first upload (cached after the first success) and surface
+ * any failure as a clean 500 to that one request.
+ */
+let uploadDirReady = false;
+async function ensureUploadDir(): Promise<void> {
+  if (uploadDirReady) return;
+  await fs.mkdir(UPLOAD_DIR, { recursive: true });
+  uploadDirReady = true;
+}
 
 const nanoid = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 12);
 
@@ -98,6 +111,19 @@ router.post(
       return;
     }
 
+    try {
+      await ensureUploadDir();
+    } catch (err) {
+      req.log.error({ err, dir: UPLOAD_DIR }, "upload directory not writable");
+      res.status(500).json({ success: false, error: { code: "STORAGE_UNAVAILABLE", message: "Media storage is not configured. Ask an administrator to check UPLOAD_DIR permissions." } });
+      return;
+    }
+
+    // `folder` is a LOGICAL bucket only — it's stored in the DB so the
+    // library UI can filter (e.g. "products" vs "banners") but it never
+    // touches the filesystem. The on-disk layout is intentionally flat
+    // with nanoid(12) filenames so we never have to think about path
+    // traversal, case sensitivity, or directory-scan cost.
     const folder = (typeof req.body?.folder === "string" && req.body.folder) || "uploads";
     const altText = typeof req.body?.altText === "string" ? req.body.altText : null;
 
