@@ -58,11 +58,35 @@ done
 # --------------------------------------------------------------------
 # 0. Inputs
 # --------------------------------------------------------------------
-APP_DOMAIN="${APP_DOMAIN:-rathinamcracker.com}"
-ACME_EMAIL="${ACME_EMAIL:-admin@${APP_DOMAIN}}"
+APP_DOMAIN="${APP_DOMAIN:-}"
+ACME_EMAIL="${ACME_EMAIL:-}"
 GITHUB_REPO_URL="${GITHUB_REPO_URL:-https://github.com/abhijeetpandeywork/crackers.git}"
 GITHUB_TOKEN="${GITHUB_TOKEN:-}"
 APP_USER="${APP_USER:-ec2-user}"
+
+# Interactive prompts — only fired when stdin is a TTY and the value
+# wasn't supplied via env var. Lets a fresh-EC2 operator just run
+# `sudo bash install.sh` with no flags and answer 3 questions.
+prompt() {
+  local var="$1" question="$2" default="${3:-}" answer
+  if [[ -t 0 && -z "${!var}" ]]; then
+    if [[ -n "$default" ]]; then
+      read -rp "$question [$default]: " answer
+      printf -v "$var" '%s' "${answer:-$default}"
+    else
+      while [[ -z "${!var}" ]]; do
+        read -rp "$question: " answer
+        printf -v "$var" '%s' "$answer"
+      done
+    fi
+  fi
+}
+prompt APP_DOMAIN  "Domain (root, no scheme)" "rathinamcracker.com"
+prompt ACME_EMAIL  "Email for Let's Encrypt"  "admin@${APP_DOMAIN}"
+prompt GITHUB_TOKEN "GitHub PAT for private repo (blank if public/anon clone)" ""
+
+[[ -n "$APP_DOMAIN" ]] || die "APP_DOMAIN required."
+[[ -n "$ACME_EMAIL" ]] || die "ACME_EMAIL required."
 APP_DIR="/var/www/ratinam"
 ENV_FILE="/etc/ratinam.env"
 UPLOADS_DIR="/opt/rathinam/uploads"

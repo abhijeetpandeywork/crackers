@@ -55,7 +55,8 @@ A full-stack business management system for **Rathinam Crackers** (firecracker m
 ├── pnpm-workspace.yaml
 ├── replit.md             # Detailed feature inventory
 ├── PRODUCTION.md         # Production go-live checklist
-├── DEPLOYMENT_AWS.md     # AWS deployment runbook
+├── QUICKSTART_AWS.md     # 30-min fresh-EC2 deploy (start here)
+├── DEPLOYMENT_AWS.md     # Long-form AWS deployment runbook
 ├── ANTIGRAVITY_HANDOFF.md# Hand-off doc for further dev in Antigravity / any IDE
 └── README.md             # ← you are here
 ```
@@ -92,7 +93,7 @@ pnpm --filter @workspace/warehouse  run dev   # :5175  → /warehouse
 pnpm --filter @workspace/website    run dev   # :5176  → /website
 ```
 
-In production behind one host, terminate TLS at a single reverse proxy (nginx / ALB) and route by path prefix. See `DEPLOYMENT_AWS.md`.
+In production each app gets its own subdomain (`rathinamcracker.com`, `api.`, `erp.`, `pos.`, `wh.`) terminated by a single nginx box. The fastest path is `QUICKSTART_AWS.md` (30-minute fresh-EC2 walkthrough); `DEPLOYMENT_AWS.md` is the long-form reference.
 
 ---
 
@@ -124,7 +125,8 @@ pnpm --filter @workspace/scripts run verify   # CLI smoke test
 | `README.md`               | This file — overview + quick start                |
 | `replit.md`               | Detailed feature inventory + architecture          |
 | `PRODUCTION.md`           | Pre-launch checklist for ops / business owners     |
-| `DEPLOYMENT_AWS.md`       | Step-by-step AWS deploy (EC2 + RDS path)           |
+| `QUICKSTART_AWS.md`       | **Start here for AWS** — 30-min fresh-EC2 deploy   |
+| `DEPLOYMENT_AWS.md`       | Long-form AWS deploy reference (EC2 + RDS / ECS)   |
 | `ANTIGRAVITY_HANDOFF.md`  | Hand-off for the next developer (any IDE)          |
 | `/help` (in the ERP)      | 16 in-app guides                                   |
 | `/help/architecture`      | API contract, data model, code layout              |
