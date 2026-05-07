@@ -1,16 +1,14 @@
 import { Router } from "express";
 import { db, brandsTable } from "@workspace/db";
 import { eq, asc } from "drizzle-orm";
-import { authenticate, type AuthRequest } from "../../middleware/authenticate.js";
+import { authenticate, requireRole, type AuthRequest } from "../../middleware/authenticate.js";
+import { CATALOG_ADMIN } from "../../lib/auth-roles.js";
 import { auditWrite } from "../../lib/audit.js";
 
 const router = Router();
 
 const slugify = (s: string) =>
   s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-
-const isPrivileged = (role?: string) =>
-  role === "SUPER_ADMIN" || role === "ADMIN" || role === "MANAGER";
 
 router.get("/brands", authenticate, async (_req, res) => {
   const rows = await db
@@ -29,11 +27,7 @@ router.get("/brands/public", async (_req, res) => {
   res.json({ success: true, data: rows });
 });
 
-router.post("/brands", authenticate, async (req: AuthRequest, res) => {
-  if (!isPrivileged(req.user?.role)) {
-    res.status(403).json({ success: false, error: { code: "FORBIDDEN", message: "Admin or manager role required" } });
-    return;
-  }
+router.post("/brands", authenticate, requireRole(...CATALOG_ADMIN), async (req: AuthRequest, res) => {
   const { name, logoUrl, description, sortOrder, isActive } = req.body ?? {};
   if (!name || typeof name !== "string" || !name.trim()) {
     res.status(400).json({ success: false, error: { code: "VALIDATION", message: "Brand name is required" } });
@@ -63,11 +57,7 @@ router.post("/brands", authenticate, async (req: AuthRequest, res) => {
   }
 });
 
-router.patch("/brands/:id", authenticate, async (req: AuthRequest, res) => {
-  if (!isPrivileged(req.user?.role)) {
-    res.status(403).json({ success: false, error: { code: "FORBIDDEN", message: "Admin or manager role required" } });
-    return;
-  }
+router.patch("/brands/:id", authenticate, requireRole(...CATALOG_ADMIN), async (req: AuthRequest, res) => {
   const id = req.params["id"] as string;
   const { name, logoUrl, description, sortOrder, isActive } = req.body ?? {};
   const patch: Record<string, unknown> = { updatedAt: new Date() };
@@ -98,11 +88,7 @@ router.patch("/brands/:id", authenticate, async (req: AuthRequest, res) => {
   }
 });
 
-router.delete("/brands/:id", authenticate, async (req: AuthRequest, res) => {
-  if (req.user?.role !== "SUPER_ADMIN" && req.user?.role !== "ADMIN") {
-    res.status(403).json({ success: false, error: { code: "FORBIDDEN", message: "Admin role required" } });
-    return;
-  }
+router.delete("/brands/:id", authenticate, requireRole("SUPER_ADMIN", "ADMIN"), async (req: AuthRequest, res) => {
   const id = req.params["id"] as string;
   const [brand] = await db.delete(brandsTable).where(eq(brandsTable.id, id)).returning();
   if (!brand) {

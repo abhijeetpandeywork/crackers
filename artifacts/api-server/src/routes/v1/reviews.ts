@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { db, productReviewsTable } from "@workspace/db";
 import { and, desc, eq } from "drizzle-orm";
-import { authenticate } from "../../middleware/authenticate.js";
+import { authenticate, requireRole } from "../../middleware/authenticate.js";
+import { CATALOG_ADMIN } from "../../lib/auth-roles.js";
 import { randomUUID } from "node:crypto";
 
 const router = Router();
@@ -64,7 +65,7 @@ router.get("/reviews", authenticate, async (req, res) => {
   res.json({ success: true, data: rows });
 });
 
-router.put("/reviews/:id", authenticate, async (req, res) => {
+router.put("/reviews/:id", authenticate, requireRole(...CATALOG_ADMIN), async (req, res) => {
   const id = req.params["id"] as string;
   const patch: Record<string, unknown> = { updatedAt: new Date() };
   for (const key of ["status", "verified", "title", "body", "rating"] as const) {
@@ -78,7 +79,7 @@ router.put("/reviews/:id", authenticate, async (req, res) => {
   res.json(updated);
 });
 
-router.delete("/reviews/:id", authenticate, async (req, res) => {
+router.delete("/reviews/:id", authenticate, requireRole(...CATALOG_ADMIN), async (req, res) => {
   const id = req.params["id"] as string;
   await db.delete(productReviewsTable).where(eq(productReviewsTable.id, id));
   res.json({ success: true });

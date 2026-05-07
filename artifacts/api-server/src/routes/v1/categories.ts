@@ -1,16 +1,14 @@
 import { Router } from "express";
 import { db, categoriesTable } from "@workspace/db";
 import { eq, asc } from "drizzle-orm";
-import { authenticate, type AuthRequest } from "../../middleware/authenticate.js";
+import { authenticate, requireRole, type AuthRequest } from "../../middleware/authenticate.js";
+import { CATALOG_ADMIN } from "../../lib/auth-roles.js";
 import { auditWrite } from "../../lib/audit.js";
 
 const router = Router();
 
 const slugify = (s: string) =>
   s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-
-const isPrivileged = (role?: string) =>
-  role === "SUPER_ADMIN" || role === "ADMIN" || role === "MANAGER";
 
 router.get("/categories", authenticate, async (_req, res) => {
   const rows = await db
@@ -29,11 +27,7 @@ router.get("/categories/public", async (_req, res) => {
   res.json({ success: true, data: rows });
 });
 
-router.post("/categories", authenticate, async (req: AuthRequest, res) => {
-  if (!isPrivileged(req.user?.role)) {
-    res.status(403).json({ success: false, error: { code: "FORBIDDEN", message: "Admin or manager role required" } });
-    return;
-  }
+router.post("/categories", authenticate, requireRole(...CATALOG_ADMIN), async (req: AuthRequest, res) => {
   const { name, description, emoji, imageUrl, color, sortOrder, isActive } = req.body ?? {};
   if (!name || typeof name !== "string" || !name.trim()) {
     res.status(400).json({ success: false, error: { code: "VALIDATION", message: "Category name is required" } });
@@ -64,11 +58,7 @@ router.post("/categories", authenticate, async (req: AuthRequest, res) => {
   }
 });
 
-router.patch("/categories/:id", authenticate, async (req: AuthRequest, res) => {
-  if (!isPrivileged(req.user?.role)) {
-    res.status(403).json({ success: false, error: { code: "FORBIDDEN", message: "Admin or manager role required" } });
-    return;
-  }
+router.patch("/categories/:id", authenticate, requireRole(...CATALOG_ADMIN), async (req: AuthRequest, res) => {
   const id = req.params["id"] as string;
   const { name, description, emoji, imageUrl, color, sortOrder, isActive } = req.body ?? {};
   const patch: Record<string, unknown> = { updatedAt: new Date() };

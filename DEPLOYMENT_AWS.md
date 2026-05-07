@@ -891,3 +891,47 @@ add_header Permissions-Policy        "geolocation=(), camera=(), microphone=()" 
 ---
 
 You now have everything you need: provisioning, build, run, HTTPS, monitoring, backups, rollback, security, cost. Walk through `PRODUCTION.md` § 2 (rotate passwords, real company info, master data, opening stock, CMS pages) and § 3 (smoke test) on the live URL. Once green, point your customers at it.
+
+---
+
+## Single-command install (Amazon Linux 2023)
+
+For zero-touch provisioning of a fresh EC2 box, use `deploy/install.sh`. It
+installs every system dependency, generates `SESSION_SECRET` and
+`JWT_SECRET`, writes `/etc/ratinam.env` (chmod 0600), clones this repo,
+builds all 5 artifacts, pushes the Drizzle schema, configures nginx for the
+five subdomains, and requests Let's Encrypt certificates — all in one go.
+
+```bash
+sudo APP_DOMAIN=rathinamcracker.com \
+     ACME_EMAIL=admin@rathinamcracker.com \
+     GITHUB_REPO_URL=https://github.com/abhijeetpandeywork/crackers.git \
+     GITHUB_TOKEN=ghp_xxx \
+     bash deploy/install.sh
+```
+
+The script is idempotent — re-run it on every release.
+
+## Subdomain layout
+
+| Subdomain                     | Serves                          | Source                |
+| ----------------------------- | ------------------------------- | --------------------- |
+| `rathinamcracker.com` / `www.`| Public storefront               | `artifacts/website`   |
+| `api.rathinamcracker.com`     | Express REST API + `/uploads/`  | PM2 `ratinam-api`     |
+| `erp.rathinamcracker.com`     | ERP admin panel                 | `artifacts/erp`       |
+| `pos.rathinamcracker.com`     | POS terminal                    | `artifacts/pos`       |
+| `wh.rathinamcracker.com`      | Warehouse dashboard             | `artifacts/warehouse` |
+
+DNS: create A / AAAA records for each subdomain pointing to the EC2
+instance's public IP / IPv6. Wait for propagation before running install.sh
+(or pass `--skip-cert` and run `certbot` manually later).
+
+## RBAC at a glance (production)
+
+Roles: `SUPER_ADMIN`, `ADMIN`, `ERP_MANAGER`, `MANAGER`, `ACCOUNTANT`,
+`AGENT`, `WH_MANAGER`, `CASHIER`, `API_TOKEN`. Backend write routes are
+gated with `requireRole(...GROUP)` and the ERP sidebar / `ProtectedRoute`
+filter exactly the same role lists, so a cashier signing in to the ERP
+sees only the screens they can actually act on. The new `/system/demo`
+page (SUPER_ADMIN only) lets you reset / seed transactional data
+between demos without touching your master catalog.

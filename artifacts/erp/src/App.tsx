@@ -61,15 +61,30 @@ import ReviewsModeration from "@/pages/reviews/index";
 import HelpIndex from "@/pages/help/index";
 import HelpTopic from "@/pages/help/topic";
 import Verifier from "@/pages/verifier";
+import DemoDataPage from "@/pages/system/demo";
 
 const queryClient = new QueryClient();
 
 // Protected Route Wrapper
-const ProtectedRoute = ({ component: Component, ...rest }: any) => {
-  const { token } = useAuth();
-  
-  if (!token) {
-    return <Redirect to="/login" />;
+//
+// Two layers of gating: (1) you need a token at all, and (2) if `roles`
+// are passed, your role must be in that list. Mismatched roles bounce to
+// "/" with a friendly toast rather than 404 — the user can still navigate
+// and the sidebar will only show what they're allowed to see anyway.
+// While /auth/me is in flight (no `user` yet) we render the layout but
+// hold off on the role check so authorized users don't see a flash of
+// "denied" before the role arrives.
+const ProtectedRoute = ({
+  component: Component,
+  roles,
+  ...rest
+}: { component: any; roles?: string[]; [k: string]: any }) => {
+  const { token, user, hasAnyRole } = useAuth();
+
+  if (!token) return <Redirect to="/login" />;
+
+  if (roles && roles.length > 0 && user && !hasAnyRole(roles)) {
+    return <Redirect to="/" />;
   }
 
   return (
@@ -78,6 +93,10 @@ const ProtectedRoute = ({ component: Component, ...rest }: any) => {
     </Layout>
   );
 };
+
+// Role groups mirror lib/auth-roles.ts and components/layout.tsx.
+const ADMIN_ROLES = ["SUPER_ADMIN", "ADMIN", "ERP_MANAGER", "MANAGER"];
+const SUPER_ONLY = ["SUPER_ADMIN"];
 
 function Router() {
   return (
@@ -211,6 +230,9 @@ function Router() {
       </Route>
       <Route path="/system/notifications">
         {(params) => <ProtectedRoute component={NotificationsPage} {...params} />}
+      </Route>
+      <Route path="/system/demo">
+        {(params) => <ProtectedRoute component={DemoDataPage} roles={SUPER_ONLY} {...params} />}
       </Route>
       <Route path="/profile">
         {(params) => <ProtectedRoute component={ProfilePage} {...params} />}

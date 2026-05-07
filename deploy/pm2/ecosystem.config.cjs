@@ -5,8 +5,12 @@
 //   pm2 save
 //   pm2 startup            # then run the command pm2 prints, once
 //
-// Cluster mode = 2 instances. On a t3.small (2 vCPU) this gives one Node
-// worker per core. Bump `instances` to "max" on a larger box.
+// Single-instance fork mode. Keeps memory + DB connection counts low for
+// the typical small EC2 box (t3.small / t3.medium), and avoids the
+// per-process duplication of the in-memory caches (permsCache, audit-log
+// retention timer, payment-reminder scheduler). If you scale to a larger
+// instance you can bump `instances` to 2 / "max" and switch to cluster
+// mode — but make sure the schedulers are guarded against multi-fire.
 
 module.exports = {
   apps: [
@@ -15,8 +19,8 @@ module.exports = {
       script: "artifacts/api-server/dist/index.mjs",
       cwd: "/var/www/ratinam",
       node_args: "--enable-source-maps",
-      instances: 2,
-      exec_mode: "cluster",
+      instances: 1,
+      exec_mode: "fork",
       watch: false,
       max_memory_restart: "500M",
       kill_timeout: 10000,

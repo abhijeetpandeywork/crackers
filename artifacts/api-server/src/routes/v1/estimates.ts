@@ -2,7 +2,8 @@ import { Router } from "express";
 import { db, estimatesTable, productsTable, settingsTable } from "@workspace/db";
 import { eq, and, sql } from "drizzle-orm";
 import { z } from "zod/v4";
-import { authenticate } from "../../middleware/authenticate.js";
+import { authenticate, requireRole } from "../../middleware/authenticate.js";
+import { SALES_WRITE } from "../../lib/auth-roles.js";
 import { resolvePrice, type PricingChannel } from "../../lib/pricing.js";
 import { nextEstimateNo } from "../../lib/counter.js";
 import { auditWrite } from "../../lib/audit.js";
@@ -56,7 +57,7 @@ router.get("/estimates", authenticate, async (req, res) => {
   res.json({ success: true, data: rows, meta: { page: pg, limit: lim, total, pages: Math.ceil(total / lim) } });
 });
 
-router.post("/estimates", authenticate, async (req: AuthRequest, res) => {
+router.post("/estimates", authenticate, requireRole(...SALES_WRITE), async (req: AuthRequest, res) => {
   const parsed = createEstimateSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ success: false, error: { code: "VALIDATION_ERROR", message: z.prettifyError(parsed.error) } });
@@ -119,7 +120,7 @@ router.get("/estimates/:id", authenticate, async (req, res) => {
   res.json(rows[0]);
 });
 
-router.put("/estimates/:id/convert", authenticate, async (req: AuthRequest, res) => {
+router.put("/estimates/:id/convert", authenticate, requireRole(...SALES_WRITE), async (req: AuthRequest, res) => {
   const estimateRows = await db.select().from(estimatesTable).where(eq(estimatesTable.id, req.params["id"] as string)).limit(1);
   if (!estimateRows[0]) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Estimate not found" } }); return; }
   const est = estimateRows[0];

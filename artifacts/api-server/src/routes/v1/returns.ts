@@ -8,7 +8,8 @@ import {
   creditLedgerTable,
 } from "@workspace/db";
 import { eq, and, sql, gte, lte, desc } from "drizzle-orm";
-import { authenticate } from "../../middleware/authenticate.js";
+import { authenticate, requireRole } from "../../middleware/authenticate.js";
+import { SALES_WRITE, WAREHOUSE_ROLES } from "../../lib/auth-roles.js";
 import { appendLedger } from "../../lib/stockService.js";
 import { nextReturnNo, nextCreditNoteNo } from "../../lib/counter.js";
 import type { AuthRequest } from "../../middleware/authenticate.js";
@@ -47,7 +48,7 @@ router.get("/returns/:id", authenticate, async (req, res) => {
 // All four side effects (return record, stock ledger, customer balance, credit
 // ledger) are wrapped in a transaction so a partial failure can never leave
 // inventory in an inconsistent state.
-router.post("/returns", authenticate, async (req: AuthRequest, res) => {
+router.post("/returns", authenticate, requireRole(...SALES_WRITE), async (req: AuthRequest, res) => {
   const {
     type = "customer",
     referenceId,
@@ -329,7 +330,7 @@ router.get("/reports/returns", authenticate, async (req, res) => {
   });
 });
 
-router.post("/damage", authenticate, async (req: AuthRequest, res) => {
+router.post("/damage", authenticate, requireRole(...WAREHOUSE_ROLES), async (req: AuthRequest, res) => {
   const { locationId, productId, variantId, batchNo, qty, category, description } = req.body;
   await Promise.all([
     db.insert(damageLedgerTable).values({

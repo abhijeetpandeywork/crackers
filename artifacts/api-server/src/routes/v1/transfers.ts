@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { db, transfersTable, locationsTable } from "@workspace/db";
 import { eq, and, sql, or } from "drizzle-orm";
-import { authenticate } from "../../middleware/authenticate.js";
+import { authenticate, requireRole } from "../../middleware/authenticate.js";
+import { WAREHOUSE_ROLES } from "../../lib/auth-roles.js";
 import { nextTransferNo } from "../../lib/counter.js";
 import { appendLedger } from "../../lib/stockService.js";
 import type { AuthRequest } from "../../middleware/authenticate.js";
@@ -37,7 +38,7 @@ router.get("/transfers/pending", authenticate, async (_req, res) => {
   res.json({ success: true, data: rows, meta: { page: 1, limit: 50, total: rows.length, pages: 1 } });
 });
 
-router.post("/transfers", authenticate, async (req: AuthRequest, res) => {
+router.post("/transfers", authenticate, requireRole(...WAREHOUSE_ROLES), async (req: AuthRequest, res) => {
   const { fromLocationId, toLocationId, items, notes } = req.body;
   const [fromLoc, toLoc] = await Promise.all([
     db.select().from(locationsTable).where(eq(locationsTable.id, fromLocationId)).limit(1),
@@ -65,7 +66,7 @@ router.get("/transfers/:id", authenticate, async (req, res) => {
   res.json({ success: true, data: rows[0] });
 });
 
-router.put("/transfers/:id/dispatch", authenticate, async (req: AuthRequest, res) => {
+router.put("/transfers/:id/dispatch", authenticate, requireRole(...WAREHOUSE_ROLES), async (req: AuthRequest, res) => {
   const tRows = await db.select().from(transfersTable).where(eq(transfersTable.id, req.params["id"] as string)).limit(1);
   if (!tRows[0]) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Transfer not found" } }); return; }
   const t = tRows[0];
@@ -106,7 +107,7 @@ router.put("/transfers/:id/dispatch", authenticate, async (req: AuthRequest, res
   res.json({ success: true, message: "Transfer dispatched" });
 });
 
-router.put("/transfers/:id/receive", authenticate, async (req: AuthRequest, res) => {
+router.put("/transfers/:id/receive", authenticate, requireRole(...WAREHOUSE_ROLES), async (req: AuthRequest, res) => {
   const tRows = await db.select().from(transfersTable).where(eq(transfersTable.id, req.params["id"] as string)).limit(1);
   if (!tRows[0]) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Transfer not found" } }); return; }
   const t = tRows[0];

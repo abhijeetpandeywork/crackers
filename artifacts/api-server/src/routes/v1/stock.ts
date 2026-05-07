@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { db, stockLedgerTable, stockLevelsTable, productsTable, locationsTable } from "@workspace/db";
 import { eq, and, sql, gte, lte, lt } from "drizzle-orm";
-import { authenticate } from "../../middleware/authenticate.js";
+import { authenticate, requireRole } from "../../middleware/authenticate.js";
+import { WAREHOUSE_ROLES } from "../../lib/auth-roles.js";
 import { appendLedger } from "../../lib/stockService.js";
 import type { AuthRequest } from "../../middleware/authenticate.js";
 
@@ -82,7 +83,7 @@ router.get("/stock/ledger", authenticate, async (req, res) => {
   res.json({ success: true, data: rows, meta: { page: pg, limit: lim, total, pages: Math.ceil(total / lim) } });
 });
 
-router.post("/stock/receive", authenticate, async (req: AuthRequest, res) => {
+router.post("/stock/receive", authenticate, requireRole(...WAREHOUSE_ROLES), async (req: AuthRequest, res) => {
   const { warehouseId, purchaseOrderId, items } = req.body as {
     warehouseId: string;
     purchaseOrderId: string;
@@ -127,7 +128,7 @@ router.post("/stock/receive", authenticate, async (req: AuthRequest, res) => {
   res.json({ success: true, data: { received, damaged } });
 });
 
-router.post("/stock/adjust", authenticate, async (req: AuthRequest, res) => {
+router.post("/stock/adjust", authenticate, requireRole(...WAREHOUSE_ROLES), async (req: AuthRequest, res) => {
   const body = (req.body ?? {}) as {
     productId?: string; variantId?: string; locationId?: string; qty?: number; reason?: string;
   };

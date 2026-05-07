@@ -2,7 +2,8 @@ import { Router } from "express";
 import { db, purchaseOrdersTable, suppliersTable } from "@workspace/db";
 import { eq, and, sql } from "drizzle-orm";
 import { z } from "zod/v4";
-import { authenticate } from "../../middleware/authenticate.js";
+import { authenticate, requireRole } from "../../middleware/authenticate.js";
+import { WAREHOUSE_ROLES, FINANCE_ROLES } from "../../lib/auth-roles.js";
 import { nextPoNumber } from "../../lib/counter.js";
 import { appendLedger } from "../../lib/stockService.js";
 import { auditWrite } from "../../lib/audit.js";
@@ -44,7 +45,7 @@ router.get("/purchase-orders", authenticate, async (req, res) => {
   res.json({ success: true, data: rows, meta: { page: pg, limit: lim, total, pages: Math.ceil(total / lim) } });
 });
 
-router.post("/purchase-orders", authenticate, async (req: AuthRequest, res) => {
+router.post("/purchase-orders", authenticate, requireRole(...FINANCE_ROLES), async (req: AuthRequest, res) => {
   const parsed = createPurchaseOrderSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ success: false, error: { code: "VALIDATION_ERROR", message: z.prettifyError(parsed.error) } });
@@ -78,7 +79,7 @@ router.get("/purchase-orders/:id", authenticate, async (req, res) => {
   res.json(rows[0]);
 });
 
-router.put("/purchase-orders/:id/receive", authenticate, async (req: AuthRequest, res) => {
+router.put("/purchase-orders/:id/receive", authenticate, requireRole(...WAREHOUSE_ROLES), async (req: AuthRequest, res) => {
   const poRows = await db.select().from(purchaseOrdersTable).where(eq(purchaseOrdersTable.id, req.params["id"] as string)).limit(1);
   if (!poRows[0]) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "PO not found" } }); return; }
   const po = poRows[0];

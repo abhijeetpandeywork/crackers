@@ -15,7 +15,8 @@ import {
   type HeldBillItemsPayload,
 } from "@workspace/db";
 import { eq, and, sql, inArray, desc, isNull } from "drizzle-orm";
-import { authenticate } from "../../middleware/authenticate.js";
+import { authenticate, requireRole } from "../../middleware/authenticate.js";
+import { POS_ROLES } from "../../lib/auth-roles.js";
 import { nextInvoiceNo } from "../../lib/counter.js";
 import { resolvePrice } from "../../lib/pricing.js";
 import { appendLedger } from "../../lib/stockService.js";
@@ -140,7 +141,7 @@ router.get("/pos/products", authenticate, async (req, res) => {
 
 const OPENING_CASH_MAX = 1_000_000;
 
-router.post("/pos/shift-open", authenticate, async (req: AuthRequest, res) => {
+router.post("/pos/shift-open", authenticate, requireRole(...POS_ROLES), async (req: AuthRequest, res) => {
   const { locationId, openingCash, notes } = req.body as {
     locationId: string;
     openingCash: number;
@@ -290,7 +291,7 @@ router.get("/pos/shift-current", authenticate, async (req: AuthRequest, res) => 
   });
 });
 
-router.post("/pos/shift-close", authenticate, async (req: AuthRequest, res) => {
+router.post("/pos/shift-close", authenticate, requireRole(...POS_ROLES), async (req: AuthRequest, res) => {
   const { shiftId, closingCash, notes } = req.body as {
     shiftId?: string;
     closingCash: number;
@@ -454,7 +455,7 @@ async function releaseIdempotency(storedKey: string): Promise<void> {
   await db.delete(idempotencyKeysTable).where(eq(idempotencyKeysTable.key, storedKey));
 }
 
-router.post("/pos/sale", authenticate, async (req: AuthRequest, res) => {
+router.post("/pos/sale", authenticate, requireRole(...POS_ROLES), async (req: AuthRequest, res) => {
   const idempotencyHeader = req.header("X-Idempotency-Key") ?? req.header("x-idempotency-key");
   const idem = await claimIdempotency("pos.sale", req.user?.id, idempotencyHeader, req.body);
   if (idem.kind === "conflict") {

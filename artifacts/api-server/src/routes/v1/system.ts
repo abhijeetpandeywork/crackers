@@ -14,6 +14,7 @@ import {
   getLastBackupResult,
   getBackupDir,
 } from "../../lib/system-backup.js";
+import { resetDemoData, seedDemoData, demoStats } from "../../lib/demo-data.js";
 
 const router: IRouter = Router();
 
@@ -105,6 +106,55 @@ router.post(
   async (_req, res) => {
     const r = await runBackup();
     res.status(r.ok ? 200 : 500).json({ success: r.ok, data: r });
+  },
+);
+
+// ---------- Demo data (SUPER_ADMIN only) ----------
+//
+// These endpoints power the ERP /system/demo screen. They are gated to
+// SUPER_ADMIN so a stray cashier or accountant can never blow away
+// production data — the UI also double-confirms with a typed phrase.
+
+/** Cheap row counts for the confirmation card on the demo page. */
+router.get(
+  "/system/demo/stats",
+  authenticate,
+  requireRole("SUPER_ADMIN"),
+  async (_req, res) => {
+    const data = await demoStats();
+    res.json({ success: true, data });
+  },
+);
+
+/** Wipe all transactional tables (preserves masters: products/customers/etc). */
+router.post(
+  "/system/demo/reset",
+  authenticate,
+  requireRole("SUPER_ADMIN"),
+  async (req, res) => {
+    const confirm = String((req.body as { confirm?: string })?.confirm ?? "");
+    if (confirm !== "RESET") {
+      res.status(400).json({
+        success: false,
+        error: { code: "CONFIRM_REQUIRED", message: "Body must include { confirm: 'RESET' }" },
+      });
+      return;
+    }
+    const result = await resetDemoData();
+    req.log?.warn({ cleared: result.cleared, actor: (req as any).user?.id }, "demo data reset");
+    res.json({ success: true, data: result });
+  },
+);
+
+/** Seed a small batch of deterministic demo records on top of existing masters. */
+router.post(
+  "/system/demo/seed",
+  authenticate,
+  requireRole("SUPER_ADMIN"),
+  async (req, res) => {
+    const result = await seedDemoData();
+    req.log?.info({ created: result.created, actor: (req as any).user?.id }, "demo data seeded");
+    res.json({ success: true, data: result });
   },
 );
 

@@ -14,7 +14,8 @@ import {
 } from "@workspace/db";
 import { eq, ilike, and, sql, desc } from "drizzle-orm";
 import { z } from "zod/v4";
-import { authenticate, type AuthRequest } from "../../middleware/authenticate.js";
+import { authenticate, requireRole, type AuthRequest } from "../../middleware/authenticate.js";
+import { CUSTOMER_WRITE, FINANCE_ROLES } from "../../lib/auth-roles.js";
 import { auditWrite } from "../../lib/audit.js";
 
 const router = Router();
@@ -40,7 +41,7 @@ router.get("/customers", authenticate, async (req, res) => {
   res.json({ success: true, data: rows, meta: { page: pg, limit: lim, total, pages: Math.ceil(total / lim) } });
 });
 
-router.post("/customers", authenticate, async (req: AuthRequest, res) => {
+router.post("/customers", authenticate, requireRole(...CUSTOMER_WRITE), async (req: AuthRequest, res) => {
   const parsed = insertCustomerSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ success: false, error: { code: "VALIDATION_ERROR", message: z.prettifyError(parsed.error) } });
@@ -96,7 +97,7 @@ router.get("/customers/:id", authenticate, async (req, res) => {
   res.json(rows[0]);
 });
 
-router.put("/customers/:id", authenticate, async (req: AuthRequest, res) => {
+router.put("/customers/:id", authenticate, requireRole(...CUSTOMER_WRITE), async (req: AuthRequest, res) => {
   const id = req.params["id"] as string;
   const parsed = updateCustomerSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -134,7 +135,7 @@ router.get("/customers/:id/loyalty", authenticate, async (req, res) => {
   res.json({ success: true, data: { entries, totalPoints } });
 });
 
-router.post("/customers/:id/payment", authenticate, async (req, res) => {
+router.post("/customers/:id/payment", authenticate, requireRole(...FINANCE_ROLES), async (req, res) => {
   const { amount, date, reference, notes } = req.body as { amount: number; date: string; reference?: string; notes?: string };
   const cid = req.params["id"] as string;
   const customerRows = await db.select().from(customersTable).where(eq(customersTable.id, cid)).limit(1);

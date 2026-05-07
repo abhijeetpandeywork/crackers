@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { db, packingJobsTable } from "@workspace/db";
 import { eq, and, sql } from "drizzle-orm";
-import { authenticate } from "../../middleware/authenticate.js";
+import { authenticate, requireRole } from "../../middleware/authenticate.js";
+import { WAREHOUSE_ROLES } from "../../lib/auth-roles.js";
 import { nextPackingJobNo } from "../../lib/counter.js";
 import { appendLedger } from "../../lib/stockService.js";
 import type { AuthRequest } from "../../middleware/authenticate.js";
@@ -24,7 +25,7 @@ router.get("/packing-jobs", authenticate, async (req, res) => {
   res.json({ success: true, data: rows, meta: { page: pg, limit: lim, total, pages: Math.ceil(total / lim) } });
 });
 
-router.post("/packing-jobs", authenticate, async (req: AuthRequest, res) => {
+router.post("/packing-jobs", authenticate, requireRole(...WAREHOUSE_ROLES), async (req: AuthRequest, res) => {
   const { locationId, rawMaterials, finishedGoods, notes } = req.body;
   const jobNumber = await nextPackingJobNo();
   const [job] = await db.insert(packingJobsTable).values({
@@ -40,7 +41,7 @@ router.post("/packing-jobs", authenticate, async (req: AuthRequest, res) => {
   res.status(201).json({ success: true, data: job });
 });
 
-router.put("/packing-jobs/:id/complete", authenticate, async (req: AuthRequest, res) => {
+router.put("/packing-jobs/:id/complete", authenticate, requireRole(...WAREHOUSE_ROLES), async (req: AuthRequest, res) => {
   const rows = await db.select().from(packingJobsTable).where(eq(packingJobsTable.id, req.params["id"] as string)).limit(1);
   if (!rows[0]) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Job not found" } }); return; }
   const job = rows[0];

@@ -2,7 +2,8 @@ import { Router } from "express";
 import { db, productsTable, insertProductSchema } from "@workspace/db";
 import { eq, ilike, and, sql, arrayContains } from "drizzle-orm";
 import { z } from "zod/v4";
-import { authenticate, type AuthRequest } from "../../middleware/authenticate.js";
+import { authenticate, requireRole, type AuthRequest } from "../../middleware/authenticate.js";
+import { CATALOG_ADMIN } from "../../lib/auth-roles.js";
 import { resolvePrice, type PricingChannel } from "../../lib/pricing.js";
 import { auditWrite } from "../../lib/audit.js";
 
@@ -57,7 +58,7 @@ router.get("/products/:id", authenticate, async (req, res) => {
   res.json(rows[0]);
 });
 
-router.post("/products", authenticate, async (req: AuthRequest, res) => {
+router.post("/products", authenticate, requireRole(...CATALOG_ADMIN), async (req: AuthRequest, res) => {
   const parsed = insertProductSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ success: false, error: { code: "VALIDATION_ERROR", message: z.prettifyError(parsed.error) } });
@@ -69,7 +70,7 @@ router.post("/products", authenticate, async (req: AuthRequest, res) => {
   res.status(201).json(product);
 });
 
-router.put("/products/:id", authenticate, async (req: AuthRequest, res) => {
+router.put("/products/:id", authenticate, requireRole(...CATALOG_ADMIN), async (req: AuthRequest, res) => {
   const id = req.params["id"] as string;
   const parsed = updateProductSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -83,7 +84,7 @@ router.put("/products/:id", authenticate, async (req: AuthRequest, res) => {
   res.json(product);
 });
 
-router.delete("/products/:id", authenticate, async (req: AuthRequest, res) => {
+router.delete("/products/:id", authenticate, requireRole(...CATALOG_ADMIN), async (req: AuthRequest, res) => {
   const id = req.params["id"] as string;
   const before = (await db.select().from(productsTable).where(eq(productsTable.id, id)).limit(1))[0] ?? null;
   await db.update(productsTable).set({ status: "Discontinued", updatedAt: new Date() }).where(eq(productsTable.id, id));

@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { db, invoicesTable, productsTable, customersTable, creditLedgerTable, loyaltyLedgerTable, settingsTable } from "@workspace/db";
 import { eq, and, sql, gte, lte, ilike, desc } from "drizzle-orm";
-import { authenticate } from "../../middleware/authenticate.js";
+import { authenticate, requireRole } from "../../middleware/authenticate.js";
+import { SALES_WRITE } from "../../lib/auth-roles.js";
 import { nextInvoiceNo } from "../../lib/counter.js";
 import { resolvePrice, type PricingChannel } from "../../lib/pricing.js";
 import { appendLedger } from "../../lib/stockService.js";
@@ -49,7 +50,7 @@ function sanitizeAddress(a: unknown): InlineAddress | null {
   };
 }
 
-router.post("/invoices", authenticate, async (req: AuthRequest, res) => {
+router.post("/invoices", authenticate, requireRole(...SALES_WRITE), async (req: AuthRequest, res) => {
   const { customerId, agentId, locationId, priceListId, couponCode, loyaltyPointsRedeem, paymentMode, channel, items, shippingAddress, billingAddress, logisticsDetails: extraLogistics } = req.body as {
     customerId?: string;
     agentId?: string;
@@ -265,7 +266,7 @@ router.get("/invoices/:id", authenticate, async (req, res) => {
 // stored details. Each channel runs independently and the response reports
 // per-channel success/failure so the UI can surface real errors instead of
 // an opaque "queued" message.
-router.post("/invoices/:id/share", authenticate, async (req: AuthRequest, res) => {
+router.post("/invoices/:id/share", authenticate, requireRole(...SALES_WRITE), async (req: AuthRequest, res) => {
   const id = req.params["id"] as string;
   const { channels, email, phone, message } = req.body as {
     channels?: Array<"email" | "whatsapp">;

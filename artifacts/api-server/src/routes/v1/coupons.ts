@@ -2,7 +2,8 @@ import { Router } from "express";
 import { db, couponsTable, insertCouponSchema } from "@workspace/db";
 import { eq, and, sql } from "drizzle-orm";
 import { z } from "zod/v4";
-import { authenticate, type AuthRequest } from "../../middleware/authenticate.js";
+import { authenticate, requireRole, type AuthRequest } from "../../middleware/authenticate.js";
+import { CATALOG_ADMIN } from "../../lib/auth-roles.js";
 import { auditWrite } from "../../lib/audit.js";
 
 const router = Router();
@@ -80,7 +81,7 @@ router.post("/coupons/validate", async (req, res) => {
   });
 });
 
-router.post("/coupons", authenticate, async (req: AuthRequest, res) => {
+router.post("/coupons", authenticate, requireRole(...CATALOG_ADMIN), async (req: AuthRequest, res) => {
   const parsed = insertCouponSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ success: false, error: { code: "VALIDATION_ERROR", message: z.prettifyError(parsed.error) } });
@@ -97,7 +98,7 @@ router.get("/coupons/:id", authenticate, async (req, res) => {
   res.json(rows[0]);
 });
 
-router.put("/coupons/:id", authenticate, async (req: AuthRequest, res) => {
+router.put("/coupons/:id", authenticate, requireRole(...CATALOG_ADMIN), async (req: AuthRequest, res) => {
   const id = req.params["id"] as string;
   const parsed = updateCouponSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -115,7 +116,7 @@ router.put("/coupons/:id", authenticate, async (req: AuthRequest, res) => {
 
 // Soft-delete: coupons are referenced by coupon_usages history, so we can't
 // hard-delete without breaking the audit trail. Mark as expired instead.
-router.delete("/coupons/:id", authenticate, async (req: AuthRequest, res) => {
+router.delete("/coupons/:id", authenticate, requireRole(...CATALOG_ADMIN), async (req: AuthRequest, res) => {
   const id = req.params["id"] as string;
   const before = (await db.select().from(couponsTable).where(eq(couponsTable.id, id)).limit(1))[0] ?? null;
   if (!before) { res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Coupon not found" } }); return; }
