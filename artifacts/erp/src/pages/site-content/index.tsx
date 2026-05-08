@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { apiFetch } from "../../lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -211,8 +212,7 @@ export default function SiteContent() {
   useEffect(() => {
     const token = typeof window !== "undefined" ? localStorage.getItem("erp_token") : null;
     if (!token) return;
-    const base = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
-    fetch(`${base}/api/v1/audit-log?entityType=site-content&limit=1`, {
+    apiFetch(`/api/v1/audit-log?entityType=site-content&limit=1`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => (r.ok ? r.json() : null))

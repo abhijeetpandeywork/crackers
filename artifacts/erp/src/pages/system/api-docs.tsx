@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Trash2, Ban, Copy, Check, Loader2, AlertCircle, KeyRound } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { apiFetch as baseApiFetch } from "../../lib/api";
 
 type ApiToken = {
   id: string;
@@ -29,7 +30,7 @@ type ApiToken = {
 
 const apiFetch = async (url: string, init?: RequestInit) => {
   const token = localStorage.getItem("erp_token") || "";
-  const r = await fetch(url, {
+  const r = await baseApiFetch(url, {
     ...init,
     headers: {
       "Content-Type": "application/json",
