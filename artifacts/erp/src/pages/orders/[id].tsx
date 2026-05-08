@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import { apiFetch } from "../../lib/api";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
@@ -50,7 +51,7 @@ export default function OnlineOrderDetail() {
   async function load() {
     setLoading(true);
     try {
-      const res = await fetch(`/api/v1/invoices/${id}`, {
+      const res = await apiFetch(`/api/v1/invoices/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const json = await res.json();
@@ -67,7 +68,7 @@ export default function OnlineOrderDetail() {
   async function transition(to: string) {
     setBusy(true);
     try {
-      const res = await fetch(`/api/v1/admin/orders/${id}/status`, {
+      const res = await apiFetch(`/api/v1/admin/orders/${id}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status: to }),
@@ -90,7 +91,7 @@ export default function OnlineOrderDetail() {
     }
     setBusy(true);
     try {
-      const res = await fetch(`/api/v1/admin/orders/${id}/dispatch`, {
+      const res = await apiFetch(`/api/v1/admin/orders/${id}/dispatch`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -120,7 +121,7 @@ export default function OnlineOrderDetail() {
     }
     setBusy(true);
     try {
-      const res = await fetch(`/api/v1/admin/orders/${id}/cancel`, {
+      const res = await apiFetch(`/api/v1/admin/orders/${id}/cancel`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ reason: cancelReason.trim() }),

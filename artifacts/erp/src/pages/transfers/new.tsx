@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { formatVariantLabel } from "@/lib/variant-label";
+import { apiFetch } from "../../lib/api";
 import { 
   useListProducts, 
   useCreateTransfer 
@@ -32,7 +33,7 @@ export default function NewTransfer() {
       setLoadingLocations(true);
       try {
         const token = localStorage.getItem("erp_token");
-        const res = await fetch("/api/v1/locations", {
+        const res = await apiFetch("/api/v1/locations", {
           headers: { Authorization: `Bearer ${token}` }
         });
         const data = await res.json();

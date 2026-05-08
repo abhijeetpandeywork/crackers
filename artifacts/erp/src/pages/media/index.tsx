@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Trash2, UploadCloud, Copy, Image as ImageIcon } from "lucide-react";
+import { apiFetch } from "../../lib/api";
 
 type MediaItem = {
   id: string;
@@ -33,7 +34,7 @@ export default function MediaLibraryPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const r = await fetch(`/api/v1/media?limit=200`, { headers: { Authorization: `Bearer ${token()}` } });
+      const r = await apiFetch(`/api/v1/media?limit=200`, { headers: { Authorization: `Bearer ${token()}` } });
       const j = await r.json();
       if (j.success) setItems(j.data ?? []);
     } finally {
@@ -48,7 +49,7 @@ export default function MediaLibraryPage() {
       const fd = new FormData();
       fd.append("file", file);
       fd.append("folder", "uploads");
-      const r = await fetch(`/api/v1/media`, {
+      const r = await apiFetch(`/api/v1/media`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token()}` },
         body: fd,
@@ -68,7 +69,7 @@ export default function MediaLibraryPage() {
 
   const remove = async (it: MediaItem) => {
     if (!confirm(`Delete ${it.originalName}? Anything currently using this image will break.`)) return;
-    const r = await fetch(`/api/v1/media/${it.id}`, {
+    const r = await apiFetch(`/api/v1/media/${it.id}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token()}` },
     });

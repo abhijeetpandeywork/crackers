@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Mail, MessageCircle, Save, Send, Loader2, History } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { apiFetch } from "../../lib/api";
 
 type SmtpSafe = {
   enabled: boolean;
@@ -39,7 +40,7 @@ type LogRow = {
 
 function tok() { return localStorage.getItem("erp_token") ?? ""; }
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`/api${path}`, {
+  const res = await apiFetch(`/api${path}`, {
     ...init,
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${tok()}`, ...(init?.headers ?? {}) },
   });
@@ -104,7 +105,7 @@ export default function NotificationsPage() {
   const loadLogs = async () => {
     setLogsLoading(true);
     try {
-      const res = await fetch(`/api/v1/notify/log?limit=20`, { headers: { Authorization: `Bearer ${tok()}` } });
+      const res = await apiFetch(`/api/v1/notify/log?limit=20`, { headers: { Authorization: `Bearer ${tok()}` } });
       const json = await res.json();
       setLogs(json.data ?? []);
     } catch {

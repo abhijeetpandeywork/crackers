@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { ImagePlus, UploadCloud, Loader2, Trash2 } from "lucide-react";
+import { apiFetch } from "../lib/api";
 
 export type MediaItem = {
   id: string;
@@ -57,7 +58,7 @@ export function MediaPicker({ value, onChange, folder = "uploads", compact, butt
   const reload = async () => {
     setLoading(true);
     try {
-      const r = await fetch(`/api/v1/media?limit=120`, {
+      const r = await apiFetch(`/api/v1/media?limit=120`, {
         headers: { Authorization: `Bearer ${token()}` },
       });
       const j = await r.json();
@@ -77,7 +78,7 @@ export function MediaPicker({ value, onChange, folder = "uploads", compact, butt
       const fd = new FormData();
       fd.append("file", file);
       fd.append("folder", folder);
-      const r = await fetch(`/api/v1/media`, {
+      const r = await apiFetch(`/api/v1/media`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token()}` },
         body: fd,
@@ -103,7 +104,7 @@ export function MediaPicker({ value, onChange, folder = "uploads", compact, butt
 
   const onDelete = async (it: MediaItem) => {
     if (!confirm(`Delete ${it.originalName}? This is irreversible.`)) return;
-    const r = await fetch(`/api/v1/media/${it.id}`, {
+    const r = await apiFetch(`/api/v1/media/${it.id}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token()}` },
     });

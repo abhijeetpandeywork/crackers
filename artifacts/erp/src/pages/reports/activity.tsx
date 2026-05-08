@@ -5,8 +5,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { apiFetch } from "../../lib/api";
 
-const API_BASE = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "") + "/api/v1";
+// API base now centralised in src/lib/api.ts
 
 type AuditRow = {
   id: string;
@@ -25,7 +26,7 @@ type AuditRow = {
 
 async function api<T>(path: string): Promise<T> {
   const token = localStorage.getItem("erp_token");
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await apiFetch(`/api/v1${path}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);

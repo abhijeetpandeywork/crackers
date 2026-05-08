@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { apiFetch } from "../lib/api";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
@@ -100,7 +101,7 @@ export function BulkIO({ resource, label, onImported }: Props) {
     setImporting(true);
     try {
       const csv = await file.text();
-      const r = await fetch(`/api/v1/bulk/${resource}/import`, {
+      const r = await apiFetch(`/api/v1/bulk/${resource}/import`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...auth() },
         body: JSON.stringify({ csv }),

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Eye } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { apiFetch } from "../../lib/api";
 
 type Order = {
   id: string;
@@ -58,7 +59,7 @@ export default function OnlineOrdersList() {
     async function load() {
       setLoading(true);
       try {
-        const res = await fetch(`/api/v1/admin/orders?status=${encodeURIComponent(stage)}`, {
+        const res = await apiFetch(`/api/v1/admin/orders?status=${encodeURIComponent(stage)}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const json = await res.json();

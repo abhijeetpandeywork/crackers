@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { CheckCircle, Truck, ShieldCheck, ChevronLeft, MapPin, Plus, Receipt, Download } from "lucide-react";
 import { Layout } from "@/components/layout";
+import { apiFetch } from "../lib/api";
 import {
   useListShopAddresses,
   useCreateShopAddress,
@@ -159,7 +160,7 @@ export default function Checkout() {
     const token = (typeof localStorage !== "undefined") ? localStorage.getItem("shop_token") : null;
     const downloadInvoice = async () => {
       try {
-        const res = await fetch(`/api/v1/shop/orders/${placedOrder.id}/invoice.pdf`, {
+        const res = await apiFetch(`/api/v1/shop/orders/${placedOrder.id}/invoice.pdf`, {
           headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);

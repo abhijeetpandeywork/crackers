@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { setAuthTokenGetter, setUnauthorizedHandler } from "@workspace/api-client-react";
 import { useLocation } from "wouter";
+import { apiFetch } from "./api";
 
 export type User = {
   id: string;
@@ -36,7 +37,7 @@ const AuthContext = createContext<{
 
 async function fetchMe(token: string): Promise<User | null> {
   try {
-    const r = await fetch("/api/v1/auth/me", { headers: { Authorization: `Bearer ${token}` } });
+    const r = await apiFetch("/api/v1/auth/me", { headers: { Authorization: `Bearer ${token}` } });
     if (!r.ok) return null;
     const j = await r.json();
     return (j?.data ?? null) as User | null;

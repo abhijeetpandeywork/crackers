@@ -7,6 +7,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { AlertTriangle, Database, RefreshCw, Sparkles } from "lucide-react";
+import { apiFetch } from "../../lib/api";
 
 type Stats = {
   invoices: number;
@@ -41,7 +42,7 @@ export default function DemoDataPage() {
   }
 
   async function api(path: string, body?: any) {
-    const r = await fetch(`/api/v1${path}`, {
+    const r = await apiFetch(`/api/v1${path}`, {
       method: body === undefined ? "GET" : "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: body === undefined ? undefined : JSON.stringify(body),

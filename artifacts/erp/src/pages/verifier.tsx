@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { CheckCircle2, XCircle, Loader2, ShieldCheck, RefreshCw, Wrench, Activity, AlertTriangle, KeyRound, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { apiFetch } from "../lib/api";
 
 type Check = {
   name: string;
@@ -627,7 +628,7 @@ function getToken(): string | null {
 async function fetchSnapshot(): Promise<LiveSnapshot | null> {
   const tok = getToken();
   if (!tok) return null;
-  const r = await fetch("/api/v1/system/health", { headers: { Authorization: `Bearer ${tok}` } });
+  const r = await apiFetch("/api/v1/system/health", { headers: { Authorization: `Bearer ${tok}` } });
   if (!r.ok) return null;
   const b = (await r.json()) as { data?: LiveSnapshot };
   return b.data ?? null;
@@ -660,7 +661,7 @@ function LiveHealthPanel() {
   const setAutoHeal = async (enabled: boolean) => {
     const tok = getToken();
     if (!tok) return;
-    await fetch("/api/v1/system/health/auto-heal", {
+    await apiFetch("/api/v1/system/health/auto-heal", {
       method: "PUT",
       headers: { Authorization: `Bearer ${tok}`, "Content-Type": "application/json" },
       body: JSON.stringify({ enabled }),
@@ -674,7 +675,7 @@ function LiveHealthPanel() {
     if (!tok) return;
     setBusy(id);
     try {
-      const r = await fetch(`/api/v1/system/health/fix/${id}`, { method: "POST", headers: { Authorization: `Bearer ${tok}` } });
+      const r = await apiFetch(`/api/v1/system/health/fix/${id}`, { method: "POST", headers: { Authorization: `Bearer ${tok}` } });
       const b = (await r.json()) as { data?: LiveFix; error?: { message?: string } };
       if (r.ok && b.data?.ok) {
         toast({ title: "Repaired", description: b.data.message });

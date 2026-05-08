@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { apiFetch } from "../../lib/api";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -26,7 +27,7 @@ function authHeaders(): HeadersInit {
   return t ? { Authorization: `Bearer ${t}` } : {};
 }
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`/api${path}`, {
+  const res = await apiFetch(`/api${path}`, {
     ...init,
     headers: { "Content-Type": "application/json", ...authHeaders(), ...(init?.headers ?? {}) },
   });

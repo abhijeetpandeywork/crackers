@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useLocation, Link } from "wouter";
 import { formatVariantLabel } from "@/lib/variant-label";
+import { apiFetch } from "../lib/api";
 import {
   useGetPosProducts,
   useHoldBill,
@@ -154,7 +155,7 @@ const SaleScreen = () => {
     if (stored) { setActiveLocationId(stored); return; }
     const token = localStorage.getItem("pos_token");
     if (!token) { setLocation("/"); return; }
-    fetch("/api/v1/locations", { headers: { Authorization: `Bearer ${token}` } })
+    apiFetch("/api/v1/locations", { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
       .then((res) => {
         const locs = res?.data ?? [];
@@ -179,7 +180,7 @@ const SaleScreen = () => {
   // editable in the ERP CMS. Falls back to the original defaults if the call fails.
   const [posConfig, setPosConfig] = useState<PosConfig>(DEFAULT_POS_CONFIG);
   useEffect(() => {
-    fetch("/api/v1/site-content/public")
+    apiFetch("/api/v1/site-content/public")
       .then((r) => r.json())
       .then((res) => {
         const pos = res?.data?.pos ?? {};

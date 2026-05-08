@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Delete, RefreshCw } from "lucide-react";
 import logoUrl from "@assets/rathinam_logo.png";
+import { apiFetch } from "../lib/api";
 
 type Cashier = { id: string; name: string; username: string; role: string; locationIds?: string[] | null };
 type Shop = { id: string; name: string; type: string; city?: string | null };
@@ -29,7 +30,7 @@ const PinLogin = () => {
   const loadBootstrap = useCallback(async () => {
     setBootstrapState("loading");
     try {
-      const r = await fetch("/api/v1/auth/pos-bootstrap");
+      const r = await apiFetch("/api/v1/auth/pos-bootstrap");
       const res = await r.json();
       if (!res?.success) throw new Error("bad response");
       const list: Cashier[] = res.data?.cashiers ?? [];

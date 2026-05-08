@@ -8,6 +8,7 @@ import { ArrowLeft, MapPin, Receipt, Truck, Download, Share2, CheckCircle2, Circ
 import { useShopAuth } from "@/context/auth";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { apiFetch } from "../../lib/api";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
@@ -157,7 +158,7 @@ export default function OrderDetail() {
     }
     setCancelling(true);
     try {
-      const res = await fetch(`/api/v1/shop/orders/${order.id}/cancel`, {
+      const res = await apiFetch(`/api/v1/shop/orders/${order.id}/cancel`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ reason: cancelReason.trim() }),
@@ -179,7 +180,7 @@ export default function OrderDetail() {
     if (!order || !token) return;
     setDownloading(true);
     try {
-      const res = await fetch(`/api/v1/shop/orders/${order.id}/invoice.pdf`, {
+      const res = await apiFetch(`/api/v1/shop/orders/${order.id}/invoice.pdf`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -203,7 +204,7 @@ export default function OrderDetail() {
     if (!order || !token) return;
     setSharing(true);
     try {
-      const res = await fetch(`/api/v1/shop/orders/${order.id}/share-invoice`, {
+      const res = await apiFetch(`/api/v1/shop/orders/${order.id}/share-invoice`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ channel }),

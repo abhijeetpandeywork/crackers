@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useListProducts } from "@workspace/api-client-react";
 import { Link } from "wouter";
+import { apiFetch } from "../../lib/api";
 import { 
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
 } from "@/components/ui/table";
@@ -32,7 +33,7 @@ export default function ProductsList() {
     queryKey: ["categories"],
     queryFn: async () => {
       const token = localStorage.getItem("erp_token") || "";
-      const r = await fetch("/api/v1/categories", { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      const r = await apiFetch("/api/v1/categories", { headers: token ? { Authorization: `Bearer ${token}` } : {} });
       return r.json();
     },
   });

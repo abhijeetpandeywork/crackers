@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MediaPicker } from "@/components/media-picker";
+import { apiFetch } from "../../lib/api";
 
 type CategoryLite = { id: string; name: string; emoji: string | null; isActive: boolean };
 
@@ -74,7 +75,7 @@ export default function ProductDetail() {
     queryKey: ["categories"],
     queryFn: async () => {
       const token = localStorage.getItem("erp_token") || "";
-      const r = await fetch("/api/v1/categories", { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      const r = await apiFetch("/api/v1/categories", { headers: token ? { Authorization: `Bearer ${token}` } : {} });
       return r.json();
     },
   });

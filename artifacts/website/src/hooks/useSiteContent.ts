@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { apiFetch } from "../lib/api";
 
 export type SiteContact = {
   phone?: string;
@@ -100,7 +101,7 @@ export function useSiteContent(): SiteContent {
   const { data } = useQuery({
     queryKey: ["site-content-public"],
     queryFn: async () => {
-      const res = await fetch("/api/v1/site-content/public");
+      const res = await apiFetch("/api/v1/site-content/public");
       if (!res.ok) throw new Error("Failed to load site content");
       const json = await res.json();
       return (json?.data ?? {}) as SiteContent;

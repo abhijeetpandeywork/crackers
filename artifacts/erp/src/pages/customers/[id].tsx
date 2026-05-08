@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { apiFetch } from "../../lib/api";
 import {
   useGetCustomer,
   useGetCustomerStatement,
@@ -45,7 +46,7 @@ function useCustomerRelated(id: string | undefined) {
     let cancelled = false;
     setLoading(true);
     const token = localStorage.getItem("erp_token") ?? "";
-    fetch(`/api/v1/customers/${id}/related`, { headers: { authorization: `Bearer ${token}` } })
+    apiFetch(`/api/v1/customers/${id}/related`, { headers: { authorization: `Bearer ${token}` } })
       .then((r) => r.json())
       .then((j) => { if (!cancelled && j?.success) setBundle(j.data); })
       .finally(() => { if (!cancelled) setLoading(false); });

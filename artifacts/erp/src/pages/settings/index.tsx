@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Building, IndianRupee, Settings as SettingsIcon, Save, Loader2, Database, ShieldCheck, RefreshCw, Plus, Trash2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
+import { apiFetch } from "../../lib/api";
 
 type Company = {
   name: string;
@@ -68,8 +69,8 @@ export default function Settings() {
     try {
       const headers = { Authorization: `Bearer ${tok()}` };
       const [compRes, priceRes] = await Promise.all([
-        fetch("/api/v1/settings/company", { headers }),
-        fetch("/api/v1/settings/pricing", { headers }),
+        apiFetch("/api/v1/settings/company", { headers }),
+        apiFetch("/api/v1/settings/pricing", { headers }),
       ]);
       if (!compRes.ok || !priceRes.ok) throw new Error("Failed to load settings");
       const compData = await compRes.json();
@@ -87,8 +88,8 @@ export default function Settings() {
     try {
       const headers = { Authorization: `Bearer ${tok()}` };
       const [healthRes, backupsRes] = await Promise.all([
-        fetch("/api/v1/system/health", { headers }),
-        fetch("/api/v1/system/backups", { headers }),
+        apiFetch("/api/v1/system/health", { headers }),
+        apiFetch("/api/v1/system/backups", { headers }),
       ]);
       const info: SystemInfo = {};
       if (healthRes.ok) {
@@ -110,7 +111,7 @@ export default function Settings() {
   const save = async (key: "company" | "pricing", body: Company | Pricing) => {
     setSaving(key);
     try {
-      const r = await fetch(`/api/v1/settings/${key}`, {
+      const r = await apiFetch(`/api/v1/settings/${key}`, {
         method: "PUT",
         headers: { Authorization: `Bearer ${tok()}`, "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -136,7 +137,7 @@ export default function Settings() {
   const runBackupNow = async () => {
     setBackupBusy(true);
     try {
-      const r = await fetch("/api/v1/system/backup/run", {
+      const r = await apiFetch("/api/v1/system/backup/run", {
         method: "POST",
         headers: { Authorization: `Bearer ${tok()}` },
       });
