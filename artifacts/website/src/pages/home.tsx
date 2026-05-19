@@ -1,4 +1,5 @@
 import { Link } from "wouter";
+import { mediaUrl } from "../lib/api";
 import { useEffect, useMemo, useState } from "react";
 import { useListPublicProducts, useGetPublicSiteContent } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
@@ -330,7 +331,7 @@ export default function Home() {
                         <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_50%_30%,rgba(251,191,36,0.4),transparent_60%)]" />
                         {(product as { imageUrl?: string }).imageUrl ? (
                           <img
-                            src={(product as { imageUrl?: string }).imageUrl}
+                            src={mediaUrl((product as { imageUrl?: string }).imageUrl)}
                             alt={product.name ?? ""}
                             className="absolute inset-0 w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500 z-0"
                           />

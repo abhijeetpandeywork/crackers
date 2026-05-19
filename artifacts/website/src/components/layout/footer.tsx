@@ -1,4 +1,5 @@
 import { Link } from "wouter";
+import { mediaUrl } from "../../lib/api";
 import { Phone, Mail, MapPin, ShieldCheck, Award, Truck, FileCheck, MessageCircle, Instagram, Facebook, Youtube, Twitter } from "lucide-react";
 import logoUrl from "@assets/rathinam_logo.png";
 import { useSiteContent, telHref, whatsAppHref, safeHref } from "@/hooks/useSiteContent";
@@ -49,7 +50,7 @@ export function Footer() {
           {/* Brand column */}
           <div className="md:col-span-5">
             <div className="bg-white/95 inline-block rounded-lg p-2 mb-4">
-              <img src={logoUrl} alt={c.brand?.name ?? "Logo"} className="h-14 w-auto" />
+              <img src={mediaUrl(logoUrl)} alt={c.brand?.name ?? "Logo"} className="h-14 w-auto" />
             </div>
             <p className="text-sm leading-relaxed text-gray-400 mb-5 max-w-md">
               {c.brand?.tagline ?? "Premium Sivakasi fireworks since 1985."} Three generations of cracker craftsmanship, delivering safe and brilliant celebrations to every Indian home.

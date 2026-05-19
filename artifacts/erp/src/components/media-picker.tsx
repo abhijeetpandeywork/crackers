@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { ImagePlus, UploadCloud, Loader2, Trash2 } from "lucide-react";
-import { apiFetch } from "../lib/api";
+import { apiFetch, mediaUrl } from "../lib/api";
 
 export type MediaItem = {
   id: string;
@@ -121,13 +121,13 @@ export function MediaPicker({ value, onChange, folder = "uploads", compact, butt
       <div className={compact ? "flex items-center gap-2" : "space-y-2"}>
         {!compact && value ? (
           <img
-            src={value}
+            src={mediaUrl(value)}
             alt=""
             className="h-24 w-24 object-cover rounded border bg-muted"
             onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
           />
         ) : compact && value ? (
-          <img src={value} alt="" className="h-9 w-9 object-cover rounded border" />
+          <img src={mediaUrl(value)} alt="" className="h-9 w-9 object-cover rounded border" />
         ) : null}
         <Button
           type="button"
@@ -166,7 +166,7 @@ export function MediaPicker({ value, onChange, folder = "uploads", compact, butt
                 <div className="grid grid-cols-4 gap-3 max-h-[60vh] overflow-y-auto p-1">
                   {items.map((it) => (
                     <div key={it.id} className="group relative border rounded overflow-hidden hover:ring-2 hover:ring-primary cursor-pointer" onClick={() => onPick(it)}>
-                      <img src={it.thumbnailUrl ?? it.url} alt={it.altText ?? ""} className="aspect-square w-full object-cover" />
+                      <img src={mediaUrl(it.thumbnailUrl ?? it.url)} alt={it.altText ?? ""} className="aspect-square w-full object-cover" />
                       <div className="absolute inset-x-0 bottom-0 bg-black/60 text-white text-[10px] px-1.5 py-0.5 truncate">{it.originalName}</div>
                       <Button
                         type="button"

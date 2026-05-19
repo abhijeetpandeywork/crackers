@@ -1,4 +1,5 @@
 import { Link, useLocation } from "wouter";
+import { mediaUrl } from "../../lib/api";
 import { useCart } from "@/context/cart";
 import { useShopAuth } from "@/context/auth";
 import { Button } from "@/components/ui/button";
@@ -46,7 +47,7 @@ export function Navbar() {
           <div className="flex justify-between h-16 items-center">
             <div className="flex items-center">
               <Link href="/" className="flex items-center gap-2.5">
-                <img src={logoUrl} alt="Rathinam Crackers" className="h-10 w-auto" />
+                <img src={mediaUrl(logoUrl)} alt="Rathinam Crackers" className="h-10 w-auto" />
                 <span className="hidden sm:inline text-[10px] font-bold tracking-[0.2em] text-gray-400 uppercase pt-0.5">Est. 1985</span>
               </Link>
             </div>

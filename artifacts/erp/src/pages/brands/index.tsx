@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { mediaUrl } from "../../lib/api";
 import {
   useListBrands,
   useCreateBrand,
@@ -163,7 +164,7 @@ export default function BrandsPage() {
                 {form.logoUrl && (
                   <div className="mt-2 p-2 border rounded-md bg-muted/40 inline-flex items-center gap-2">
                     <img
-                      src={form.logoUrl}
+                      src={mediaUrl(form.logoUrl)}
                       alt="logo preview"
                       className="h-12 w-12 object-contain bg-white rounded"
                       onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
@@ -248,7 +249,7 @@ export default function BrandsPage() {
                     <TableCell>
                       {b.logoUrl ? (
                         <img
-                          src={b.logoUrl}
+                          src={mediaUrl(b.logoUrl)}
                           alt={b.name}
                           className="h-10 w-10 object-contain bg-white rounded p-0.5 border"
                           onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}

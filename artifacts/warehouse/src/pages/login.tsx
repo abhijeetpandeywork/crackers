@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { mediaUrl } from "../lib/api";
 import { useLocation } from "wouter";
 import { useLogin, setAuthTokenGetter } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
@@ -50,7 +51,7 @@ export default function Login() {
       <Card className="w-full max-w-md border-[hsl(197,50%,22%)] bg-[hsl(200,30%,10%)] text-zinc-100 shadow-2xl">
         <CardHeader className="text-center">
           <div className="mx-auto mb-3 inline-flex items-center justify-center h-24 w-24 rounded-3xl bg-white/95 p-3 shadow-xl shadow-black/30 ring-1 ring-amber-300/40">
-            <img src={logoUrl} alt="Rathinam Crackers" className="h-full w-full object-contain" />
+            <img src={mediaUrl(logoUrl)} alt="Rathinam Crackers" className="h-full w-full object-contain" />
           </div>
           <CardTitle className="text-xl font-bold tracking-wide text-amber-300 uppercase">Warehouse Operations</CardTitle>
           <CardDescription className="text-zinc-400">Enter your credentials to access the warehouse system</CardDescription>

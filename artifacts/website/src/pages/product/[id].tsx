@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { mediaUrl } from "../../lib/api";
 import { useParams, Link } from "wouter";
 import {
   useListPublicProducts,
@@ -421,7 +422,7 @@ export default function ProductDetail() {
   // Real uploaded images take priority over the emoji fallback. We dedupe
   // because the cover image often appears as the first gallery entry too.
   const productAny = product as typeof product & { imageUrl?: string; gallery?: string[] };
-  const realImages = [productAny.imageUrl, ...(productAny.gallery ?? [])]
+  const realImages = [productAny.imageUrl, ...(productAny.gallery ?? [])].map((u) => mediaUrl(u as string | undefined))
     .filter((u): u is string => !!u && typeof u === "string" && u.length > 0)
     .filter((u, i, a) => a.indexOf(u) === i);
   const galleryFrames: string[] = realImages.length > 0 ? realImages : [emoji, "🎆", "✨", "🎇"];

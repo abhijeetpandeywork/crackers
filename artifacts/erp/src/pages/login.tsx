@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { mediaUrl } from "../lib/api";
 import { useLocation } from "wouter";
 import { useLogin } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
@@ -38,7 +39,7 @@ export default function Login() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="mx-auto mb-4 inline-flex items-center justify-center h-24 w-24 rounded-3xl bg-white/95 p-3 shadow-xl shadow-black/30 ring-1 ring-amber-300/40">
-            <img src={logoUrl} alt="Rathinam Crackers" className="h-full w-full object-contain" />
+            <img src={mediaUrl(logoUrl)} alt="Rathinam Crackers" className="h-full w-full object-contain" />
           </div>
           <p className="text-amber-300 font-semibold tracking-[0.2em] uppercase text-xs">ERP Operations Console</p>
         </div>

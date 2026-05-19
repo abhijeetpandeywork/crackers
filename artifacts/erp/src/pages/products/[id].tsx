@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MediaPicker } from "@/components/media-picker";
-import { apiFetch } from "../../lib/api";
+import { apiFetch, mediaUrl } from "../../lib/api";
 
 type CategoryLite = { id: string; name: string; emoji: string | null; isActive: boolean };
 
@@ -334,7 +334,7 @@ export default function ProductDetail() {
                           {(() => {
                             const found = brands.find(x => x.name === b);
                             return found?.logoUrl ? (
-                              <img src={found.logoUrl} alt="" className="h-4 w-4 object-contain bg-white rounded-sm" />
+                              <img src={mediaUrl(found.logoUrl)} alt="" className="h-4 w-4 object-contain bg-white rounded-sm" />
                             ) : null;
                           })()}
                           {b}
@@ -494,7 +494,7 @@ export default function ProductDetail() {
                                 {(() => {
                                   const found = brands.find(x => x.name === b);
                                   return found?.logoUrl ? (
-                                    <img src={found.logoUrl} alt="" className="h-4 w-4 object-contain bg-white rounded-sm" />
+                                    <img src={mediaUrl(found.logoUrl)} alt="" className="h-4 w-4 object-contain bg-white rounded-sm" />
                                   ) : null;
                                 })()}
                                 {b}

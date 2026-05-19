@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useLocation, Link } from "wouter";
 import { formatVariantLabel } from "@/lib/variant-label";
-import { apiFetch } from "../lib/api";
+import { apiFetch, mediaUrl } from "../lib/api";
 import {
   useGetPosProducts,
   useHoldBill,
@@ -674,7 +674,7 @@ const SaleScreen = () => {
                     {/* Compact accent header — no more giant code placeholder. */}
                     <div className={`relative h-20 bg-gradient-to-br ${accent} flex items-center px-3`}>
                       {product.imageUrl ? (
-                        <img src={product.imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover opacity-90" />
+                        <img src={mediaUrl(product.imageUrl)} alt="" className="absolute inset-0 h-full w-full object-cover opacity-90" />
                       ) : (
                         <div className="h-12 w-12 rounded-lg bg-zinc-950/60 ring-1 ring-white/10 flex items-center justify-center text-amber-300 font-black text-lg tracking-tight">
                           {initials}

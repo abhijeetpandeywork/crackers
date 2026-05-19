@@ -1,4 +1,5 @@
 import { Link, useLocation } from "wouter";
+import { mediaUrl } from "../../lib/api";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -47,7 +48,7 @@ function SidebarBody({ isCollapsed = false, onNavigate }: SidebarBodyProps) {
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center h-16 px-3 border-b border-sidebar-border bg-sidebar-accent/40 shrink-0">
-        <img src={logoUrl} alt="" className="h-9 w-9 rounded bg-white/95 p-0.5 object-contain shrink-0" />
+        <img src={mediaUrl(logoUrl)} alt="" className="h-9 w-9 rounded bg-white/95 p-0.5 object-contain shrink-0" />
         {!isCollapsed && (
           <div className="ml-2.5 flex flex-col leading-tight">
             <span className="font-extrabold text-sm tracking-wide">RATHINAM</span>
@@ -147,7 +148,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <SidebarBody onNavigate={() => setDrawerOpen(false)} />
             </SheetContent>
           </Sheet>
-          <img src={logoUrl} alt="" className="h-8 w-8 rounded bg-white/95 p-0.5 object-contain" />
+          <img src={mediaUrl(logoUrl)} alt="" className="h-8 w-8 rounded bg-white/95 p-0.5 object-contain" />
           <div className="flex flex-col leading-tight">
             <span className="font-extrabold text-xs tracking-wide">RATHINAM</span>
             <span className="text-[9px] font-semibold tracking-[0.18em] uppercase text-amber-300/90">Warehouse</span>

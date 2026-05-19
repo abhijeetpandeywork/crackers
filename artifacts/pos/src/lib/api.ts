@@ -30,3 +30,17 @@ if (API_BASE) {
 }
 
 export { setUnauthorizedHandler };
+
+/**
+ * Resolve an image/media URL returned by the API into something a browser
+ * can fetch. The API returns "/uploads/foo.jpg" — in production with split
+ * subdomains the file lives on api.rathinamcracker.com, NOT on the frontend
+ * subdomain that's rendering the page, so we must prepend API_BASE.
+ * External https URLs and data: URIs are returned unchanged.
+ */
+export function mediaUrl(u: string | null | undefined): string {
+  if (!u) return "";
+  if (/^https?:\/\//i.test(u) || u.startsWith("data:")) return u;
+  if (!u.startsWith("/")) return u;
+  return `${API_BASE}${u}`;
+}

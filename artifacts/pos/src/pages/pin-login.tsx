@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Delete, RefreshCw } from "lucide-react";
 import logoUrl from "@assets/rathinam_logo.png";
-import { apiFetch } from "../lib/api";
+import { apiFetch, mediaUrl } from "../lib/api";
 
 type Cashier = { id: string; name: string; username: string; role: string; locationIds?: string[] | null };
 type Shop = { id: string; name: string; type: string; city?: string | null };
@@ -155,7 +155,7 @@ const PinLogin = () => {
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
           <div className="mx-auto mb-3 inline-flex items-center justify-center h-28 w-28 rounded-3xl bg-white/95 p-3 shadow-2xl shadow-black/40 ring-1 ring-amber-300/40">
-            <img src={logoUrl} alt="Rathinam Crackers" className="h-full w-full object-contain" />
+            <img src={mediaUrl(logoUrl)} alt="Rathinam Crackers" className="h-full w-full object-contain" />
           </div>
           <p className="mt-1 text-amber-300 font-semibold tracking-[0.25em] uppercase text-xs">Cashier Login</p>
         </div>

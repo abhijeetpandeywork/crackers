@@ -1,4 +1,5 @@
 import { useAuth } from "@/lib/auth";
+import { mediaUrl } from "../lib/api";
 import { Link, useLocation } from "wouter";
 import {
   BarChart3, Box, Package, Users, UsersRound, Truck,
@@ -97,7 +98,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div className="flex flex-col h-full">
       <div className="h-16 flex items-center gap-2.5 px-4 border-b border-sidebar-border bg-sidebar-accent/40 shrink-0">
-        <img src={logoUrl} alt="" className="h-9 w-9 rounded bg-white/95 p-0.5 object-contain" />
+        <img src={mediaUrl(logoUrl)} alt="" className="h-9 w-9 rounded bg-white/95 p-0.5 object-contain" />
         <div className="flex flex-col leading-tight">
           <span className="font-extrabold text-sm text-sidebar-foreground tracking-wide">RATHINAM</span>
           <span className="text-[10px] font-semibold tracking-[0.18em] uppercase text-amber-300/90">ERP Console</span>
@@ -216,7 +217,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <SidebarNav onNavigate={() => setDrawerOpen(false)} />
             </SheetContent>
           </Sheet>
-          <img src={logoUrl} alt="" className="h-8 w-8 rounded bg-white/95 p-0.5 object-contain" />
+          <img src={mediaUrl(logoUrl)} alt="" className="h-8 w-8 rounded bg-white/95 p-0.5 object-contain" />
           <div className="flex flex-col leading-tight">
             <span className="font-extrabold text-xs tracking-wide">RATHINAM</span>
             <span className="text-[9px] font-semibold tracking-[0.18em] uppercase text-amber-300/90">ERP Console</span>

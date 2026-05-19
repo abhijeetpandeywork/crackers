@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Trash2, UploadCloud, Copy, Image as ImageIcon } from "lucide-react";
-import { apiFetch } from "../../lib/api";
+import { apiFetch, mediaUrl } from "../../lib/api";
 
 type MediaItem = {
   id: string;
@@ -124,7 +124,7 @@ export default function MediaLibraryPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
               {visible.map((it) => (
                 <div key={it.id} className="group border rounded overflow-hidden bg-muted/30">
-                  <img src={it.thumbnailUrl ?? it.url} alt={it.altText ?? ""} className="aspect-square w-full object-cover" />
+                  <img src={mediaUrl(it.thumbnailUrl ?? it.url)} alt={it.altText ?? ""} className="aspect-square w-full object-cover" />
                   <div className="p-2 text-xs space-y-1">
                     <div className="font-medium truncate" title={it.originalName}>{it.originalName}</div>
                     <div className="text-muted-foreground">{it.width}×{it.height} · {fmtKB(it.sizeBytes)}</div>
