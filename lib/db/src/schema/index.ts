@@ -27,3 +27,5 @@ export * from "./auditLog";
 export * from "./roles";
 export * from "./idempotencyKeys";
 export * from "./media";
+export * from "./discountMatrices";
+

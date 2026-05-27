@@ -103,6 +103,7 @@ async function buildAll() {
       "puppeteer",
       "puppeteer-core",
       "electron",
+      "xlsx",
     ],
     sourcemap: "linked",
     plugins: [
