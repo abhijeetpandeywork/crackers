@@ -16,6 +16,7 @@ import { Plus, Pencil, Trash2, Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { BulkIO } from "@/components/bulk-io";
+import { API_URL } from "@/lib/api";
 
 type Category = {
   id: string;
@@ -52,7 +53,7 @@ const emptyForm: CategoryForm = {
 
 const apiFetch = async (url: string, init?: RequestInit) => {
   const token = localStorage.getItem("erp_token") || "";
-  const r = await fetch(url, {
+  const r = await fetch(API_URL(url), {
     ...init,
     headers: {
       "Content-Type": "application/json",

@@ -113,7 +113,7 @@ const sections: Array<{ name: string; checks: () => Promise<CheckResult[]> }> = 
         passed: badLogin.status === 401,
         detail: `status=${badLogin.status}`,
       });
-      const adminTok = await login("admin", "admin123");
+      const adminTok = await login("admin", "Admin@12345");
       out.push({
         name: "Admin login succeeds with seeded credentials",
         passed: !!adminTok,
@@ -136,7 +136,7 @@ const sections: Array<{ name: string; checks: () => Promise<CheckResult[]> }> = 
     name: "3. Pricing Engine (5-tier + qty trigger)",
     checks: async () => {
       const out: CheckResult[] = [];
-      const tok = await login("admin", "admin123");
+      const tok = await login("admin", "Admin@12345");
       if (!tok) {
         out.push({
           name: "Pricing checks (skipped — no admin token)",
@@ -194,7 +194,7 @@ const sections: Array<{ name: string; checks: () => Promise<CheckResult[]> }> = 
     name: "4. Stock System (immutable ledger)",
     checks: async () => {
       const out: CheckResult[] = [];
-      const tok = await login("admin", "admin123");
+      const tok = await login("admin", "Admin@12345");
       if (!tok) {
         out.push({ name: "Stock checks (skipped — no token)", passed: false });
         return out;
@@ -262,7 +262,7 @@ const sections: Array<{ name: string; checks: () => Promise<CheckResult[]> }> = 
     name: "5. Customers, Suppliers, Agents",
     checks: async () => {
       const out: CheckResult[] = [];
-      const tok = await login("admin", "admin123");
+      const tok = await login("admin", "Admin@12345");
       if (!tok) {
         out.push({ name: "CRM checks (skipped — no token)", passed: false });
         return out;
@@ -281,7 +281,7 @@ const sections: Array<{ name: string; checks: () => Promise<CheckResult[]> }> = 
     name: "6. Estimates / Invoices / Coupons",
     checks: async () => {
       const out: CheckResult[] = [];
-      const tok = await login("admin", "admin123");
+      const tok = await login("admin", "Admin@12345");
       if (!tok) {
         out.push({ name: "Sales checks (skipped — no token)", passed: false });
         return out;
@@ -310,7 +310,7 @@ const sections: Array<{ name: string; checks: () => Promise<CheckResult[]> }> = 
     name: "7. POS / Warehouse / Reports",
     checks: async () => {
       const out: CheckResult[] = [];
-      const tok = await login("admin", "admin123");
+      const tok = await login("admin", "Admin@12345");
       if (!tok) {
         out.push({ name: "Module checks (skipped — no token)", passed: false });
         return out;
@@ -333,7 +333,7 @@ const sections: Array<{ name: string; checks: () => Promise<CheckResult[]> }> = 
     name: "8. Locations, Users & Settings (admin)",
     checks: async () => {
       const out: CheckResult[] = [];
-      const tok = await login("admin", "admin123");
+      const tok = await login("admin", "Admin@12345");
       if (!tok) {
         out.push({ name: "Skipped — no admin token", passed: false });
         return out;
@@ -785,7 +785,7 @@ const sections: Array<{ name: string; checks: () => Promise<CheckResult[]> }> = 
 
       // Occasion filter — end-to-end smoke test.
       // Tag a product with a rare occasion key and verify ?occasion=KEY filters to it.
-      const adminToken = await login("admin", "admin123");
+      const adminToken = await login("admin", "Admin@12345");
       const authHeaders = { Authorization: `Bearer ${adminToken}`, "Content-Type": "application/json" };
       const all = await http("/api/v1/products?limit=1&onlineDisplay=true", { headers: authHeaders });
       const someProduct = (all.body as { data?: Array<{ id?: string; occasions?: string[] }> })?.data?.[0];
@@ -922,7 +922,7 @@ const sections: Array<{ name: string; checks: () => Promise<CheckResult[]> }> = 
     name: "11. Audit-log coverage (users, locations, suppliers, agents)",
     checks: async () => {
       const out: CheckResult[] = [];
-      const tok = await login("admin", "admin123");
+      const tok = await login("admin", "Admin@12345");
       if (!tok) {
         out.push({ name: "Audit-coverage checks (skipped — no token)", passed: false });
         return out;

@@ -16,6 +16,8 @@ import { Plus, Pencil, Loader2, Store, Check } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 
+import { API_URL } from "@/lib/api";
+
 type User = {
   id: string;
   name: string;
@@ -66,7 +68,7 @@ const emptyForm: UserForm = {
 
 const apiFetch = async (url: string, init?: RequestInit) => {
   const token = localStorage.getItem("erp_token") || "";
-  const r = await fetch(url, {
+  const r = await fetch(API_URL(url), {
     ...init,
     headers: {
       "Content-Type": "application/json",

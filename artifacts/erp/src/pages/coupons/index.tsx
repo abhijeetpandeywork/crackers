@@ -17,6 +17,7 @@ import { Plus, Search, Tags, Pencil, Loader2, Globe, Store, Briefcase, Building2
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { BulkIO } from "@/components/bulk-io";
+import { API_URL } from "@/lib/api";
 
 // All channels a coupon can be restricted to. Empty array = available
 // everywhere (the most common case for a generic offer).
@@ -103,7 +104,7 @@ const emptyForm: CouponForm = {
 
 const apiFetch = async (url: string, init?: RequestInit) => {
   const token = localStorage.getItem("erp_token") || "";
-  const r = await fetch(url, {
+  const r = await fetch(API_URL(url), {
     ...init,
     headers: {
       "Content-Type": "application/json",

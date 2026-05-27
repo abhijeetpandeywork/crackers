@@ -15,6 +15,7 @@ import { Plus, Building2, Store, Pencil, Trash2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { BulkIO } from "@/components/bulk-io";
+import { API_URL } from "@/lib/api";
 
 type LocationType = "warehouse" | "shop";
 
@@ -49,7 +50,7 @@ const emptyForm: FormState = {
 
 const apiFetch = async (url: string, init?: RequestInit) => {
   const token = localStorage.getItem("erp_token") || "";
-  const res = await fetch(url, {
+  const res = await fetch(API_URL(url), {
     ...init,
     headers: {
       "Content-Type": "application/json",
