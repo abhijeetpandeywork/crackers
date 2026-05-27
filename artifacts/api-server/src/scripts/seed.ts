@@ -61,12 +61,16 @@ async function seed() {
     { key: "pricing", value: { wholesaleQtyThreshold: 10, loyaltyEarnRate: 1, loyaltyRedemptionRate: 1, taxRate: 0.18 } as any },
   ]).onConflictDoNothing();
 
-  const passwordHash = await bcrypt.hash("admin123", 10);
+  const adminHash = await bcrypt.hash("Admin@12345", 10);
+  const managerHash = await bcrypt.hash("Manager@12345", 10);
+  const cashierHash = await bcrypt.hash("admin123", 10);
+  const warehouseHash = await bcrypt.hash("Warehouse@12345", 10);
+
   await db.insert(usersTable).values([
-    { id: "usr-admin", name: "Super Admin", username: "admin", passwordHash, pin: "1234", role: "SUPER_ADMIN" as any, locationIds: [], email: "admin@rathinam.com", isActive: true },
-    { id: "usr-mgr", name: "ERP Manager", username: "manager", passwordHash, pin: "2345", role: "ERP_MANAGER" as any, locationIds: [], email: "manager@rathinam.com", isActive: true },
-    { id: "usr-cashier", name: "POS Cashier", username: "cashier", passwordHash, pin: "3456", role: "CASHIER" as any, locationIds: ["loc-shop1"], email: "cashier@rathinam.com", isActive: true },
-    { id: "usr-wh", name: "Warehouse Manager", username: "warehouse", passwordHash, pin: "4567", role: "WH_MANAGER" as any, locationIds: ["loc-wh1"], email: "wh@rathinam.com", isActive: true },
+    { id: "usr-admin", name: "Super Admin", username: "admin", passwordHash: adminHash, pin: "1234", role: "SUPER_ADMIN" as any, locationIds: [], email: "admin@rathinam.com", isActive: true },
+    { id: "usr-mgr", name: "ERP Manager", username: "manager", passwordHash: managerHash, pin: "2345", role: "ERP_MANAGER" as any, locationIds: [], email: "manager@rathinam.com", isActive: true },
+    { id: "usr-cashier", name: "POS Cashier", username: "cashier", passwordHash: cashierHash, pin: "3456", role: "CASHIER" as any, locationIds: ["loc-shop1"], email: "cashier@rathinam.com", isActive: true },
+    { id: "usr-wh", name: "Warehouse Manager", username: "warehouse", passwordHash: warehouseHash, pin: "4567", role: "WH_MANAGER" as any, locationIds: ["loc-wh1"], email: "wh@rathinam.com", isActive: true },
   ]).onConflictDoNothing();
 
   await db.insert(locationsTable).values([
