@@ -51,5 +51,9 @@ export function mediaUrl(u: string | null | undefined): string {
   if (!u) return "";
   if (/^https?:\/\//i.test(u) || u.startsWith("data:")) return u;
   if (!u.startsWith("/")) return u;
+  if (u.startsWith("/assets/")) return u;
+  if (API_BASE.includes("localhost") || API_BASE.includes("lvh.me") || API_BASE.includes("127.0.0.1")) {
+    return u;
+  }
   return `${API_BASE}${u}`;
 }

@@ -18,8 +18,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Trash2, Loader2, Upload, FileSpreadsheet, AlertTriangle, CheckCircle2, ChevronRight, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { API_BASE } from "@/lib/api";
 
-const apiBaseUrl = import.meta.env.VITE_API_URL || "http://api.localhost:8000";
+const apiBaseUrl = API_BASE;
 
 type MatchedItem = {
   productId: string;
